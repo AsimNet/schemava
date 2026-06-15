@@ -1,8 +1,8 @@
 <?php
 
-namespace Asimnet\FilamentSurveyjs\Contracts;
+namespace AsimNet\Schemava\Contracts;
 
-use Asimnet\FilamentSurveyjs\Models\SurveySchema;
+use AsimNet\Schemava\Models\SurveySchema;
 
 /**
  * Answers the builder's AI assistant requests. The package ships a no-op

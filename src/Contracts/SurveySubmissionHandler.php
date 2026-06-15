@@ -1,9 +1,9 @@
 <?php
 
-namespace Asimnet\FilamentSurveyjs\Contracts;
+namespace AsimNet\Schemava\Contracts;
 
-use Asimnet\FilamentSurveyjs\Models\SurveyResult;
-use Asimnet\FilamentSurveyjs\Models\SurveySchema;
+use AsimNet\Schemava\Models\SurveyResult;
+use AsimNet\Schemava\Models\SurveySchema;
 
 /**
  * Persists a survey submission and counts a subject's prior submissions. The

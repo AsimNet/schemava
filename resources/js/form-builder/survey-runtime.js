@@ -131,8 +131,25 @@ export function applySurveyLocaleOverrides(overrides = DEFAULT_SURVEY_LOCALE_OVE
 }
 
 /**
+ * The locale whose text lives in a serialized string's SurveyJS `default` slot.
+ *
+ * The package keeps Arabic in `default` and other languages under their locale
+ * code (see model/localized.js — `serializeLStr`). survey-core defaults its
+ * global `surveyLocalization.defaultLocale` to `'en'`; aligning it with this
+ * value is what lets an `'en'` render resolve the explicit `en` slot instead of
+ * the Arabic `default` slot. Hosts may override per call via
+ * `options.defaultLocale` on {@see createPreviewModel}.
+ *
+ * @type {string}
+ */
+export const STORAGE_DEFAULT_LOCALE = 'ar';
+
+/**
  * Create a configured preview `Survey.Model` for the given serialized JSON.
  *
+ * - aligns survey-core's default locale with the schema's storage default so
+ *   the `default` slot maps to Arabic and `en` to English (see
+ *   {@see STORAGE_DEFAULT_LOCALE})
  * - sets the active `locale`
  * - seeds sample runtime data as both survey data and variables so `{key}`
  *   piping and runtime `calculatedValues` resolve
@@ -140,6 +157,8 @@ export function applySurveyLocaleOverrides(overrides = DEFAULT_SURVEY_LOCALE_OVE
  *
  * @param {object} json  serialized SurveyJS JSON
  * @param {{locale?: string, defaultLocale?: string, localeOverrides?: object, sampleData?: Record<string, unknown>}} [options]
+ *   `defaultLocale` is the schema's storage/default locale (the locale the
+ *   `default` slot represents); defaults to {@see STORAGE_DEFAULT_LOCALE}.
  * @returns {any|null} a Survey.Model instance, or null when the global is absent
  */
 export function createPreviewModel(json, options = {}) {
@@ -150,13 +169,24 @@ export function createPreviewModel(json, options = {}) {
 
     applySurveyLocaleOverrides(options.localeOverrides);
 
+    // Align survey-core's default locale with the schema's storage default
+    // BEFORE building the model. Otherwise survey-core's built-in `'en'` default
+    // makes an `'en'` render resolve the `default` slot (Arabic) instead of the
+    // explicit `en` slot. See {@see STORAGE_DEFAULT_LOCALE}.
+    const defaultLocale = typeof options.defaultLocale === 'string' && options.defaultLocale !== ''
+        ? options.defaultLocale
+        : STORAGE_DEFAULT_LOCALE;
+    if (Survey.surveyLocalization) {
+        Survey.surveyLocalization.defaultLocale = defaultLocale;
+    }
+
     const model = new Survey.Model(json);
     // Any SurveyJS locale code drives the rendered UI strings (resolved from
     // survey-core's surveyLocalization registry / the survey.i18n bundle).
-    // An empty code selects the survey's own default locale.
+    // With no explicit locale we render the storage default locale.
     model.locale = typeof options.locale === 'string' && options.locale !== ''
         ? options.locale
-        : (options.defaultLocale ?? '');
+        : defaultLocale;
 
     const sampleData = options.sampleData ?? {};
     for (const [key, value] of Object.entries(sampleData)) {

@@ -1,14 +1,14 @@
 <?php
 
-namespace Asimnet\FilamentSurveyjs\Support;
+namespace AsimNet\Schemava\Support;
 
-use Asimnet\FilamentSurveyjs\Contracts\AiAssistant;
-use Asimnet\FilamentSurveyjs\Models\SurveySchema;
+use AsimNet\Schemava\Contracts\AiAssistant;
+use AsimNet\Schemava\Models\SurveySchema;
 
 /**
  * Default AI assistant: reports itself as unconfigured and refuses queries.
  * Bind a working adapter (e.g. the bundled laravel/ai OpenRouter adapter) via
- * config('filament-surveyjs.contracts.ai_assistant') to enable AI building.
+ * config('schemava.contracts.ai_assistant') to enable AI building.
  */
 class NullAiAssistant implements AiAssistant
 {
@@ -21,7 +21,7 @@ class NullAiAssistant implements AiAssistant
     {
         return [
             'ok' => false,
-            'message' => __('filament-surveyjs::surveyjs.ai.not_configured'),
+            'message' => __('schemava::surveyjs.ai.not_configured'),
         ];
     }
 }

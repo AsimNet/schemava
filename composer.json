@@ -1,17 +1,19 @@
 {
-    "name": "asimnet/filament-surveyjs",
-    "description": "Filament 5 plugin: a custom Arabic-first form builder that emits SurveyJS-compatible schemas, with rendering, submissions and admin management. Multi-tenant ready.",
+    "name": "asimnet/schemava",
+    "description": "Visual multilingual form builder built specifically for FilamentPHP panels with SurveyJS-compatible JSON export.",
     "keywords": [
         "laravel",
         "filament",
-        "surveyjs",
-        "survey",
+        "filamentphp",
         "form-builder",
         "forms",
-        "arabic",
-        "multi-tenant"
+        "i18n",
+        "multilingual",
+        "rtl",
+        "multi-tenant",
+        "surveyjs-compatible"
     ],
-    "homepage": "https://github.com/asimnet/filament-surveyjs",
+    "homepage": "https://github.com/AsimNet/schemava",
     "license": "MIT",
     "type": "library",
     "authors": [
@@ -36,19 +38,19 @@
     },
     "autoload": {
         "psr-4": {
-            "Asimnet\\FilamentSurveyjs\\": "src/",
-            "Asimnet\\FilamentSurveyjs\\Database\\Factories\\": "database/factories/"
+            "AsimNet\\Schemava\\": "src/",
+            "AsimNet\\Schemava\\Database\\Factories\\": "database/factories/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Asimnet\\FilamentSurveyjs\\Tests\\": "tests/"
+            "AsimNet\\Schemava\\Tests\\": "tests/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "Asimnet\\FilamentSurveyjs\\SurveyjsServiceProvider"
+                "AsimNet\\Schemava\\SchemavaServiceProvider"
             ]
         }
     },

@@ -1,8 +1,8 @@
 <?php
 
-namespace Asimnet\FilamentSurveyjs\Contracts;
+namespace AsimNet\Schemava\Contracts;
 
-use Asimnet\FilamentSurveyjs\Models\SurveySchema;
+use AsimNet\Schemava\Models\SurveySchema;
 
 /**
  * Decides whether a subject may submit a survey. The package ships an

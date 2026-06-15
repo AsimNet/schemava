@@ -29,6 +29,9 @@ import { t } from './i18n.js';
  */
 export const DEFAULT_CHOICE_LABELS = ['الخيار 1', 'الخيار 2', 'الخيار 3'];
 
+/** English equivalents, used when the builder's active content locale is English. */
+export const DEFAULT_CHOICE_LABELS_EN = ['Option 1', 'Option 2', 'Option 3'];
+
 /** Builder types that should be seeded with {@link DEFAULT_CHOICE_LABELS}. */
 const SEEDED_CHOICE_TYPES = ['single_choice', 'multi_choice', 'dropdown'];
 
@@ -267,8 +270,8 @@ function makeField(typeId) {
 
 /**
  * Initial choices for a freshly created field. Choice fields start with three
- * Arabic defaults so the card immediately reflects the component's output;
- * everything else starts empty.
+ * defaults (in the active content locale) so the card immediately reflects the
+ * component's output; everything else starts empty.
  *
  * @param {string} type
  * @returns {Array<{value: string, label: {ar: string, en: string|null}, raw: object}>}
@@ -278,7 +281,11 @@ function defaultChoices(type) {
         return [];
     }
 
-    return DEFAULT_CHOICE_LABELS.map((label) => makeChoice(label));
+    const labels = store.state?.contentLocale === 'en'
+        ? DEFAULT_CHOICE_LABELS_EN
+        : DEFAULT_CHOICE_LABELS;
+
+    return labels.map((label) => makeChoice(label));
 }
 
 export function loadFromBoot(bootPayload) {
@@ -292,18 +299,29 @@ export function loadFromBoot(bootPayload) {
         ? bootPayload.variableMeta
         : {};
 
+    // The builder opens in the host app's primary content locale (`boot.locale`,
+    // i.e. app()->getLocale()): English-first apps (Schemava) open in 'en', the
+    // Arabic-first back-end opens in 'ar'. This keeps the shared bundle correct
+    // for both rather than hardcoding Arabic.
+    const primaryLocale = bootPayload?.locale === 'en' ? 'en' : 'ar';
+    const asPrimary = (text) => (primaryLocale === 'en' ? { ar: null, en: text } : { ar: text, en: null });
+
     // Title/description sourced from the DB columns take precedence on first load
     // (mirrors the legacy view, which overwrote the survey JSON title/description).
     const schema = bootPayload?.schema ?? {};
     if (typeof schema.title === 'string' && schema.title !== '' && isEmptyLStr(store.state.meta.title)) {
-        store.state.meta.title = { ar: schema.title, en: null };
+        store.state.meta.title = asPrimary(schema.title);
     }
     if (
         typeof schema.description === 'string'
         && schema.description !== ''
         && isEmptyLStr(store.state.meta.description)
     ) {
-        store.state.meta.description = { ar: schema.description, en: null };
+        store.state.meta.description = asPrimary(schema.description);
+    }
+
+    if (store.state) {
+        store.state.contentLocale = primaryLocale;
     }
 
     store.selectedFieldName = null;

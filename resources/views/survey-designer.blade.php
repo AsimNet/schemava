@@ -31,7 +31,7 @@
          tab and the AI assistant's validation engine. NO survey-creator-* scripts:
          the custom builder replaces the SurveyJS Creator.
 
-         The version is pinned via config('filament-surveyjs.renderer_version') so
+         The version is pinned via config('schemava.renderer_version') so
          the builder validates/previews on the SAME engine that renders the saved
          JSON downstream (e.g. a mobile app's survey-angular-ui). Bump it only in
          lockstep with those renderer clients. --}}
@@ -45,11 +45,11 @@
     <script src="{{ 'https://unpkg.com/survey-js-ui@'.$rendererVersion.'/survey-js-ui.min.js' }}"></script>
 
     <link rel="stylesheet"
-          href="{{ \Filament\Support\Facades\FilamentAsset::getStyleHref('filament-surveyjs-builder', package: 'asimnet/filament-surveyjs') }}">
+          href="{{ \Filament\Support\Facades\FilamentAsset::getStyleHref('schemava-builder', package: 'asimnet/schemava') }}">
 </head>
 <body>
 <script id="form-builder-boot" type="application/json">@json($bootPayload)</script>
 <div id="form-builder-app"></div>
-<script src="{{ \Filament\Support\Facades\FilamentAsset::getScriptSrc('filament-surveyjs-builder', package: 'asimnet/filament-surveyjs') }}"></script>
+<script src="{{ \Filament\Support\Facades\FilamentAsset::getScriptSrc('schemava-builder', package: 'asimnet/schemava') }}"></script>
 </body>
 </html>

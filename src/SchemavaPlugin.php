@@ -1,13 +1,13 @@
 <?php
 
-namespace Asimnet\FilamentSurveyjs;
+namespace AsimNet\Schemava;
 
 use Closure;
 use Filament\Contracts\Plugin;
 use Filament\Panel;
 use Filament\Support\Concerns\EvaluatesClosures;
 
-class SurveyjsPlugin implements Plugin
+class SchemavaPlugin implements Plugin
 {
     use EvaluatesClosures;
 
@@ -32,7 +32,7 @@ class SurveyjsPlugin implements Plugin
 
     public function getId(): string
     {
-        return 'filament-surveyjs';
+        return 'schemava';
     }
 
     public function register(Panel $panel): void

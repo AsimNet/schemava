@@ -1,9 +1,9 @@
 <?php
 
-namespace Asimnet\FilamentSurveyjs\Support;
+namespace AsimNet\Schemava\Support;
 
-use Asimnet\FilamentSurveyjs\Contracts\SurveyUrlResolver;
-use Asimnet\FilamentSurveyjs\Models\SurveySchema;
+use AsimNet\Schemava\Contracts\SurveyUrlResolver;
+use AsimNet\Schemava\Models\SurveySchema;
 use Illuminate\Support\Facades\Route;
 
 /**
@@ -14,13 +14,13 @@ class DefaultSurveyUrlResolver implements SurveyUrlResolver
 {
     public function publicUrl(SurveySchema $schema): string
     {
-        $routeName = config('filament-surveyjs.routes.public.name', 'filament-surveyjs.public.show');
+        $routeName = config('schemava.routes.public.name', 'schemava.public.show');
 
         if (Route::has($routeName)) {
             return route($routeName, ['surveySchema' => $schema->hash]);
         }
 
-        $prefix = trim((string) config('filament-surveyjs.routes.public.prefix', 'surveys'), '/');
+        $prefix = trim((string) config('schemava.routes.public.prefix', 'surveys'), '/');
 
         return url($prefix.'/'.$schema->hash);
     }

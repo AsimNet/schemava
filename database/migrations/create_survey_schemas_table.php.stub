@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        $table = config('filament-surveyjs.tables.schemas', 'survey_schemas');
+        $table = config('schemava.tables.schemas', 'survey_schemas');
 
         if (Schema::hasTable($table)) {
             return;
@@ -51,6 +51,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists(config('filament-surveyjs.tables.schemas', 'survey_schemas'));
+        Schema::dropIfExists(config('schemava.tables.schemas', 'survey_schemas'));
     }
 };

@@ -1,9 +1,9 @@
-# Filament SurveyJS
+# Schemava
 
 > English: [README.md](README.md)
 
 إضافة (Plugin) لـ Filament 5 لبناء النماذج والاستبانات وعرضها وجمع ردودها، بصيغة **متوافقة مع SurveyJS** —
-مدعومة بـ **مُنشئ نماذج عربيّ أولاً** مخصّص (تطبيق Vue بأسلوب OpnForm)، وليس مُنشئ SurveyJS Creator التجاري.
+مدعومة بـ **مُنشئ نماذج متعدّد اللغات (i18n)** مخصّص (تطبيق Vue بأسلوب OpnForm)، وليس مُنشئ SurveyJS Creator التجاري.
 
 تُحفظ المخططات بصيغة [SurveyJS](https://surveyjs.io) JSON القياسية في العمود `survey_json`، وتُعرض عبر محرّك
 `survey-core` / `survey-js-ui` مفتوح المصدر (رخصة MIT)، بحيث يكون المخطط نفسه قابلاً للنقل إلى أي عارض SurveyJS
@@ -27,19 +27,19 @@
 ## التثبيت
 
 ```bash
-composer require asimnet/filament-surveyjs
-php artisan filament-surveyjs:install
+composer require asimnet/schemava
+php artisan schemava:install
 ```
 
 تسجيل الإضافة على اللوحة:
 
 ```php
-use Asimnet\FilamentSurveyjs\SurveyjsPlugin;
+use AsimNet\Schemava\SchemavaPlugin;
 
 public function panel(Panel $panel): Panel
 {
     return $panel->plugin(
-        SurveyjsPlugin::make()
+        SchemavaPlugin::make()
             ->navigationGroup('النماذج'),
     );
 }
@@ -47,7 +47,7 @@ public function panel(Panel $panel): Panel
 
 ## الإعداد
 
-انشر الملف `config/filament-surveyjs.php` وراجعه لضبط إصدار عارض SurveyJS وقرص التخزين وخيارات المسارات
+انشر الملف `config/schemava.php` وراجعه لضبط إصدار عارض SurveyJS وقرص التخزين وخيارات المسارات
 وارتباطات العقود (`RuntimeContextProvider`، `SurveyAccessResolver`، `AiAssistant`، `SurveyUrlResolver`،
 `SchemaTypeHandler`) التي تُكيّف الإضافة مع نطاق تطبيقك.
 

@@ -1,8 +1,8 @@
 <?php
 
-namespace Asimnet\FilamentSurveyjs\Services;
+namespace AsimNet\Schemava\Services;
 
-use Asimnet\FilamentSurveyjs\Models\SurveySchema;
+use AsimNet\Schemava\Models\SurveySchema;
 
 /**
  * Computes quiz-style scores from a submission against a schema's graded

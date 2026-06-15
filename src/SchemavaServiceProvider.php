@@ -1,13 +1,13 @@
 <?php
 
-namespace Asimnet\FilamentSurveyjs;
+namespace AsimNet\Schemava;
 
-use Asimnet\FilamentSurveyjs\Contracts\AiAssistant;
-use Asimnet\FilamentSurveyjs\Contracts\RuntimeContextProvider;
-use Asimnet\FilamentSurveyjs\Contracts\SurveyAccessResolver;
-use Asimnet\FilamentSurveyjs\Contracts\SurveySubmissionHandler;
-use Asimnet\FilamentSurveyjs\Contracts\SurveyUrlResolver;
-use Asimnet\FilamentSurveyjs\Models\SurveySchema;
+use AsimNet\Schemava\Contracts\AiAssistant;
+use AsimNet\Schemava\Contracts\RuntimeContextProvider;
+use AsimNet\Schemava\Contracts\SurveyAccessResolver;
+use AsimNet\Schemava\Contracts\SurveySubmissionHandler;
+use AsimNet\Schemava\Contracts\SurveyUrlResolver;
+use AsimNet\Schemava\Models\SurveySchema;
 use Filament\Support\Assets\Css;
 use Filament\Support\Assets\Js;
 use Filament\Support\Facades\FilamentAsset;
@@ -17,17 +17,17 @@ use Spatie\LaravelPackageTools\Commands\InstallCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
-class SurveyjsServiceProvider extends PackageServiceProvider
+class SchemavaServiceProvider extends PackageServiceProvider
 {
-    public static string $name = 'filament-surveyjs';
+    public static string $name = 'schemava';
 
-    public static string $viewNamespace = 'filament-surveyjs';
+    public static string $viewNamespace = 'schemava';
 
     public function configurePackage(Package $package): void
     {
         $package
             ->name(static::$name)
-            ->hasConfigFile('filament-surveyjs')
+            ->hasConfigFile('schemava')
             ->hasViews(static::$viewNamespace)
             ->hasTranslations()
             ->hasMigrations([
@@ -38,7 +38,7 @@ class SurveyjsServiceProvider extends PackageServiceProvider
                 $command
                     ->publishConfigFile()
                     ->publishMigrations()
-                    ->askToStarRepoOnGitHub('asimnet/filament-surveyjs');
+                    ->askToStarRepoOnGitHub('asimnet/schemava');
             });
     }
 
@@ -68,7 +68,7 @@ class SurveyjsServiceProvider extends PackageServiceProvider
 
         foreach ($bindings as $contract => $configKey) {
             $this->app->bind($contract, function ($app) use ($configKey) {
-                return $app->make(config("filament-surveyjs.contracts.{$configKey}"));
+                return $app->make(config("schemava.contracts.{$configKey}"));
             });
         }
     }
@@ -83,7 +83,7 @@ class SurveyjsServiceProvider extends PackageServiceProvider
     {
         Route::bind('surveySchema', function ($value, $route) {
             /** @var class-string<Model> $class */
-            $class = config('filament-surveyjs.models.schema', SurveySchema::class);
+            $class = config('schemava.models.schema', SurveySchema::class);
 
             $field = method_exists($route, 'bindingFieldFor')
                 ? $route->bindingFieldFor('surveySchema')
@@ -109,8 +109,8 @@ class SurveyjsServiceProvider extends PackageServiceProvider
         $dist = __DIR__.'/../resources/dist';
 
         FilamentAsset::register([
-            Css::make('filament-surveyjs-builder', "{$dist}/filament-surveyjs-builder.css")->loadedOnRequest(),
-            Js::make('filament-surveyjs-builder', "{$dist}/filament-surveyjs-builder.js")->loadedOnRequest(),
-        ], package: 'asimnet/filament-surveyjs');
+            Css::make('schemava-builder', "{$dist}/schemava-builder.css")->loadedOnRequest(),
+            Js::make('schemava-builder', "{$dist}/schemava-builder.js")->loadedOnRequest(),
+        ], package: 'asimnet/schemava');
     }
 }

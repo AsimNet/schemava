@@ -1,8 +1,8 @@
 <?php
 
-namespace Asimnet\FilamentSurveyjs\Models;
+namespace AsimNet\Schemava\Models;
 
-use Asimnet\FilamentSurveyjs\Contracts\SurveyAccessResolver;
+use AsimNet\Schemava\Contracts\SurveyAccessResolver;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -67,7 +67,7 @@ class SurveySchema extends Model
 
     public function getTable(): string
     {
-        return config('filament-surveyjs.tables.schemas', 'survey_schemas');
+        return config('schemava.tables.schemas', 'survey_schemas');
     }
 
     protected static function booted(): void
@@ -101,7 +101,7 @@ class SurveySchema extends Model
     public function results(): HasMany
     {
         return $this->hasMany(
-            config('filament-surveyjs.models.result', SurveyResult::class),
+            config('schemava.models.result', SurveyResult::class),
             'survey_schema_id',
         );
     }

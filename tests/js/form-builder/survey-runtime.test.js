@@ -3,14 +3,26 @@ import {
     applySurveyLocaleOverrides,
     createPreviewModel,
     isRtlLocale,
+    STORAGE_DEFAULT_LOCALE,
     unmountPreview,
 } from '../../../resources/js/form-builder/survey-runtime.js';
 
-/** A minimal survey-core global stand-in for locale/model tests. */
+/**
+ * A minimal survey-core global stand-in for locale/model tests.
+ *
+ * `surveyLocalization.defaultLocale` starts at `'en'` to mirror survey-core's
+ * real out-of-the-box default, and `Model` reproduces survey-core's localizable
+ * string resolution: the `default` slot holds the text for the *default* locale,
+ * and an explicit locale key is preferred only when it differs from that
+ * default. This is exactly the mechanism `createPreviewModel`'s default-locale
+ * alignment relies on, so resolving a `title` here exercises the real fix.
+ */
 function fakeSurveyGlobal() {
+    const surveyLocalization = { locales: {}, defaultLocale: 'en' };
+
     return {
         Survey: {
-            surveyLocalization: { locales: {} },
+            surveyLocalization,
             Model: class {
                 constructor(json) {
                     this.json = json;
@@ -23,6 +35,27 @@ function fakeSurveyGlobal() {
                 }
 
                 mergeData() {}
+
+                /** Resolve a SurveyJS localizable value for the model's active locale. */
+                localize(value) {
+                    if (value === null || value === undefined) {
+                        return '';
+                    }
+                    if (typeof value === 'string') {
+                        return value;
+                    }
+
+                    const fallback = surveyLocalization.defaultLocale || 'en';
+                    const locale = this.locale || fallback;
+
+                    return locale === fallback
+                        ? (value.default ?? value[fallback] ?? '')
+                        : (value[locale] ?? value.default ?? '');
+                }
+
+                get title() {
+                    return this.localize(this.json?.title);
+                }
             },
         },
     };
@@ -148,11 +181,11 @@ describe('createPreviewModel (locale-code-driven preview)', () => {
         expect(createPreviewModel({ pages: [] }, { locale: 'ar' }).locale).toBe('ar');
     });
 
-    it('falls back to defaultLocale (or empty) when no locale is given', () => {
+    it('falls back to the storage default locale when no locale is given', () => {
         globalThis.window = fakeSurveyGlobal();
 
-        expect(createPreviewModel({ pages: [] }, {}).locale).toBe('');
-        expect(createPreviewModel({ pages: [] }, { defaultLocale: 'ar' }).locale).toBe('ar');
+        expect(createPreviewModel({ pages: [] }, {}).locale).toBe(STORAGE_DEFAULT_LOCALE);
+        expect(createPreviewModel({ pages: [] }, { defaultLocale: 'en' }).locale).toBe('en');
     });
 
     it('seeds sample data as variables for piping', () => {
@@ -160,5 +193,52 @@ describe('createPreviewModel (locale-code-driven preview)', () => {
 
         const model = createPreviewModel({ pages: [] }, { locale: 'en', sampleData: { full_name: 'Sara' } });
         expect(model.variables.full_name).toBe('Sara');
+    });
+});
+
+describe('createPreviewModel (locale resolution — English no longer renders Arabic)', () => {
+    /** Title carrying Arabic in the `default` slot and English under `en` — the package's storage shape. */
+    const bilingualSchema = () => ({
+        title: { default: 'نص عربي', en: 'English text' },
+        pages: [],
+    });
+
+    it("aligns survey-core's default locale with the storage default before building the model", () => {
+        globalThis.window = fakeSurveyGlobal();
+        expect(globalThis.window.Survey.surveyLocalization.defaultLocale).toBe('en'); // survey-core's real default
+
+        createPreviewModel(bilingualSchema());
+
+        expect(globalThis.window.Survey.surveyLocalization.defaultLocale).toBe(STORAGE_DEFAULT_LOCALE);
+    });
+
+    it('renders the English slot at locale "en" and the Arabic default at locale "ar"', () => {
+        globalThis.window = fakeSurveyGlobal();
+
+        expect(createPreviewModel(bilingualSchema(), { locale: 'en' }).title).toBe('English text');
+        expect(createPreviewModel(bilingualSchema(), { locale: 'ar' }).title).toBe('نص عربي');
+    });
+
+    it('honours a custom storage default locale via options.defaultLocale', () => {
+        globalThis.window = fakeSurveyGlobal();
+
+        // A host whose schemas keep English in `default` and Arabic under `ar`
+        // configures the alignment via options.defaultLocale — not hardcoded.
+        const enDefaultSchema = { title: { default: 'English text', ar: 'نص عربي' }, pages: [] };
+
+        expect(createPreviewModel(enDefaultSchema, { locale: 'en', defaultLocale: 'en' }).title).toBe('English text');
+        expect(createPreviewModel(enDefaultSchema, { locale: 'ar', defaultLocale: 'en' }).title).toBe('نص عربي');
+        expect(globalThis.window.Survey.surveyLocalization.defaultLocale).toBe('en');
+    });
+
+    it("reproduces the bug when the default locale is left at survey-core's \"en\" (guards the fix)", () => {
+        globalThis.window = fakeSurveyGlobal();
+
+        // No createPreviewModel call → defaultLocale stays 'en'. An 'en' render
+        // resolves the `default` slot, which holds Arabic — the original bug.
+        const model = new globalThis.window.Survey.Model(bilingualSchema());
+        model.locale = 'en';
+
+        expect(model.title).toBe('نص عربي');
     });
 });

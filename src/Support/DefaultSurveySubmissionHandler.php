@@ -1,10 +1,10 @@
 <?php
 
-namespace Asimnet\FilamentSurveyjs\Support;
+namespace AsimNet\Schemava\Support;
 
-use Asimnet\FilamentSurveyjs\Contracts\SurveySubmissionHandler;
-use Asimnet\FilamentSurveyjs\Models\SurveyResult;
-use Asimnet\FilamentSurveyjs\Models\SurveySchema;
+use AsimNet\Schemava\Contracts\SurveySubmissionHandler;
+use AsimNet\Schemava\Models\SurveyResult;
+use AsimNet\Schemava\Models\SurveySchema;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
 
@@ -17,7 +17,7 @@ class DefaultSurveySubmissionHandler implements SurveySubmissionHandler
     public function store(SurveySchema $schema, mixed $subject, array $data): mixed
     {
         /** @var class-string<Model> $resultModel */
-        $resultModel = config('filament-surveyjs.models.result', SurveyResult::class);
+        $resultModel = config('schemava.models.result', SurveyResult::class);
 
         return $resultModel::create([
             'survey_schema_id' => $schema->getKey(),
