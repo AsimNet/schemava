@@ -1,6 +1,6 @@
 <?php
 
-namespace Asimnet\FilamentSurveyjs\Contracts;
+namespace AsimNet\Schemava\Contracts;
 
 /**
  * Supplies the runtime "piping" context a host application exposes to surveys —

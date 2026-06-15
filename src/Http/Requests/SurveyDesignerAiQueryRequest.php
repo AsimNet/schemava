@@ -1,6 +1,6 @@
 <?php
 
-namespace Asimnet\FilamentSurveyjs\Http\Requests;
+namespace AsimNet\Schemava\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 

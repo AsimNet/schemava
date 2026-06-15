@@ -1,9 +1,9 @@
 /**
  * Tiny reactive i18n for the builder UI.
  *
- * - Arabic is the default UI language.
+ * - English is the default UI language; any registered locale can be selected.
  * - The chosen UI language is persisted in localStorage under `formBuilderLocale`.
- * - Switching also flips the document `dir` (rtl for ar).
+ * - Switching also flips the document `dir` (rtl for ar and other RTL locales).
  *
  * No hardcoded user-facing strings live in components — everything resolves
  * through `t(key)`.
@@ -575,11 +575,11 @@ const MESSAGES = {
 
 function initialLocale() {
     if (typeof window === 'undefined') {
-        return 'ar';
+        return 'en';
     }
     const stored = window.localStorage?.getItem(STORAGE_KEY);
 
-    return stored === 'en' ? 'en' : 'ar';
+    return stored === 'ar' ? 'ar' : 'en';
 }
 
 export const i18n = reactive({

@@ -1,6 +1,6 @@
 <?php
 
-namespace Asimnet\FilamentSurveyjs\Concerns;
+namespace AsimNet\Schemava\Concerns;
 
 /**
  * Helpers for walking a SurveyJS schema's questions and included calculated

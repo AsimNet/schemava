@@ -1,8 +1,8 @@
 <?php
 
-namespace Asimnet\FilamentSurveyjs\Support;
+namespace AsimNet\Schemava\Support;
 
-use Asimnet\FilamentSurveyjs\Contracts\RuntimeContextProvider;
+use AsimNet\Schemava\Contracts\RuntimeContextProvider;
 
 /**
  * No-op runtime context: surveys build and render with no host-supplied piping

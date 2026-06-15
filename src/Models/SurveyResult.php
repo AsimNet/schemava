@@ -1,6 +1,6 @@
 <?php
 
-namespace Asimnet\FilamentSurveyjs\Models;
+namespace AsimNet\Schemava\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -35,13 +35,13 @@ class SurveyResult extends Model
 
     public function getTable(): string
     {
-        return config('filament-surveyjs.tables.results', 'survey_results');
+        return config('schemava.tables.results', 'survey_results');
     }
 
     public function surveySchema(): BelongsTo
     {
         return $this->belongsTo(
-            config('filament-surveyjs.models.schema', SurveySchema::class),
+            config('schemava.models.schema', SurveySchema::class),
             'survey_schema_id',
         );
     }

@@ -1,12 +1,12 @@
 <?php
 
-use Asimnet\FilamentSurveyjs\Models\SurveyResult;
-use Asimnet\FilamentSurveyjs\Models\SurveySchema;
-use Asimnet\FilamentSurveyjs\Support\DefaultRuntimeContextProvider;
-use Asimnet\FilamentSurveyjs\Support\DefaultSurveySubmissionHandler;
-use Asimnet\FilamentSurveyjs\Support\DefaultSurveyUrlResolver;
-use Asimnet\FilamentSurveyjs\Support\NullAiAssistant;
-use Asimnet\FilamentSurveyjs\Support\OpenSurveyAccessResolver;
+use AsimNet\Schemava\Models\SurveyResult;
+use AsimNet\Schemava\Models\SurveySchema;
+use AsimNet\Schemava\Support\DefaultRuntimeContextProvider;
+use AsimNet\Schemava\Support\DefaultSurveySubmissionHandler;
+use AsimNet\Schemava\Support\DefaultSurveyUrlResolver;
+use AsimNet\Schemava\Support\NullAiAssistant;
+use AsimNet\Schemava\Support\OpenSurveyAccessResolver;
 
 return [
 
@@ -103,7 +103,7 @@ return [
             'middleware' => ['web', 'auth'],
         ],
         'public' => [
-            'name' => 'filament-surveyjs.public.show',
+            'name' => 'schemava.public.show',
             'prefix' => 'surveys',
             'middleware' => ['web'],
         ],

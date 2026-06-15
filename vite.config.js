@@ -27,13 +27,13 @@ export default defineConfig({
         cssCodeSplit: false,
         lib: {
             entry: fileURLToPath(new URL('resources/js/form-builder/main.js', import.meta.url)),
-            name: 'FilamentSurveyjsBuilder',
+            name: 'SchemavaBuilder',
             formats: ['iife'],
-            fileName: () => 'filament-surveyjs-builder.js',
+            fileName: () => 'schemava-builder.js',
         },
         rollupOptions: {
             output: {
-                assetFileNames: 'filament-surveyjs-builder.[ext]',
+                assetFileNames: 'schemava-builder.[ext]',
             },
         },
     },

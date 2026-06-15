@@ -1,8 +1,8 @@
 {
-    "name": "filament-surveyjs-builder",
+    "name": "schemava-builder",
     "private": true,
     "type": "module",
-    "description": "Build pipeline for the asimnet/filament-surveyjs Vue form builder. Compiles a single self-contained bundle into resources/dist/, registered with Filament's asset manager.",
+    "description": "Build pipeline for the asimnet/schemava Vue form builder. Compiles a single self-contained bundle into resources/dist/, registered with Filament's asset manager.",
     "scripts": {
         "build": "vite build",
         "dev": "vite build --watch",

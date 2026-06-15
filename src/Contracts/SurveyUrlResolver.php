@@ -1,8 +1,8 @@
 <?php
 
-namespace Asimnet\FilamentSurveyjs\Contracts;
+namespace AsimNet\Schemava\Contracts;
 
-use Asimnet\FilamentSurveyjs\Models\SurveySchema;
+use AsimNet\Schemava\Models\SurveySchema;
 
 /**
  * Resolves the public, shareable URL where respondents fill out a survey. Host

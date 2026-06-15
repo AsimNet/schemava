@@ -1,9 +1,9 @@
 <?php
 
-namespace Asimnet\FilamentSurveyjs\Support;
+namespace AsimNet\Schemava\Support;
 
-use Asimnet\FilamentSurveyjs\Contracts\SurveyAccessResolver;
-use Asimnet\FilamentSurveyjs\Models\SurveySchema;
+use AsimNet\Schemava\Contracts\SurveyAccessResolver;
+use AsimNet\Schemava\Models\SurveySchema;
 
 /**
  * Default access policy: anyone may submit while the schema is open and the
@@ -36,13 +36,13 @@ class OpenSurveyAccessResolver implements SurveyAccessResolver
         if (! $schema->is_active || ($schema->close_at && now()->gt($schema->close_at))) {
             return $schema->close_message
                 ?: $schema->unavailable_message
-                ?: __('filament-surveyjs::surveyjs.unavailable.closed');
+                ?: __('schemava::surveyjs.unavailable.closed');
         }
 
         if ($schema->open_at && now()->lt($schema->open_at)) {
-            return $schema->unavailable_message ?: __('filament-surveyjs::surveyjs.unavailable.not_open');
+            return $schema->unavailable_message ?: __('schemava::surveyjs.unavailable.not_open');
         }
 
-        return $schema->unavailable_message ?: __('filament-surveyjs::surveyjs.unavailable.default');
+        return $schema->unavailable_message ?: __('schemava::surveyjs.unavailable.default');
     }
 }

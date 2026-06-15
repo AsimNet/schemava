@@ -1,12 +1,12 @@
 <?php
 
-namespace Asimnet\FilamentSurveyjs\Http\Controllers;
+namespace AsimNet\Schemava\Http\Controllers;
 
-use Asimnet\FilamentSurveyjs\Contracts\AiAssistant;
-use Asimnet\FilamentSurveyjs\Contracts\RuntimeContextProvider;
-use Asimnet\FilamentSurveyjs\Contracts\SurveyUrlResolver;
-use Asimnet\FilamentSurveyjs\Http\Requests\SurveyDesignerAiQueryRequest;
-use Asimnet\FilamentSurveyjs\Models\SurveySchema;
+use AsimNet\Schemava\Contracts\AiAssistant;
+use AsimNet\Schemava\Contracts\RuntimeContextProvider;
+use AsimNet\Schemava\Contracts\SurveyUrlResolver;
+use AsimNet\Schemava\Http\Requests\SurveyDesignerAiQueryRequest;
+use AsimNet\Schemava\Models\SurveySchema;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
@@ -54,11 +54,11 @@ class SurveyDesignerController
             'locale' => $locale,
         ];
 
-        return view('filament-surveyjs::survey-designer', [
+        return view('schemava::survey-designer', [
             'bootPayload' => $bootPayload,
-            'pageTitle' => __('filament-surveyjs::surveyjs.designer.page_title').': '.$surveySchema->title,
+            'pageTitle' => __('schemava::surveyjs.designer.page_title').': '.$surveySchema->title,
             'locale' => $locale,
-            'rendererVersion' => config('filament-surveyjs.renderer_version'),
+            'rendererVersion' => config('schemava.renderer_version'),
         ]);
     }
 
@@ -92,7 +92,7 @@ class SurveyDesignerController
 
         return response()->json([
             'success' => true,
-            'message' => __('filament-surveyjs::surveyjs.designer.saved'),
+            'message' => __('schemava::surveyjs.designer.saved'),
         ]);
     }
 
@@ -106,8 +106,8 @@ class SurveyDesignerController
         ]);
 
         try {
-            $disk = config('filament-surveyjs.storage.disk', 'public');
-            $directory = config('filament-surveyjs.storage.images_path', 'surveys/images');
+            $disk = config('schemava.storage.disk', 'public');
+            $directory = config('schemava.storage.images_path', 'surveys/images');
 
             // The builder uploads one file at a time.
             $file = $request->file('files')[0];
@@ -126,7 +126,7 @@ class SurveyDesignerController
 
                 return response()->json([
                     'status' => 'error',
-                    'message' => __('filament-surveyjs::surveyjs.designer.upload_failed'),
+                    'message' => __('schemava::surveyjs.designer.upload_failed'),
                 ], 500);
             }
 
@@ -139,7 +139,7 @@ class SurveyDesignerController
 
             return response()->json([
                 'status' => 'error',
-                'message' => __('filament-surveyjs::surveyjs.designer.upload_failed'),
+                'message' => __('schemava::surveyjs.designer.upload_failed'),
             ], 500);
         }
     }
