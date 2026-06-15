@@ -78,3 +78,20 @@ Schemava is an independent product and is **not affiliated with, endorsed by, or
 SurveyJS, or Devsoft Baltic OÜ. FilamentPHP and SurveyJS are trademarks of their respective owners. Schemava
 exports SurveyJS‑compatible JSON and does not include SurveyJS Creator, SurveyJS PDF Generator, or SurveyJS
 Dashboard.
+
+## Releasing (maintainers)
+
+Publishing is automatic: pushing a tag triggers the registry's webhook, which syncs that version.
+Releases follow [semver](https://semver.org) — the suffix decides the channel.
+
+```bash
+# Stable release — customers on "^1.0" receive it on their next `composer update`.
+git tag v1.0.1 && git push origin main v1.0.1
+
+# Beta / pre-release — only consumers who opt in with @beta (or minimum-stability: beta) receive it.
+git tag v1.1.0-beta.1 && git push origin v1.1.0-beta.1
+```
+
+Because customers require `"asimnet/schemava": "^1.0"`, Composer's `prefer-stable` keeps a beta tag off their
+servers unless they explicitly ask for it — so an in-progress release can never break a production install.
+Run `npm run build` and commit `resources/dist/` before tagging if the form builder changed.
