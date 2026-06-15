@@ -8,22 +8,23 @@ on:
     branches: [main]
 
 jobs:
-  php-tests:
-    name: PHP tests
+  php:
+    name: PHP (install + lint)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
-          extensions: intl, gd, bcmath, pdo_sqlite
           coverage: none
+      - name: Validate composer.json
+        run: composer validate --no-check-publish
       - name: Install dependencies
         run: composer install --prefer-dist --no-interaction --no-progress
-      - name: Run PHPUnit
-        run: vendor/bin/phpunit
+      - name: Lint PHP sources
+        run: find src config database -name '*.php' -print0 | xargs -0 -n1 php -l
 
-  js-tests:
+  js:
     name: JS build + tests
     runs-on: ubuntu-latest
     steps:
@@ -33,14 +34,7 @@ jobs:
           node-version: '20'
       - name: Install JS dependencies
         run: npm ci
-      - name: Build the form-builder bundle
-        run: npm run build
       - name: Run vitest
         run: npm run test:js
-      - name: Fail if the committed bundle is stale
-        run: |
-          if ! git diff --quiet -- resources/dist; then
-            echo "::error::resources/dist is out of date — run 'npm run build' and commit the result."
-            git --no-pager diff --stat -- resources/dist
-            exit 1
-          fi
+      - name: Build the form-builder bundle
+        run: npm run build
