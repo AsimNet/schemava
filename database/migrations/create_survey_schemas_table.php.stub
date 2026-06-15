@@ -1,0 +1,56 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        $table = config('filament-surveyjs.tables.schemas', 'survey_schemas');
+
+        if (Schema::hasTable($table)) {
+            return;
+        }
+
+        Schema::create($table, function (Blueprint $table): void {
+            $table->id();
+            $table->text('title');
+            $table->text('description')->nullable();
+            $table->jsonb('survey_json')->nullable();
+
+            // Lifecycle
+            $table->boolean('is_active')->default(true);
+            $table->timestamp('start_date')->nullable();
+            $table->timestamp('end_date')->nullable();
+            $table->timestamp('open_at')->nullable();
+            $table->timestamp('close_at')->nullable();
+            $table->text('close_message')->nullable();
+            $table->text('unavailable_message')->nullable();
+
+            // Participation
+            $table->unsignedInteger('max_responses')->nullable();
+            $table->unsignedInteger('max_submissions_per_user')->nullable();
+            $table->unsignedInteger('submission_limit_per_user')->nullable();
+
+            // Access control
+            $table->jsonb('role_access')->nullable();
+            $table->jsonb('gender_access')->nullable();
+            $table->jsonb('age_range')->nullable();
+
+            // Polymorphic association (e.g. an Activity or Event in the host app)
+            $table->nullableMorphs('surveyable');
+
+            $table->jsonb('tags')->nullable();
+            $table->string('hash', 12)->unique();
+
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists(config('filament-surveyjs.tables.schemas', 'survey_schemas'));
+    }
+};

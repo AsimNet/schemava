@@ -1,0 +1,67 @@
+{
+    "name": "asimnet/filament-surveyjs",
+    "description": "Filament 5 plugin: a custom Arabic-first form builder that emits SurveyJS-compatible schemas, with rendering, submissions and admin management. Multi-tenant ready.",
+    "keywords": [
+        "laravel",
+        "filament",
+        "surveyjs",
+        "survey",
+        "form-builder",
+        "forms",
+        "arabic",
+        "multi-tenant"
+    ],
+    "homepage": "https://github.com/asimnet/filament-surveyjs",
+    "license": "MIT",
+    "type": "library",
+    "authors": [
+        {
+            "name": "Asimnet",
+            "email": "dev@asimnet.com",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.3",
+        "filament/filament": "^5.0",
+        "illuminate/contracts": "^11.0|^12.0",
+        "spatie/laravel-package-tools": "^1.15"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^9.0|^10.0",
+        "phpunit/phpunit": "^11.0"
+    },
+    "suggest": {
+        "laravel/ai": "Required only for the bundled AI assistant adapter (LaravelAiOpenRouterAssistant). Install ^0.1.5 to enable AI-assisted form building."
+    },
+    "autoload": {
+        "psr-4": {
+            "Asimnet\\FilamentSurveyjs\\": "src/",
+            "Asimnet\\FilamentSurveyjs\\Database\\Factories\\": "database/factories/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Asimnet\\FilamentSurveyjs\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Asimnet\\FilamentSurveyjs\\SurveyjsServiceProvider"
+            ]
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit",
+        "test-coverage": "vendor/bin/phpunit --coverage-html coverage"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}

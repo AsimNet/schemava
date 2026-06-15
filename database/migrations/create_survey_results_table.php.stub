@@ -1,0 +1,37 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        $table = config('filament-surveyjs.tables.results', 'survey_results');
+        $schemasTable = config('filament-surveyjs.tables.schemas', 'survey_schemas');
+
+        if (Schema::hasTable($table)) {
+            return;
+        }
+
+        Schema::create($table, function (Blueprint $table) use ($schemasTable): void {
+            $table->id();
+            $table->foreignId('survey_schema_id')->constrained($schemasTable)->cascadeOnDelete();
+            $table->unsignedBigInteger('user_id')->nullable()->index();
+            $table->jsonb('data')->nullable();
+            $table->string('status')->default('submitted');
+            $table->timestamp('submitted_at')->nullable();
+
+            // Mirrors the schema's surveyable, kept for reporting/context.
+            $table->nullableMorphs('surveyable');
+
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists(config('filament-surveyjs.tables.results', 'survey_results'));
+    }
+};
