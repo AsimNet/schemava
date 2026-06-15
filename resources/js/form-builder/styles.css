@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+/*
+ * Form builder design tokens. OpnForm/Notion-like surface on a soft gray
+ * canvas, brand accents, IBM Plex Sans Arabic, compact density. RTL-first
+ * via logical properties — do NOT introduce left/right physical offsets.
+ *
+ * Brand colour matches the tenant Filament admin panel's primary
+ * (AdminPanelProvider → Color::Amber): base = amber-600, hover = amber-700,
+ * tint = amber-50. Keep these in sync if the panel primary changes.
+ *
+ * Scoped to the builder root so it never leaks into Filament pages.
+ */
+
+@theme {
+    --color-brand: #d97706;
+    --color-brand-600: #b45309;
+    --color-brand-50: #fffbeb;
+}
+
+#form-builder-app {
+    --fb-brand: #d97706;
+    --fb-brand-600: #b45309;
+    --fb-brand-50: #fffbeb;
+    --fb-canvas: #f9fafb;
+    --fb-surface: #ffffff;
+    --fb-border: #e5e7eb;
+    --fb-border-strong: #d1d5db;
+    --fb-text: #111827;
+    --fb-text-muted: #6b7280;
+    --fb-radius: 0.75rem;
+
+    font-family: "IBM Plex Sans Arabic", -apple-system, BlinkMacSystemFont,
+        "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: var(--fb-text);
+    background: var(--fb-canvas);
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+
+body {
+    font-family: "IBM Plex Sans Arabic", -apple-system, BlinkMacSystemFont,
+        "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--fb-canvas);
+}
+
+#form-builder-app *,
+#form-builder-app *::before,
+#form-builder-app *::after {
+    box-sizing: border-box;
+}
+
+/* Shared focus ring on brand colour for inputs/buttons inside the builder. */
+.fb-focus:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--fb-brand-50), 0 0 0 1px var(--fb-brand);
+}
+
+/* Drag affordances for vuedraggable. */
+.fb-ghost {
+    opacity: 0.5;
+}
+
+.fb-chosen {
+    cursor: grabbing;
+}
+
+.fb-drag {
+    transform: rotate(1deg);
+}
+
+/* Thin scrollbars for the side panes. */
+.fb-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--fb-border-strong) transparent;
+}
+
+.fb-scroll::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.fb-scroll::-webkit-scrollbar-thumb {
+    background: var(--fb-border-strong);
+    border-radius: 9999px;
+}
