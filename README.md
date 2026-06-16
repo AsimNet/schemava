@@ -271,6 +271,14 @@ Nova, Orchid, Backpack, MoonShine, or custom panels. It exports **SurveyJS-compa
 the MIT-licensed `survey-core` engine; it **does not include** SurveyJS Creator, PDF Generator, or Dashboard.
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
+## License
+
+Schemava is **commercial, proprietary software** — not open source. It is sold via
+[schemava.dev](https://schemava.dev). A purchase grants a non-exclusive, perpetual license to use it in
+applications you own or build; you may not resell or redistribute the package itself. See [LICENSE.md](LICENSE.md)
+for the full terms, and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the MIT-licensed components it
+interoperates with (such as the `survey-core` renderer).
+
 ## Trademark notice
 
 Schemava is an independent product and is **not affiliated with, endorsed by, or sponsored by** FilamentPHP,
