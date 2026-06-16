@@ -7,11 +7,13 @@ use AsimNet\Schemava\Contracts\RuntimeContextProvider;
 use AsimNet\Schemava\Contracts\SurveyAccessResolver;
 use AsimNet\Schemava\Contracts\SurveySubmissionHandler;
 use AsimNet\Schemava\Contracts\SurveyUrlResolver;
+use AsimNet\Schemava\Http\Controllers\SurveyDesignerController;
 use AsimNet\Schemava\Models\SurveySchema;
 use Filament\Support\Assets\Css;
 use Filament\Support\Assets\Js;
 use Filament\Support\Facades\FilamentAsset;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use Spatie\LaravelPackageTools\Commands\InstallCommand;
 use Spatie\LaravelPackageTools\Package;
@@ -51,6 +53,8 @@ class SchemavaServiceProvider extends PackageServiceProvider
     {
         $this->registerRouteModelBinding();
         $this->registerAssets();
+        $this->registerDesignerRoutes();
+        $this->registerPolicy();
     }
 
     /**
@@ -112,5 +116,41 @@ class SchemavaServiceProvider extends PackageServiceProvider
             Css::make('schemava-builder', "{$dist}/schemava-builder.css")->loadedOnRequest(),
             Js::make('schemava-builder', "{$dist}/schemava-builder.js")->loadedOnRequest(),
         ], package: 'asimnet/schemava');
+    }
+
+    /**
+     * Register the visual designer routes from config. Host apps that register
+     * their own designer routes (multi-tenant apps do) set `routes.enabled` to
+     * false so the package does not also register — and clash with — them.
+     */
+    protected function registerDesignerRoutes(): void
+    {
+        if (! config('schemava.routes.enabled', true)) {
+            return;
+        }
+
+        $designer = config('schemava.routes.designer', []);
+
+        Route::middleware($designer['middleware'] ?? ['web', 'auth'])
+            ->prefix($designer['prefix'] ?? 'survey-designer')
+            ->name('survey-designer.')
+            ->group(function (): void {
+                Route::get('/{surveySchema}', [SurveyDesignerController::class, 'show'])->name('show');
+                Route::post('/{surveySchema}/save', [SurveyDesignerController::class, 'save'])->name('save');
+                Route::post('/upload-image', [SurveyDesignerController::class, 'uploadImage'])->name('upload-image');
+                Route::post('/{surveySchema}/ai/query', [SurveyDesignerController::class, 'queryAi'])->name('ai-query');
+            });
+    }
+
+    /**
+     * Bind the optional schema policy named in config, when the host provides one.
+     */
+    protected function registerPolicy(): void
+    {
+        $policy = config('schemava.policy');
+
+        if ($policy) {
+            Gate::policy(config('schemava.models.schema', SurveySchema::class), $policy);
+        }
     }
 }

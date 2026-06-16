@@ -2,6 +2,7 @@
 
 namespace AsimNet\Schemava;
 
+use AsimNet\Schemava\Filament\Resources\SurveySchemas\SurveySchemaResource;
 use Closure;
 use Filament\Contracts\Plugin;
 use Filament\Panel;
@@ -16,6 +17,8 @@ class SchemavaPlugin implements Plugin
     protected string|Closure|null $navigationGroup = null;
 
     protected int|Closure $navigationSort = 100;
+
+    protected Closure|bool $authorizeCallback = true;
 
     public static function make(): static
     {
@@ -37,7 +40,11 @@ class SchemavaPlugin implements Plugin
 
     public function register(Panel $panel): void
     {
-        // Resources, pages and widgets are registered here in Phase 4.
+        if ($this->hasSurveyResource) {
+            $panel->resources([
+                SurveySchemaResource::class,
+            ]);
+        }
     }
 
     public function boot(Panel $panel): void
@@ -88,5 +95,22 @@ class SchemavaPlugin implements Plugin
     public function getNavigationSort(): int
     {
         return $this->evaluate($this->navigationSort);
+    }
+
+    /**
+     * Gate visibility and access of the bundled resource. Pass a closure that
+     * returns a bool (e.g. a role or permission check) or a plain bool. Defaults
+     * to visible for every panel user.
+     */
+    public function authorize(Closure|bool $callback): static
+    {
+        $this->authorizeCallback = $callback;
+
+        return $this;
+    }
+
+    public function isAuthorized(): bool
+    {
+        return (bool) $this->evaluate($this->authorizeCallback);
     }
 }
