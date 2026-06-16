@@ -11,6 +11,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
@@ -27,7 +28,9 @@ class SurveyDesignerController
 
     public function show(SurveySchema $surveySchema): View
     {
-        $this->authorize('update', $surveySchema);
+        if (Gate::getPolicyFor($surveySchema)) {
+            $this->authorize('update', $surveySchema);
+        }
 
         $locale = app()->getLocale();
         $runtime = app(RuntimeContextProvider::class);
@@ -64,7 +67,9 @@ class SurveyDesignerController
 
     public function save(Request $request, SurveySchema $surveySchema): JsonResponse
     {
-        $this->authorize('update', $surveySchema);
+        if (Gate::getPolicyFor($surveySchema)) {
+            $this->authorize('update', $surveySchema);
+        }
 
         $validated = $request->validate([
             'survey_json' => 'required|array',
@@ -146,7 +151,9 @@ class SurveyDesignerController
 
     public function queryAi(SurveyDesignerAiQueryRequest $request, SurveySchema $surveySchema): JsonResponse
     {
-        $this->authorize('update', $surveySchema);
+        if (Gate::getPolicyFor($surveySchema)) {
+            $this->authorize('update', $surveySchema);
+        }
 
         $validated = $request->validated();
 
