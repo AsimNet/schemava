@@ -44,4 +44,4 @@ This agreement is governed by the laws of the Kingdom of Saudi Arabia.
 ---
 
 Seller: Asim M Al Twijry, Buraydah, Saudi Arabia
-Support: support@hsb.dev
+Support: support@schemava.dev
