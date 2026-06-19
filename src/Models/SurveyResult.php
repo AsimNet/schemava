@@ -17,7 +17,6 @@ class SurveyResult extends Model
     use HasFactory;
 
     protected $fillable = [
-        'survey_schema_id',
         'user_id',
         'data',
         'status',
@@ -25,6 +24,19 @@ class SurveyResult extends Model
         'surveyable_id',
         'surveyable_type',
     ];
+
+    /**
+     * The schema foreign key column is configurable, so merge it into the
+     * mass-assignable attributes at runtime rather than hard-coding a name.
+     *
+     * @return array<int, string>
+     */
+    public function getFillable(): array
+    {
+        return array_merge($this->fillable, [
+            config('schemava.tables.schema_foreign_key', 'schemava_schema_id'),
+        ]);
+    }
 
     protected function casts(): array
     {
@@ -35,14 +47,14 @@ class SurveyResult extends Model
 
     public function getTable(): string
     {
-        return config('schemava.tables.results', 'survey_results');
+        return config('schemava.tables.results', 'schemava_results');
     }
 
     public function surveySchema(): BelongsTo
     {
         return $this->belongsTo(
             config('schemava.models.schema', SurveySchema::class),
-            'survey_schema_id',
+            config('schemava.tables.schema_foreign_key', 'schemava_schema_id'),
         );
     }
 

@@ -33,8 +33,8 @@ class SchemavaServiceProvider extends PackageServiceProvider
             ->hasViews(static::$viewNamespace)
             ->hasTranslations()
             ->hasMigrations([
-                'create_survey_schemas_table',
-                'create_survey_results_table',
+                'create_schemava_schemas_table',
+                'create_schemava_results_table',
             ])
             ->hasInstallCommand(function (InstallCommand $command): void {
                 $command
