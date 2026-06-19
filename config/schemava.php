@@ -98,15 +98,34 @@ return [
     */
 
     'routes' => [
+
+        // Master switch. Host apps that register the routes themselves (e.g.
+        // multi-tenant apps) set this to false so the package registers none.
         'enabled' => true,
+
         'designer' => [
             'prefix' => 'survey-designer',
             'middleware' => ['web', 'auth'],
         ],
+
+        // Public, browser-rendered fill-and-submit form. WHO MAY SUBMIT IS YOUR
+        // CALL: the default middleware allows guests — add 'auth' to require a
+        // logged-in user, and/or bind a SurveyAccessResolver for finer rules.
+        // Set 'enabled' => false to not expose a public form at all.
         'public' => [
+            'enabled' => true,
             'name' => 'schemava.public.show',
             'prefix' => 'surveys',
             'middleware' => ['web'],
+        ],
+
+        // JSON API for mobile / external clients (list forms, fetch one, submit).
+        // Same principle: the default middleware is open — add e.g. 'auth:sanctum'
+        // or 'auth:api' to require a token. Set 'enabled' => false to turn it off.
+        'api' => [
+            'enabled' => true,
+            'prefix' => 'api/surveys',
+            'middleware' => ['api'],
         ],
     ],
 

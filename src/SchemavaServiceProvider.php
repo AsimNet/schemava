@@ -7,6 +7,7 @@ use AsimNet\Schemava\Contracts\RuntimeContextProvider;
 use AsimNet\Schemava\Contracts\SurveyAccessResolver;
 use AsimNet\Schemava\Contracts\SurveySubmissionHandler;
 use AsimNet\Schemava\Contracts\SurveyUrlResolver;
+use AsimNet\Schemava\Http\Controllers\ApiFormController;
 use AsimNet\Schemava\Http\Controllers\PublicFormController;
 use AsimNet\Schemava\Http\Controllers\SurveyDesignerController;
 use AsimNet\Schemava\Models\SurveySchema;
@@ -56,6 +57,7 @@ class SchemavaServiceProvider extends PackageServiceProvider
         $this->registerAssets();
         $this->registerDesignerRoutes();
         $this->registerPublicRoutes();
+        $this->registerApiRoutes();
         $this->registerPolicy();
     }
 
@@ -158,11 +160,11 @@ class SchemavaServiceProvider extends PackageServiceProvider
      */
     protected function registerPublicRoutes(): void
     {
-        if (! config('schemava.routes.enabled', true)) {
+        $public = config('schemava.routes.public', []);
+
+        if (! config('schemava.routes.enabled', true) || ($public['enabled'] ?? true) === false) {
             return;
         }
-
-        $public = config('schemava.routes.public', []);
 
         Route::middleware($public['middleware'] ?? ['web'])
             ->prefix($public['prefix'] ?? 'surveys')
@@ -171,6 +173,29 @@ class SchemavaServiceProvider extends PackageServiceProvider
                     ->name($public['name'] ?? 'schemava.public.show');
                 Route::post('/{hash}', [PublicFormController::class, 'submit'])
                     ->name('schemava.public.submit');
+            });
+    }
+
+    /**
+     * Register the JSON API routes (list / fetch / submit) for mobile and
+     * external clients. Authentication is the host app's decision via
+     * `routes.api.middleware`; disable entirely with `routes.api.enabled`.
+     */
+    protected function registerApiRoutes(): void
+    {
+        $api = config('schemava.routes.api', []);
+
+        if (! config('schemava.routes.enabled', true) || ($api['enabled'] ?? true) === false) {
+            return;
+        }
+
+        Route::middleware($api['middleware'] ?? ['api'])
+            ->prefix($api['prefix'] ?? 'api/surveys')
+            ->name('schemava.api.')
+            ->group(function (): void {
+                Route::get('/', [ApiFormController::class, 'index'])->name('index');
+                Route::get('/{hash}', [ApiFormController::class, 'show'])->name('show');
+                Route::post('/{hash}/responses', [ApiFormController::class, 'submit'])->name('submit');
             });
     }
 

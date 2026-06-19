@@ -145,6 +145,44 @@ store or route them however your domain needs. Quiz-style scoring is available v
 > **Renderer lockstep:** set `renderer_version` to the exact `survey-core` version *every* client renders with
 > (web, mobile, …) so the builder always validates against the engine that ultimately renders the form.
 
+## Collecting responses (public form + JSON API)
+
+Beyond rendering it yourself, Schemava ships two turnkey ways to collect responses. Both reuse the same access
+rules (`SurveyAccessResolver`) and persistence (`SurveySubmissionHandler`).
+
+**Public web form** — a standalone fill-and-submit page at `GET {prefix}/{hash}` (default `/surveys/{hash}`),
+rendered with `survey-js-ui` and pinned to your `renderer_version`.
+
+**JSON API** for mobile / external clients (default prefix `/api/surveys`):
+
+| Method & path | Purpose |
+|---|---|
+| `GET /api/surveys` | List active forms (`id`, `hash`, `title`, `description`). |
+| `GET /api/surveys/{hash}` | Fetch one form: `survey_json`, `renderer_version`, `can_submit`. |
+| `POST /api/surveys/{hash}/responses` | Submit `{ "data": { … } }`; returns the created response. |
+
+### Who may submit is your decision
+
+Nothing is exposed by accident — you control it in `config/schemava.php`:
+
+```php
+'routes' => [
+    'public' => [
+        'enabled' => true,        // false → expose no public form
+        'middleware' => ['web'],  // add 'auth' to require a logged-in user
+    ],
+    'api' => [
+        'enabled' => true,        // false → expose no API
+        'middleware' => ['api'],  // add 'auth:sanctum' / 'auth:api' to require a token
+    ],
+],
+```
+
+- The **defaults allow guests** so a public form works out of the box; add auth middleware to require a login/token.
+- For per-form, role, age, or open/close-window rules, bind your own `SurveyAccessResolver` — it gates the form
+  **and** the API identically.
+- Authenticated submissions are attributed to the current user; guest submissions are stored with no user.
+
 ## Extending Schemava (contracts)
 
 Schemava resolves five contracts you can replace to integrate it with your domain. Each ships a sensible
