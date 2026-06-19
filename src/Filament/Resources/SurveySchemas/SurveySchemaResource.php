@@ -2,6 +2,7 @@
 
 namespace AsimNet\Schemava\Filament\Resources\SurveySchemas;
 
+use AsimNet\Schemava\Contracts\SurveyUrlResolver;
 use AsimNet\Schemava\Filament\Resources\SurveySchemas\Pages\CreateSurveySchema;
 use AsimNet\Schemava\Filament\Resources\SurveySchemas\Pages\EditSurveySchema;
 use AsimNet\Schemava\Filament\Resources\SurveySchemas\Pages\ListSurveySchemas;
@@ -25,6 +26,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Route;
 
 /**
  * Turnkey, generic resource for managing forms. Shipped by {@see SchemavaPlugin}
@@ -111,6 +113,18 @@ class SurveySchemaResource extends Resource
                 ->placeholder('—'),
             TextEntry::make('hash')
                 ->label('Public link key')
+                ->copyable(),
+            TextEntry::make('public_url')
+                ->label('Public form URL')
+                ->state(fn ($record): string => app(SurveyUrlResolver::class)->publicUrl($record))
+                ->visible(fn (): bool => Route::has(config('schemava.routes.public.name', 'schemava.public.show')))
+                ->url(fn ($record): string => app(SurveyUrlResolver::class)->publicUrl($record), shouldOpenInNewTab: true)
+                ->copyable(),
+            TextEntry::make('api_url')
+                ->label('API endpoint')
+                ->state(fn ($record): string => route('schemava.api.show', ['hash' => $record->hash]))
+                ->visible(fn (): bool => Route::has('schemava.api.show'))
+                ->helperText('Mobile / API — GET to fetch this form · POST {url}/responses to submit (JSON).')
                 ->copyable(),
             TextEntry::make('created_at')
                 ->label('Created')
