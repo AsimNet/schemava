@@ -5,6 +5,7 @@ namespace AsimNet\Schemava\Filament\Resources\SurveySchemas;
 use AsimNet\Schemava\Filament\Resources\SurveySchemas\Pages\CreateSurveySchema;
 use AsimNet\Schemava\Filament\Resources\SurveySchemas\Pages\EditSurveySchema;
 use AsimNet\Schemava\Filament\Resources\SurveySchemas\Pages\ListSurveySchemas;
+use AsimNet\Schemava\Filament\Resources\SurveySchemas\RelationManagers\ResultsRelationManager;
 use AsimNet\Schemava\Models\SurveySchema;
 use AsimNet\Schemava\SchemavaPlugin;
 use BackedEnum;
@@ -119,6 +120,22 @@ class SurveySchemaResource extends Resource
             ])
             ->emptyStateHeading('No forms yet')
             ->emptyStateDescription('Create a form, then open the visual builder to design it.');
+    }
+
+    /**
+     * Register the read-only responses relation manager when the plugin toggle
+     * is enabled (the default). The relation manager additionally gates its own
+     * visibility behind the resource's authorization.
+     */
+    public static function getRelations(): array
+    {
+        if (! SchemavaPlugin::get()->hasResponsesRelationManager()) {
+            return [];
+        }
+
+        return [
+            ResultsRelationManager::class,
+        ];
     }
 
     public static function getPages(): array

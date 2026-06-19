@@ -40,7 +40,7 @@ composer config bearer.repo.schemava.dev YOUR-LICENSE-TOKEN
 composer require asimnet/schemava
 ```
 
-Run the migrations (this creates the `survey_schemas` and `survey_results` tables) and publish the builder
+Run the migrations (this creates the `schemava_schemas` and `schemava_results` tables) and publish the builder
 assets:
 
 ```bash

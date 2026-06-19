@@ -14,6 +14,8 @@ class SchemavaPlugin implements Plugin
 
     protected bool $hasSurveyResource = true;
 
+    protected bool $hasResponsesRelationManager = true;
+
     protected string|Closure|null $navigationGroup = null;
 
     protected int|Closure $navigationSort = 100;
@@ -65,6 +67,23 @@ class SchemavaPlugin implements Plugin
     public function hasSurveyResource(): bool
     {
         return $this->hasSurveyResource;
+    }
+
+    /**
+     * Enable or disable the read-only responses (submissions) relation manager
+     * on the bundled schema resource. Enabled by default so a fresh install can
+     * browse submissions out of the box.
+     */
+    public function responsesRelationManager(bool $enabled = true): static
+    {
+        $this->hasResponsesRelationManager = $enabled;
+
+        return $this;
+    }
+
+    public function hasResponsesRelationManager(): bool
+    {
+        return $this->hasResponsesRelationManager;
     }
 
     /**

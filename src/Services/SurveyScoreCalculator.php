@@ -12,6 +12,26 @@ use AsimNet\Schemava\Models\SurveySchema;
 class SurveyScoreCalculator
 {
     /**
+     * Whether the schema defines any graded question (one carrying a
+     * `correctAnswer` with a positive score). Lets callers hide score UI for
+     * unscored surveys so a meaningless 0 is never shown.
+     */
+    public function isScored(SurveySchema $surveySchema): bool
+    {
+        foreach ($this->extractQuestions($surveySchema->survey_json ?? []) as $question) {
+            if (! array_key_exists('correctAnswer', $question)) {
+                continue;
+            }
+
+            if ($this->resolveQuestionScore($question) > 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * @param  array<string, mixed>  $submittedData
      * @return array<string, mixed>
      */

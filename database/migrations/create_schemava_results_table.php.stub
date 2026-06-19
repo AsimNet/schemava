@@ -8,16 +8,17 @@ return new class extends Migration
 {
     public function up(): void
     {
-        $table = config('schemava.tables.results', 'survey_results');
-        $schemasTable = config('schemava.tables.schemas', 'survey_schemas');
+        $table = config('schemava.tables.results', 'schemava_results');
+        $schemasTable = config('schemava.tables.schemas', 'schemava_schemas');
+        $foreignKey = config('schemava.tables.schema_foreign_key', 'schemava_schema_id');
 
         if (Schema::hasTable($table)) {
             return;
         }
 
-        Schema::create($table, function (Blueprint $table) use ($schemasTable): void {
+        Schema::create($table, function (Blueprint $table) use ($schemasTable, $foreignKey): void {
             $table->id();
-            $table->foreignId('survey_schema_id')->constrained($schemasTable)->cascadeOnDelete();
+            $table->foreignId($foreignKey)->constrained($schemasTable)->cascadeOnDelete();
             $table->unsignedBigInteger('user_id')->nullable()->index();
             $table->jsonb('data')->nullable();
             $table->string('status')->default('submitted');
@@ -32,6 +33,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists(config('schemava.tables.results', 'survey_results'));
+        Schema::dropIfExists(config('schemava.tables.results', 'schemava_results'));
     }
 };

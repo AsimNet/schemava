@@ -211,6 +211,76 @@ export function createPreviewModel(json, options = {}) {
 }
 
 /**
+ * Build the configuration applied to a display-mode `Survey.Model` for a single
+ * stored submission, without touching any global. Pure so it is unit-testable in
+ * isolation from the renderer; {@see createDisplayModel} and the standalone
+ * `schemava::survey-result` blade boot both apply this exact shape.
+ *
+ * - resolves the active locale, falling back to the schema's storage default
+ * - resolves the storage/default locale the `default` slot represents (so an
+ *   `en` render reads the explicit `en` slot, not the Arabic `default` slot —
+ *   see {@see STORAGE_DEFAULT_LOCALE})
+ * - carries the submitted answers as `data`
+ * - pins `mode` to `'display'` so survey-core renders read-only
+ *
+ * @param {{data?: Record<string, unknown>, locale?: string, defaultLocale?: string}} [options]
+ * @returns {{locale: string, defaultLocale: string, data: Record<string, unknown>, mode: 'display'}}
+ */
+export function displayModelConfig(options = {}) {
+    const defaultLocale = typeof options.defaultLocale === 'string' && options.defaultLocale !== ''
+        ? options.defaultLocale
+        : STORAGE_DEFAULT_LOCALE;
+
+    const locale = typeof options.locale === 'string' && options.locale !== ''
+        ? options.locale
+        : defaultLocale;
+
+    const data = options.data && typeof options.data === 'object' ? options.data : {};
+
+    return { locale, defaultLocale, data, mode: 'display' };
+}
+
+/**
+ * Create a read-only (`display` mode) `Survey.Model` that renders a stored
+ * submission back through the schema. Mirrors {@see createPreviewModel}'s
+ * locale alignment, but feeds the *submitted answers* as the model's `data`
+ * instead of seeding sample runtime values, and never wires completion (a
+ * display-mode model cannot be submitted).
+ *
+ * @param {object} json  the schema's serialized SurveyJS JSON
+ * @param {{data?: Record<string, unknown>, locale?: string, defaultLocale?: string, localeOverrides?: object}} [options]
+ *   `defaultLocale` is the schema's storage/default locale (the locale the
+ *   `default` slot represents); defaults to {@see STORAGE_DEFAULT_LOCALE}.
+ * @returns {any|null} a Survey.Model instance, or null when the global is absent
+ */
+export function createDisplayModel(json, options = {}) {
+    const Survey = getSurveyGlobal();
+    if (!Survey || typeof Survey.Model !== 'function') {
+        return null;
+    }
+
+    applySurveyLocaleOverrides(options.localeOverrides);
+
+    const config = displayModelConfig(options);
+
+    // Align survey-core's default locale with the schema's storage default
+    // BEFORE building the model, for the same reason as createPreviewModel:
+    // otherwise survey-core's built-in `'en'` default makes an `'en'` render
+    // resolve the `default` slot (Arabic) instead of the explicit `en` slot.
+    if (Survey.surveyLocalization) {
+        Survey.surveyLocalization.defaultLocale = config.defaultLocale;
+    }
+
+    const model = new Survey.Model(json);
+    model.locale = config.locale;
+    model.data = config.data;
+    // Render read-only: survey-core disables inputs and shows stored answers.
+    model.mode = config.mode;
+
+    return model;
+}
+
+/**
  * Render a Survey.Model into a DOM element using the renderer's vanilla-JS API.
  * Prefers `SurveyUI.renderSurvey(model, element)`; falls back to the legacy
  * `model.render(element)` augmentation when only that is present.

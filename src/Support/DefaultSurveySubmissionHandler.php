@@ -3,10 +3,8 @@
 namespace AsimNet\Schemava\Support;
 
 use AsimNet\Schemava\Contracts\SurveySubmissionHandler;
-use AsimNet\Schemava\Models\SurveyResult;
 use AsimNet\Schemava\Models\SurveySchema;
 use Illuminate\Contracts\Auth\Authenticatable;
-use Illuminate\Database\Eloquent\Model;
 
 /**
  * Default submission handler: stores submissions as SurveyResult rows and
@@ -16,11 +14,7 @@ class DefaultSurveySubmissionHandler implements SurveySubmissionHandler
 {
     public function store(SurveySchema $schema, mixed $subject, array $data): mixed
     {
-        /** @var class-string<Model> $resultModel */
-        $resultModel = config('schemava.models.result', SurveyResult::class);
-
-        return $resultModel::create([
-            'survey_schema_id' => $schema->getKey(),
+        return $schema->results()->create([
             'user_id' => $this->subjectId($subject),
             'data' => $data,
             'status' => 'submitted',

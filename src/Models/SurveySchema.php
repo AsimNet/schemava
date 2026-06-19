@@ -3,6 +3,7 @@
 namespace AsimNet\Schemava\Models;
 
 use AsimNet\Schemava\Contracts\SurveyAccessResolver;
+use AsimNet\Schemava\Schemava;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -40,6 +41,7 @@ class SurveySchema extends Model
         'surveyable_type',
         'tags',
         'hash',
+        'schemava_version',
     ];
 
     protected $attributes = [
@@ -67,7 +69,7 @@ class SurveySchema extends Model
 
     public function getTable(): string
     {
-        return config('schemava.tables.schemas', 'survey_schemas');
+        return config('schemava.tables.schemas', 'schemava_schemas');
     }
 
     protected static function booted(): void
@@ -76,17 +78,51 @@ class SurveySchema extends Model
             if (empty($schema->hash)) {
                 $schema->hash = static::generateUniqueHash();
             }
+
+            $schema->stampSchemavaVersion();
         });
 
         static::updating(function (self $schema): void {
             if (empty($schema->hash)) {
                 $schema->hash = static::generateUniqueHash();
             }
+
+            $schema->stampSchemavaVersion();
         });
 
         static::deleting(function (self $schema): void {
             $schema->results()->delete();
         });
+    }
+
+    /**
+     * Stamp the producing Schemava package version onto the schema. Persisted as
+     * the `schemava_version` column (outside the SurveyJS JSON) so compatibility
+     * and migration logic can key off the version that produced the schema rather
+     * than the renderer version.
+     */
+    protected function stampSchemavaVersion(): void
+    {
+        if (static::hasSchemavaVersionColumn($this)) {
+            $this->schemava_version = Schemava::version();
+        }
+    }
+
+    /**
+     * Whether the schemas table carries the `schemava_version` column. Fresh
+     * installs always do (it ships in the migration); this guard only lets a host
+     * app that bound these models to a pre-existing table without the column keep
+     * saving without error. Cached per connection + table.
+     */
+    protected static function hasSchemavaVersionColumn(self $schema): bool
+    {
+        static $cache = [];
+
+        $key = ($schema->getConnectionName() ?? 'default').'.'.$schema->getTable();
+
+        return $cache[$key] ??= $schema->getConnection()
+            ->getSchemaBuilder()
+            ->hasColumn($schema->getTable(), 'schemava_version');
     }
 
     protected static function generateUniqueHash(): string
@@ -102,7 +138,7 @@ class SurveySchema extends Model
     {
         return $this->hasMany(
             config('schemava.models.result', SurveyResult::class),
-            'survey_schema_id',
+            config('schemava.tables.schema_foreign_key', 'schemava_schema_id'),
         );
     }
 

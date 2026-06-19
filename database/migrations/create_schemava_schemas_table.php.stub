@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        $table = config('schemava.tables.schemas', 'survey_schemas');
+        $table = config('schemava.tables.schemas', 'schemava_schemas');
 
         if (Schema::hasTable($table)) {
             return;
@@ -45,12 +45,15 @@ return new class extends Migration
             $table->jsonb('tags')->nullable();
             $table->string('hash', 12)->unique();
 
+            // The Schemava package version that produced / last saved this schema.
+            $table->string('schemava_version')->nullable();
+
             $table->timestamps();
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists(config('schemava.tables.schemas', 'survey_schemas'));
+        Schema::dropIfExists(config('schemava.tables.schemas', 'schemava_schemas'));
     }
 };

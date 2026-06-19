@@ -33,8 +33,9 @@ return [
     */
 
     'tables' => [
-        'schemas' => 'survey_schemas',
-        'results' => 'survey_results',
+        'schemas' => 'schemava_schemas',
+        'results' => 'schemava_results',
+        'schema_foreign_key' => 'schemava_schema_id',
     ],
 
     /*
