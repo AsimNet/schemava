@@ -7,6 +7,7 @@ use AsimNet\Schemava\Contracts\RuntimeContextProvider;
 use AsimNet\Schemava\Contracts\SurveyAccessResolver;
 use AsimNet\Schemava\Contracts\SurveySubmissionHandler;
 use AsimNet\Schemava\Contracts\SurveyUrlResolver;
+use AsimNet\Schemava\Http\Controllers\PublicFormController;
 use AsimNet\Schemava\Http\Controllers\SurveyDesignerController;
 use AsimNet\Schemava\Models\SurveySchema;
 use Filament\Support\Assets\Css;
@@ -54,6 +55,7 @@ class SchemavaServiceProvider extends PackageServiceProvider
         $this->registerRouteModelBinding();
         $this->registerAssets();
         $this->registerDesignerRoutes();
+        $this->registerPublicRoutes();
         $this->registerPolicy();
     }
 
@@ -146,6 +148,29 @@ class SchemavaServiceProvider extends PackageServiceProvider
                 Route::post('/{surveySchema}/save', [SurveyDesignerController::class, 'save'])->name('save');
                 Route::post('/upload-image', [SurveyDesignerController::class, 'uploadImage'])->name('upload-image');
                 Route::post('/{surveySchema}/ai/query', [SurveyDesignerController::class, 'queryAi'])->name('ai-query');
+            });
+    }
+
+    /**
+     * Register the public, unauthenticated form routes (fill + submit) from
+     * config. Gated by the same `routes.enabled` flag host apps use when they
+     * take over route registration themselves.
+     */
+    protected function registerPublicRoutes(): void
+    {
+        if (! config('schemava.routes.enabled', true)) {
+            return;
+        }
+
+        $public = config('schemava.routes.public', []);
+
+        Route::middleware($public['middleware'] ?? ['web'])
+            ->prefix($public['prefix'] ?? 'surveys')
+            ->group(function () use ($public): void {
+                Route::get('/{hash}', [PublicFormController::class, 'show'])
+                    ->name($public['name'] ?? 'schemava.public.show');
+                Route::post('/{hash}', [PublicFormController::class, 'submit'])
+                    ->name('schemava.public.submit');
             });
     }
 

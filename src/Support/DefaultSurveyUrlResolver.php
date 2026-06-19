@@ -17,7 +17,7 @@ class DefaultSurveyUrlResolver implements SurveyUrlResolver
         $routeName = config('schemava.routes.public.name', 'schemava.public.show');
 
         if (Route::has($routeName)) {
-            return route($routeName, ['surveySchema' => $schema->hash]);
+            return route($routeName, ['hash' => $schema->hash]);
         }
 
         $prefix = trim((string) config('schemava.routes.public.prefix', 'surveys'), '/');

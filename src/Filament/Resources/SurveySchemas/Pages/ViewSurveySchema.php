@@ -2,6 +2,7 @@
 
 namespace AsimNet\Schemava\Filament\Resources\SurveySchemas\Pages;
 
+use AsimNet\Schemava\Contracts\SurveyUrlResolver;
 use AsimNet\Schemava\Filament\Resources\SurveySchemas\SurveySchemaResource;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
@@ -25,6 +26,12 @@ class ViewSurveySchema extends ViewRecord
                 ->icon(Heroicon::OutlinedPencilSquare)
                 ->color('primary')
                 ->url(fn (): string => route('survey-designer.show', ['surveySchema' => $this->record->getKey()])),
+            Action::make('publicForm')
+                ->label('Open public form')
+                ->icon(Heroicon::OutlinedLink)
+                ->color('gray')
+                ->url(fn (): ?string => app(SurveyUrlResolver::class)->publicUrl($this->record))
+                ->openUrlInNewTab(),
             EditAction::make(),
         ];
     }
