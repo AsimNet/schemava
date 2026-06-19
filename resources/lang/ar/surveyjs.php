@@ -23,6 +23,18 @@ return [
         'modal_title' => 'عرض الرد',
         'empty_heading' => 'لا توجد ردود بعد',
         'empty_description' => 'ستظهر الردود هنا بمجرد أن يُرسل المستخدمون هذا النموذج.',
+        'count' => 'الردود',
+        'loading' => 'جارٍ تحميل الرد…',
+        'render_failed' => 'تعذّر تحميل عارض الردود.',
+    ],
+
+    'all_responses' => [
+        'navigation_label' => 'كل الردود',
+        'model_label' => 'رد',
+        'plural_model_label' => 'ردود',
+        'form' => 'النموذج',
+        'empty_heading' => 'لا توجد ردود بعد',
+        'empty_description' => 'ستظهر ردود جميع نماذجك هنا.',
     ],
 
     'unavailable' => [

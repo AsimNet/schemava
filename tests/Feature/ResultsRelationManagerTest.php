@@ -157,9 +157,10 @@ class ResultsRelationManagerTest extends TestCase
         $this->assertStringContainsString('favorite_color', $html);
         // …the record's submitted answer…
         $this->assertStringContainsString('blue', $html);
-        // …renders read-only through the SurveyJS renderer…
-        $this->assertStringContainsString("mode = 'display'", $html);
-        // …and pins the configured renderer version.
-        $this->assertStringContainsString('survey-core@'.config('schemava.renderer_version'), $html);
+        // …wires the data into the response-viewer Alpine component (which renders
+        // read-only through SurveyJS — inline scripts don't run in Livewire modals)…
+        $this->assertStringContainsString('schemavaSurveyResult(', $html);
+        // …and passes the configured renderer version for it to load.
+        $this->assertStringContainsString(config('schemava.renderer_version'), $html);
     }
 }

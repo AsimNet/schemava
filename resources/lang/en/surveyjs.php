@@ -23,6 +23,18 @@ return [
         'modal_title' => 'View response',
         'empty_heading' => 'No responses yet',
         'empty_description' => 'Responses will appear here once users submit this form.',
+        'count' => 'Responses',
+        'loading' => 'Loading response…',
+        'render_failed' => 'Could not load the response viewer.',
+    ],
+
+    'all_responses' => [
+        'navigation_label' => 'All responses',
+        'model_label' => 'response',
+        'plural_model_label' => 'responses',
+        'form' => 'Form',
+        'empty_heading' => 'No responses yet',
+        'empty_description' => 'Responses across all your forms will appear here.',
     ],
 
     'unavailable' => [

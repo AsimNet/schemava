@@ -5,6 +5,7 @@ namespace AsimNet\Schemava\Filament\Resources\SurveySchemas;
 use AsimNet\Schemava\Filament\Resources\SurveySchemas\Pages\CreateSurveySchema;
 use AsimNet\Schemava\Filament\Resources\SurveySchemas\Pages\EditSurveySchema;
 use AsimNet\Schemava\Filament\Resources\SurveySchemas\Pages\ListSurveySchemas;
+use AsimNet\Schemava\Filament\Resources\SurveySchemas\Pages\ViewSurveySchema;
 use AsimNet\Schemava\Filament\Resources\SurveySchemas\RelationManagers\ResultsRelationManager;
 use AsimNet\Schemava\Models\SurveySchema;
 use AsimNet\Schemava\SchemavaPlugin;
@@ -16,6 +17,8 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Infolists\Components\IconEntry;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -87,6 +90,38 @@ class SurveySchemaResource extends Resource
         ]);
     }
 
+    public static function infolist(Schema $schema): Schema
+    {
+        return $schema->components([
+            TextEntry::make('title')
+                ->label('Form title'),
+            TextEntry::make('description')
+                ->label('Description')
+                ->placeholder('—'),
+            IconEntry::make('is_active')
+                ->label('Active')
+                ->boolean(),
+            TextEntry::make('responses')
+                ->label(__('schemava::surveyjs.responses.count'))
+                ->state(fn ($record): int => $record->results()->count())
+                ->badge()
+                ->color('gray'),
+            TextEntry::make('schemava_version')
+                ->label('Built with Schemava')
+                ->placeholder('—'),
+            TextEntry::make('hash')
+                ->label('Public link key')
+                ->copyable(),
+            TextEntry::make('created_at')
+                ->label('Created')
+                ->dateTime(),
+            TextEntry::make('updated_at')
+                ->label('Last edited')
+                ->dateTime()
+                ->since(),
+        ]);
+    }
+
     public static function table(Table $table): Table
     {
         return $table
@@ -99,12 +134,19 @@ class SurveySchemaResource extends Resource
                 IconColumn::make('is_active')
                     ->label('Active')
                     ->boolean(),
+                TextColumn::make('results_count')
+                    ->label(__('schemava::surveyjs.responses.count'))
+                    ->counts('results')
+                    ->badge()
+                    ->color('gray')
+                    ->sortable(),
                 TextColumn::make('updated_at')
                     ->label('Last edited')
                     ->dateTime()
                     ->since()
                     ->sortable(),
             ])
+            ->recordUrl(fn ($record): string => static::getUrl('view', ['record' => $record]))
             ->recordActions([
                 Action::make('design')
                     ->label('Design')
@@ -143,6 +185,7 @@ class SurveySchemaResource extends Resource
         return [
             'index' => ListSurveySchemas::route('/'),
             'create' => CreateSurveySchema::route('/create'),
+            'view' => ViewSurveySchema::route('/{record}'),
             'edit' => EditSurveySchema::route('/{record}/edit'),
         ];
     }

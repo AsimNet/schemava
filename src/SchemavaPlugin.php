@@ -2,6 +2,7 @@
 
 namespace AsimNet\Schemava;
 
+use AsimNet\Schemava\Filament\Resources\SurveyResults\SurveyResultResource;
 use AsimNet\Schemava\Filament\Resources\SurveySchemas\SurveySchemaResource;
 use Closure;
 use Filament\Contracts\Plugin;
@@ -15,6 +16,8 @@ class SchemavaPlugin implements Plugin
     protected bool $hasSurveyResource = true;
 
     protected bool $hasResponsesRelationManager = true;
+
+    protected bool $hasSurveyResultResource = true;
 
     protected string|Closure|null $navigationGroup = null;
 
@@ -42,10 +45,18 @@ class SchemavaPlugin implements Plugin
 
     public function register(Panel $panel): void
     {
+        $resources = [];
+
         if ($this->hasSurveyResource) {
-            $panel->resources([
-                SurveySchemaResource::class,
-            ]);
+            $resources[] = SurveySchemaResource::class;
+        }
+
+        if ($this->hasSurveyResultResource) {
+            $resources[] = SurveyResultResource::class;
+        }
+
+        if ($resources !== []) {
+            $panel->resources($resources);
         }
     }
 
@@ -84,6 +95,22 @@ class SchemavaPlugin implements Plugin
     public function hasResponsesRelationManager(): bool
     {
         return $this->hasResponsesRelationManager;
+    }
+
+    /**
+     * Enable or disable the top-level "All responses" resource — a read-only,
+     * cross-form browser of submissions. Enabled by default.
+     */
+    public function surveyResultResource(bool $enabled = true): static
+    {
+        $this->hasSurveyResultResource = $enabled;
+
+        return $this;
+    }
+
+    public function hasSurveyResultResource(): bool
+    {
+        return $this->hasSurveyResultResource;
     }
 
     /**
