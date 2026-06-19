@@ -111,7 +111,7 @@ class SchemavaServiceProvider extends PackageServiceProvider
     protected function registerAssets(): void
     {
         $dist = __DIR__.'/../resources/dist';
-        $js = __DIR__.'/../resources/js';
+        $filament = __DIR__.'/../resources/filament';
 
         FilamentAsset::register([
             Css::make('schemava-builder', "{$dist}/schemava-builder.css")->loadedOnRequest(),
@@ -119,7 +119,9 @@ class SchemavaServiceProvider extends PackageServiceProvider
             // Loaded on every panel page (NOT loadedOnRequest) so the response-viewer
             // Alpine component is registered before any Filament modal that uses it
             // opens — Livewire does not execute <script> tags injected into modals.
-            Js::make('schemava-result-viewer', "{$js}/survey-result-viewer.js"),
+            // Lives in resources/filament (a shipped dir) rather than resources/js,
+            // which is export-ignored from the distributed package.
+            Js::make('schemava-result-viewer', "{$filament}/survey-result-viewer.js"),
         ], package: 'asimnet/schemava');
     }
 
