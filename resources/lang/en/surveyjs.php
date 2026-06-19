@@ -37,6 +37,10 @@ return [
         'empty_description' => 'Responses across all your forms will appear here.',
     ],
 
+    'public' => [
+        'thank_you' => 'Thank you! Your response has been recorded.',
+    ],
+
     'unavailable' => [
         'closed' => 'This survey is closed.',
         'not_open' => 'This survey is not open yet.',

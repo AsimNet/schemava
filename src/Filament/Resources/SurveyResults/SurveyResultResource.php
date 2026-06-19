@@ -6,6 +6,9 @@ use AsimNet\Schemava\Filament\Resources\SurveyResults\Pages\ListSurveyResults;
 use AsimNet\Schemava\Models\SurveyResult;
 use AsimNet\Schemava\SchemavaPlugin;
 use BackedEnum;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Resource;
 use Filament\Support\Enums\Width;
@@ -126,6 +129,12 @@ class SurveyResultResource extends Resource
                         'locale' => app()->getLocale(),
                         'rendererVersion' => config('schemava.renderer_version'),
                     ])),
+                DeleteAction::make(),
+            ])
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
+                ]),
             ])
             ->emptyStateHeading(__('schemava::surveyjs.all_responses.empty_heading'))
             ->emptyStateDescription(__('schemava::surveyjs.all_responses.empty_description'));

@@ -7,6 +7,9 @@ use AsimNet\Schemava\Models\SurveyResult;
 use AsimNet\Schemava\Models\SurveySchema;
 use AsimNet\Schemava\SchemavaPlugin;
 use AsimNet\Schemava\Services\SurveyScoreCalculator;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Support\Enums\Width;
@@ -91,6 +94,12 @@ class ResultsRelationManager extends RelationManager
                     ->modalWidth(Width::FiveExtraLarge)
                     ->modalSubmitAction(false)
                     ->modalContent(fn (Model $record): View => $this->renderSubmission($record)),
+                DeleteAction::make(),
+            ])
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
+                ]),
             ])
             ->emptyStateHeading(__('schemava::surveyjs.responses.empty_heading'))
             ->emptyStateDescription(__('schemava::surveyjs.responses.empty_description'));
