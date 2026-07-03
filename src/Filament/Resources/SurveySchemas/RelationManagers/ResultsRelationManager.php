@@ -59,7 +59,7 @@ class ResultsRelationManager extends RelationManager
             ->columns([
                 TextColumn::make('respondent')
                     ->label(__('schemava::surveyjs.responses.respondent'))
-                    ->state(fn (Model $record): string => $this->resolveRespondent($record))
+                    ->state(fn (SurveyResult $record): string => $this->resolveRespondent($record))
                     ->searchable(query: function ($query, string $search) {
                         return $query->whereHas('user', function ($userQuery) use ($search): void {
                             $userQuery->where('name', 'like', "%{$search}%")
@@ -72,7 +72,7 @@ class ResultsRelationManager extends RelationManager
                     ->sortable(),
                 TextColumn::make('score')
                     ->label(__('schemava::surveyjs.responses.score'))
-                    ->state(fn (Model $record): ?string => $this->resolveScore($record))
+                    ->state(fn (SurveyResult $record): ?string => $this->resolveScore($record))
                     ->visible(fn (): bool => $this->ownerSchemaIsScored())
                     ->placeholder('—'),
                 TextColumn::make('submitted_at')
@@ -93,7 +93,7 @@ class ResultsRelationManager extends RelationManager
                     ->modalHeading(__('schemava::surveyjs.responses.modal_title'))
                     ->modalWidth(Width::FiveExtraLarge)
                     ->modalSubmitAction(false)
-                    ->modalContent(fn (Model $record): View => $this->renderSubmission($record)),
+                    ->modalContent(fn (SurveyResult $record): View => $this->renderSubmission($record)),
                 DeleteAction::make(),
             ])
             ->toolbarActions([
@@ -109,7 +109,7 @@ class ResultsRelationManager extends RelationManager
      * Resolve a human label for the submitter, falling back to a localized
      * "Guest" when the submission has no associated user (user_id is null).
      */
-    protected function resolveRespondent(Model $record): string
+    protected function resolveRespondent(SurveyResult $record): string
     {
         $user = $record->user;
 
@@ -127,7 +127,7 @@ class ResultsRelationManager extends RelationManager
      * Compute the submission's score string ("score/max") when the owner schema
      * is graded, reusing {@see SurveyScoreCalculator}.
      */
-    protected function resolveScore(Model $record): ?string
+    protected function resolveScore(SurveyResult $record): ?string
     {
         $schema = $this->ownerSchema();
 
@@ -177,7 +177,7 @@ class ResultsRelationManager extends RelationManager
      * passing the PARENT schema's survey_json, the record's data, the active
      * locale, and the pinned renderer version.
      */
-    protected function renderSubmission(Model $record): View
+    protected function renderSubmission(SurveyResult $record): View
     {
         $schema = $this->ownerSchema();
 

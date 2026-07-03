@@ -18,7 +18,6 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
 
 /**
  * Top-level, read-only browser for submissions across every form. Shipped by
@@ -88,7 +87,7 @@ class SurveyResultResource extends Resource
             ->columns([
                 TextColumn::make('respondent')
                     ->label(__('schemava::surveyjs.responses.respondent'))
-                    ->state(fn (Model $record): string => static::resolveRespondent($record))
+                    ->state(fn (SurveyResult $record): string => static::resolveRespondent($record))
                     ->searchable(query: function ($query, string $search) {
                         return $query->whereHas('user', function ($userQuery) use ($search): void {
                             $userQuery->where('name', 'like', "%{$search}%")
@@ -123,7 +122,7 @@ class SurveyResultResource extends Resource
                     ->modalHeading(__('schemava::surveyjs.responses.modal_title'))
                     ->modalWidth(Width::FiveExtraLarge)
                     ->modalSubmitAction(false)
-                    ->modalContent(fn (Model $record): View => view('schemava::survey-result', [
+                    ->modalContent(fn (SurveyResult $record): View => view('schemava::survey-result', [
                         'surveyJson' => $record->surveySchema?->survey_json ?? [],
                         'data' => $record->data ?? [],
                         'locale' => app()->getLocale(),
@@ -144,7 +143,7 @@ class SurveyResultResource extends Resource
      * Human label for the submitter, falling back to a localized "Guest" when the
      * submission has no associated user.
      */
-    protected static function resolveRespondent(Model $record): string
+    protected static function resolveRespondent(SurveyResult $record): string
     {
         $user = $record->user;
 

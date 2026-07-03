@@ -101,7 +101,7 @@ class SurveyScoreCalculator
                 continue;
             }
 
-            $this->extractFromElements($elements, $questions);
+            array_push($questions, ...$this->extractFromElements($elements));
         }
 
         return $questions;
@@ -109,10 +109,12 @@ class SurveyScoreCalculator
 
     /**
      * @param  array<int, mixed>  $elements
-     * @param  array<int, array<string, mixed>>  $questions
+     * @return array<int, array<string, mixed>>
      */
-    private function extractFromElements(array $elements, array &$questions): void
+    private function extractFromElements(array $elements): array
     {
+        $questions = [];
+
         foreach ($elements as $element) {
             if (! is_array($element)) {
                 continue;
@@ -123,7 +125,7 @@ class SurveyScoreCalculator
             if (in_array($type, ['panel', 'paneldynamic', 'flowpanel'], true)) {
                 $nestedElements = $element['elements'] ?? [];
                 if (is_array($nestedElements)) {
-                    $this->extractFromElements($nestedElements, $questions);
+                    array_push($questions, ...$this->extractFromElements($nestedElements));
                 }
 
                 continue;
@@ -133,6 +135,8 @@ class SurveyScoreCalculator
                 $questions[] = $element;
             }
         }
+
+        return $questions;
     }
 
     /**
