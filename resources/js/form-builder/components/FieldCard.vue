@@ -13,6 +13,7 @@ import {
     clearFieldAdded,
     markDirty,
     addTemplateQuestion,
+    updateTypeProp,
 } from '../store.js';
 import { t, i18n } from '../i18n.js';
 import { fadeInUp, collapseOut, stop } from '../motion.js';
@@ -20,6 +21,7 @@ import { renameChoiceLabel, makeChoice, sanitizeStatementHtml } from '../ui-help
 import { FIELD_TYPES, ADVANCED_TYPE } from '../model/fieldTypes.js';
 import { ratingPreviewItems } from '../ui-helpers.js';
 import AddQuestionMenu from './AddQuestionMenu.vue';
+import MatrixCardGrid from './MatrixCardGrid.vue';
 // Self-import: panel_dynamic cards render their template questions as nested
 // FieldCards, so authoring inside a repeating panel is the same experience as
 // authoring at the page level (Vite resolves the circular self-reference).
@@ -132,8 +134,13 @@ onBeforeUnmount(() => stop(cardEl.value));
 const hasLogic = computed(() => Boolean(props.field.logic));
 const hasQuiz = computed(() => Boolean(props.field.quiz));
 
-/** Whether this field's choices are editable inline on the card. */
-const isChoiceField = computed(() => ['single_choice', 'multi_choice', 'dropdown'].includes(props.field.type));
+/** Whether this field's choices are editable inline on the card. image_picker
+ * stays read-only here — its choices carry image links that need the drawer. */
+const isChoiceField = computed(() => ['single_choice', 'multi_choice', 'dropdown', 'ranking', 'tag_box'].includes(props.field.type));
+
+/* --------------------------------------------- matrix family (canvas grid) */
+
+const isMatrixFamily = computed(() => ['matrix', 'matrixdropdown', 'matrixdynamic'].includes(props.field.type));
 
 const allChoices = computed(() => (Array.isArray(props.field.choices) ? props.field.choices : []));
 
@@ -241,17 +248,25 @@ const yesNoPreview = computed(() => {
     if (props.field.type !== 'yes_no') {
         return [];
     }
-    const pick = (lstr, fallback) => {
-        const text = (contentLocale.value === 'en' ? lstr?.en : lstr?.ar) ?? lstr?.ar ?? '';
-
-        return text !== '' ? text : fallback;
-    };
+    const pick = (lstr) => (contentLocale.value === 'en' ? lstr?.en : lstr?.ar) ?? lstr?.ar ?? '';
 
     return [
-        { key: 'true', text: pick(props.field.typeProps?.labelTrue, 'نعم') },
-        { key: 'false', text: pick(props.field.typeProps?.labelFalse, 'لا') },
+        { key: 'true', text: pick(props.field.typeProps?.labelTrue), placeholder: 'نعم' },
+        { key: 'false', text: pick(props.field.typeProps?.labelFalse), placeholder: 'لا' },
     ];
 });
+
+/** Edit the نعم/لا labels in place on the card (canvas-first, like choices). */
+function onYesNoInput(key, value) {
+    const propKey = key === 'true' ? 'labelTrue' : 'labelFalse';
+    const lstr = { ...(props.field.typeProps?.[propKey] ?? { ar: '', en: null }) };
+    if (contentLocale.value === 'en') {
+        lstr.en = value === '' ? null : value;
+    } else {
+        lstr.ar = value;
+    }
+    updateTypeProp(props.field.name, propKey, lstr);
+}
 
 /* ------------------------------------------------- rating preview (fix 3) */
 
@@ -634,11 +649,23 @@ function cancelDelete() {
                 </ul>
 
                 <ul v-if="yesNoPreview.length" class="fb-card-choices">
-                    <li v-for="option in yesNoPreview" :key="option.key" class="fb-card-choice">
+                    <li v-for="option in yesNoPreview" :key="option.key" class="fb-card-choice fb-card-choice--editable">
                         <span class="fb-card-choice-mark" aria-hidden="true"></span>
-                        <span class="fb-card-choice-text">{{ option.text }}</span>
+                        <input
+                            :value="option.text"
+                            type="text"
+                            class="fb-card-choice-edit fb-focus"
+                            :placeholder="option.placeholder"
+                            :aria-label="t('labelField')"
+                            @click.stop
+                            @input="onYesNoInput(option.key, $event.target.value)"
+                        />
                     </li>
                 </ul>
+
+                <!-- matrix family: the grid IS the card — rows/columns edited
+                     in place; cell types & per-column choices in the drawer. -->
+                <MatrixCardGrid v-if="isMatrixFamily" :field="field" />
             </template>
         </div>
 
