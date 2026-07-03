@@ -47,17 +47,24 @@ watch(
 );
 
 /**
- * Strip inline font-size declarations from WYSIWYG output. execCommand
- * block-wrapping (e.g. justify*) makes Chromium bake the EDITOR UI's computed
- * font-size into a <span style="font-size: …"> — which would override the
- * runtime renderer's own typography in the published form. Authors can't set
- * font sizes from the toolbar, so any such declaration is an editor artifact.
- * Raw-HTML mode is left untouched (hand-written styles are intentional).
+ * Strip editor-inherited font declarations from WYSIWYG output. execCommand
+ * block-wrapping (justify*, lists) makes Chromium bake the EDITOR UI's
+ * computed font-family/size into <span style="…"> — which would force the
+ * builder's font (IBM Plex) and sizing onto the published form, where hosts
+ * and respondents may not even have that font. Authors can't set fonts from
+ * the toolbar, so any such declaration is an artifact. Filters per declaration
+ * inside each style attribute (values may contain &quot; entities), keeping
+ * intentional ones like text-align. Raw-HTML mode is left untouched.
  */
-function stripEditorFontSize(html) {
-    return String(html ?? '')
-        .replace(/font-size:\s*[^;"']+;?\s*/gi, '')
-        .replace(/\s*style="\s*"/gi, '');
+function stripEditorArtifacts(html) {
+    return String(html ?? '').replace(/\s*style="([^"]*)"/gi, (match, css) => {
+        const kept = css
+            .split(';')
+            .map((declaration) => declaration.trim())
+            .filter((declaration) => declaration !== '' && !/^font(-family|-size)?\s*:/i.test(declaration));
+
+        return kept.length > 0 ? ` style="${kept.join('; ')};"` : '';
+    });
 }
 
 /** Emit the current contenteditable html (sanitized) on every input. */
@@ -66,7 +73,7 @@ function onInput() {
     if (!el) {
         return;
     }
-    emit('update:modelValue', stripEditorFontSize(sanitizeStatementHtml(el.innerHTML)));
+    emit('update:modelValue', stripEditorArtifacts(sanitizeStatementHtml(el.innerHTML)));
 }
 
 /**
@@ -80,7 +87,7 @@ function onPaste() {
         if (!el) {
             return;
         }
-        const cleaned = stripEditorFontSize(stripStyleBlocks(sanitizeStatementHtml(el.innerHTML)));
+        const cleaned = stripEditorArtifacts(stripStyleBlocks(sanitizeStatementHtml(el.innerHTML)));
         if (el.innerHTML !== cleaned) {
             el.innerHTML = cleaned;
         }
@@ -523,9 +530,20 @@ const TOOL_GROUPS = [
     margin: 0.375rem 0 0.25rem;
 }
 
-.fb-rte-surface :deep(ul) {
+.fb-rte-surface :deep(ul),
+.fb-rte-surface :deep(ol) {
+    /* Tailwind preflight (bundled with the builder) resets list-style: none —
+       restore markers so authored lists LOOK like lists while editing. */
     margin: 0.25rem 0;
     padding-inline-start: 1.25rem;
+}
+
+.fb-rte-surface :deep(ul) {
+    list-style: disc;
+}
+
+.fb-rte-surface :deep(ol) {
+    list-style: decimal;
 }
 
 .fb-rte-surface :deep(a) {
