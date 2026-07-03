@@ -389,6 +389,9 @@ function elementToField(element, usedNames) {
         delete raw.enableIf;
     }
 
+    // Matrix family: parse rows/columns into typeProps.
+    parseMatrixProps(builderType, element, typeProps);
+
     // panel_dynamic: recursively parse the panel template's sub-questions into
     // real Fields (sharing `usedNames` so template question names stay unique
     // across the whole survey, not just within the panel).
@@ -604,6 +607,9 @@ function fieldToElement(field) {
             assignLocalized(element, key, value);
         }
     }
+
+    // Matrix family: emit rows/columns from typeProps.
+    serializeMatrixProps(field.type, field.typeProps, element);
 
     // Choices.
     if (Array.isArray(field.choices)) {

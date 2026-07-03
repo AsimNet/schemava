@@ -78,6 +78,14 @@ describe('serialize — base round-trip per builder type (ar-only)', () => {
                 { type: 'radiogroup', name: 'member_gender', title: 'الجنس', choices: ['ذكر', 'أنثى'] },
             ],
         },
+        ranking: { type: 'ranking', name: 'q1', title: 'ترتيب', choices: ['أ', 'ب'] },
+        tagbox: { type: 'tagbox', name: 'q1', title: 'وسوم', choices: ['أ', 'ب'] },
+        imagepicker: { type: 'imagepicker', name: 'q1', title: 'صورة', choices: ['أ', 'ب'] },
+        multipletext: { type: 'multipletext', name: 'q1', title: 'متعدد', colCount: 2 },
+        expression: { type: 'expression', name: 'q1', title: 'محسوب', expression: '{q2} + 1', displayStyle: 'decimal' },
+        matrix: { type: 'matrix', name: 'q1', title: 'مصفوفة', rows: [{ value: 'r1', text: 'صف1' }], columns: [{ value: 'c1', text: 'عمود1' }] },
+        matrixdropdown: { type: 'matrixdropdown', name: 'q1', title: 'مصفوفة2', rows: [{ value: 'r1', text: 'صف1' }], columns: [{ name: 'c1', title: 'عمود1', cellType: 'text' }] },
+        matrixdynamic: { type: 'matrixdynamic', name: 'q1', title: 'مصفوفة3', rowCount: 3, columns: [{ name: 'c1', title: 'عمود1', cellType: 'text' }] },
     };
 
     for (const [builderType, element] of Object.entries(samples)) {
@@ -245,8 +253,8 @@ describe('serialize — logic (visibleIf)', () => {
 describe('serialize — advanced passthrough', () => {
     it('keeps unknown element types verbatim', () => {
         const element = {
-            type: 'matrix', name: 'm1', title: 'مصفوفة',
-            columns: ['a', 'b'], rows: ['x', 'y'], custom: { nested: true },
+            type: 'customwidget', name: 'm1', title: 'ودجت',
+            widgetConfig: { nested: true },
         };
         expect(roundTripElement(element)).toEqual(element);
     });
@@ -677,12 +685,12 @@ describe('serialize — panel_dynamic (repeating panel)', () => {
                 elements: [{
                     type: 'paneldynamic',
                     name: 'q1',
-                    templateElements: [{ type: 'matrix', name: 'weird', columns: ['a'] }],
+                    templateElements: [{ type: 'customwidget', name: 'weird', config: 'x' }],
                 }],
             }],
         });
         const sub = state.pages[0].fields[0].typeProps.templateElements[0];
         expect(sub.type).toBe('advanced');
-        expect(sub.raw).toEqual({ type: 'matrix', name: 'weird', columns: ['a'] });
+        expect(sub.raw).toEqual({ type: 'customwidget', name: 'weird', config: 'x' });
     });
 });
