@@ -19,6 +19,11 @@ import {
     pushToast,
     dismissToast,
     DEFAULT_CHOICE_LABELS,
+    addCalculatedValue,
+    updateCalculatedValue,
+    removeCalculatedValue,
+    renameCalculatedValue,
+    allFieldEntries,
 } from '../../../resources/js/form-builder/store.js';
 import { toSurveyJson } from '../../../resources/js/form-builder/model/serialize.js';
 
@@ -601,5 +606,68 @@ describe('store — source-agnostic undo toast', () => {
         const restored = liveJson();
         toast.action.handler();
         expect(liveJson()).toEqual(restored);
+    });
+});
+
+describe('store — calculated values (HSB-45)', () => {
+    it('addCalculatedValue appends an entry with a fresh unique name', () => {
+        const a = addCalculatedValue();
+        const b = addCalculatedValue();
+        expect(a.name).toBe('calc_1');
+        expect(b.name).toBe('calc_2');
+        expect(store.state.calculatedValues).toEqual([
+            { name: 'calc_1', expression: '', includeIntoResult: false, raw: {} },
+            { name: 'calc_2', expression: '', includeIntoResult: false, raw: {} },
+        ]);
+    });
+
+    it('a fresh name never collides with an existing field name', () => {
+        const field = addField('short_text', 0);
+        renameField(field.name, 'calc_1');
+        const cv = addCalculatedValue();
+        expect(cv.name).toBe('calc_2');
+    });
+
+    it('updateCalculatedValue patches expression/includeIntoResult in place', () => {
+        addCalculatedValue();
+        updateCalculatedValue(0, { expression: '{q_1} * 2', includeIntoResult: true });
+        expect(store.state.calculatedValues[0]).toMatchObject({
+            expression: '{q_1} * 2',
+            includeIntoResult: true,
+        });
+    });
+
+    it('removeCalculatedValue drops the entry at index', () => {
+        addCalculatedValue();
+        addCalculatedValue();
+        removeCalculatedValue(0);
+        expect(store.state.calculatedValues.map((c) => c.name)).toEqual(['calc_2']);
+    });
+
+    it('renameCalculatedValue rejects an empty/invalid/duplicate name', () => {
+        addCalculatedValue();
+        addCalculatedValue();
+        expect(renameCalculatedValue(0, '')).toBe('fieldNameRequired');
+        expect(renameCalculatedValue(0, '1bad')).toBe('fieldNameInvalid');
+        expect(renameCalculatedValue(0, 'calc_2')).toBe('fieldNameDuplicate');
+    });
+
+    it('renameCalculatedValue rejects a name already used by a field', () => {
+        const field = addField('short_text', 0);
+        addCalculatedValue();
+        expect(renameCalculatedValue(0, field.name)).toBe('fieldNameDuplicate');
+    });
+
+    it('renameCalculatedValue succeeds with a valid unique name', () => {
+        addCalculatedValue();
+        expect(renameCalculatedValue(0, 'total_score')).toBeNull();
+        expect(store.state.calculatedValues[0].name).toBe('total_score');
+    });
+
+    it('allFieldEntries lists every named field across all pages in document order', () => {
+        const f1 = addField('short_text', 0);
+        addPage();
+        const f2 = addField('number', 1);
+        expect(allFieldEntries().map((f) => f.name)).toEqual([f1.name, f2.name]);
     });
 });

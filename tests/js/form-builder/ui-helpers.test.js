@@ -16,6 +16,8 @@ import {
     variableMetaFor,
     variableInputKind,
     NULLARY_OPERATORS,
+    fieldReferenceOptions,
+    calculatedValueOptions,
 } from '../../../resources/js/form-builder/ui-helpers.js';
 
 describe('variable labels', () => {
@@ -221,5 +223,31 @@ describe('choices', () => {
         expect(choiceValueDiverged({ value: 'yes', label: { ar: 'نعم', en: null } })).toBe(true);
         expect(choiceValueDiverged({ value: 'نعم', label: { ar: 'نعم', en: null } })).toBe(false);
         expect(choiceValueDiverged({ value: '', label: { ar: '', en: null } })).toBe(false);
+    });
+});
+
+describe('expression-formula reference options (HSB-45)', () => {
+    it('fieldReferenceOptions resolves the label per active locale, falling back to the name', () => {
+        const fields = [
+            { name: 'q1', label: { ar: 'السؤال الأول', en: 'First question' } },
+            { name: 'q2', label: { ar: '', en: null } },
+        ];
+        expect(fieldReferenceOptions(fields, 'ar')).toEqual([
+            { key: 'q1', label: 'السؤال الأول' },
+            { key: 'q2', label: 'q2' },
+        ]);
+        expect(fieldReferenceOptions(fields, 'en')).toEqual([
+            { key: 'q1', label: 'First question' },
+            { key: 'q2', label: 'q2' },
+        ]);
+        expect(fieldReferenceOptions(null)).toEqual([]);
+    });
+
+    it('calculatedValueOptions uses the name as its own label and skips unnamed entries', () => {
+        expect(calculatedValueOptions([{ name: 'total' }, { name: '' }, { name: 'avg' }])).toEqual([
+            { key: 'total', label: 'total' },
+            { key: 'avg', label: 'avg' },
+        ]);
+        expect(calculatedValueOptions(null)).toEqual([]);
     });
 });
