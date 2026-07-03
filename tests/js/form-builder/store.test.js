@@ -684,6 +684,13 @@ describe('store — calculated values (HSB-45)', () => {
 });
 
 describe('store — panel_dynamic template authoring', () => {
+    it('a fresh panel seeds one starter template question (no dead preview)', () => {
+        const panel = addField('panel_dynamic');
+        expect(panel.typeProps.templateElements).toHaveLength(1);
+        expect(panel.typeProps.templateElements[0].type).toBe('short_text');
+        expect(panel.typeProps.templateElements[0].name).not.toBe(panel.name);
+    });
+
     it('addTemplateField appends a new sub-question and marks dirty', () => {
         const panel = addField('panel_dynamic');
         store.dirty = false;
@@ -691,8 +698,8 @@ describe('store — panel_dynamic template authoring', () => {
         const sub = addTemplateField(panel.name, 'short_text');
 
         expect(sub).toBeTruthy();
-        expect(panel.typeProps.templateElements).toHaveLength(1);
-        expect(panel.typeProps.templateElements[0]).toBe(sub);
+        expect(panel.typeProps.templateElements).toHaveLength(2);
+        expect(panel.typeProps.templateElements[1]).toBe(sub);
         expect(store.dirty).toBe(true);
     });
 
@@ -716,7 +723,7 @@ describe('store — panel_dynamic template authoring', () => {
 
         updateTemplateField(panel.name, sub.name, { required: true });
 
-        expect(panel.typeProps.templateElements[0].required).toBe(true);
+        expect(panel.typeProps.templateElements[1].required).toBe(true);
     });
 
     it('setTemplateFieldChoices replaces a sub-question\'s choices wholesale', () => {
@@ -726,7 +733,7 @@ describe('store — panel_dynamic template authoring', () => {
         const next = [{ value: 'a', label: { ar: 'أ', en: null }, raw: {} }];
         setTemplateFieldChoices(panel.name, sub.name, next);
 
-        expect(panel.typeProps.templateElements[0].choices).toEqual(next);
+        expect(panel.typeProps.templateElements[1].choices).toEqual(next);
     });
 
     it('removeTemplateField removes only the targeted sub-question', () => {
@@ -736,8 +743,8 @@ describe('store — panel_dynamic template authoring', () => {
 
         removeTemplateField(panel.name, first.name);
 
-        expect(panel.typeProps.templateElements).toHaveLength(1);
-        expect(panel.typeProps.templateElements[0]).toBe(second);
+        expect(panel.typeProps.templateElements).toHaveLength(2);
+        expect(panel.typeProps.templateElements[1]).toBe(second);
     });
 
     it('reorderTemplateFields replaces the whole template list (drag reorder)', () => {
@@ -763,7 +770,8 @@ describe('store — template sub-questions are first-class fields', () => {
         // store, so it returns the proxy wrapper of the same underlying field.
         expect(found.field.name).toBe(sub.name);
         expect(found.parent?.name).toBe(panel.name);
-        expect(found.fieldIndex).toBe(0);
+        // Index 1: index 0 is the starter question seeded on panel creation.
+        expect(found.fieldIndex).toBe(1);
     });
 
     it('findField returns parent: null for top-level fields', () => {
@@ -773,11 +781,12 @@ describe('store — template sub-questions are first-class fields', () => {
 
     it('addTemplateQuestion inserts at an index, selects, and requests focus', () => {
         const panel = addField('panel_dynamic');
+        const [seeded] = panel.typeProps.templateElements;
         const first = addTemplateField(panel.name, 'short_text');
 
         const sub = addTemplateQuestion(panel.name, 'number', 0);
 
-        expect(panel.typeProps.templateElements.map((f) => f.name)).toEqual([sub.name, first.name]);
+        expect(panel.typeProps.templateElements.map((f) => f.name)).toEqual([sub.name, seeded.name, first.name]);
         expect(store.selectedFieldName).toBe(sub.name);
         expect(store.justAddedFieldName).toBe(sub.name);
         expect(store.focusFieldName).toBe(sub.name);
@@ -797,13 +806,14 @@ describe('store — template sub-questions are first-class fields', () => {
 
     it('removeField removes a template sub-question from its panel', () => {
         const panel = addField('panel_dynamic');
+        const [seeded] = panel.typeProps.templateElements;
         const first = addTemplateField(panel.name, 'short_text');
         const second = addTemplateField(panel.name, 'number');
         store.selectedFieldName = first.name;
 
         removeField(first.name);
 
-        expect(panel.typeProps.templateElements.map((f) => f.name)).toEqual([second.name]);
+        expect(panel.typeProps.templateElements.map((f) => f.name)).toEqual([seeded.name, second.name]);
         expect(store.selectedFieldName).toBeNull();
         // Top-level fields are untouched (the panel itself survives).
         expect(findField(panel.name)).toBeTruthy();
@@ -816,8 +826,8 @@ describe('store — template sub-questions are first-class fields', () => {
 
         const copy = duplicateField(sub.name);
 
-        expect(panel.typeProps.templateElements).toHaveLength(2);
-        expect(panel.typeProps.templateElements[1]).toBe(copy);
+        expect(panel.typeProps.templateElements).toHaveLength(3);
+        expect(panel.typeProps.templateElements[2]).toBe(copy);
         expect(copy.name).not.toBe(sub.name);
         expect(copy.label.ar).toBe('الاسم');
         expect(store.selectedFieldName).toBe(copy.name);
@@ -825,12 +835,12 @@ describe('store — template sub-questions are first-class fields', () => {
 
     it('duplicating a whole panel renames its template children (no collisions)', () => {
         const panel = addField('panel_dynamic');
-        const subA = addTemplateField(panel.name, 'short_text');
-        const subB = addTemplateField(panel.name, 'number');
+        addTemplateField(panel.name, 'short_text');
+        addTemplateField(panel.name, 'number');
 
         const copy = duplicateField(panel.name);
 
-        const originalNames = [panel.name, subA.name, subB.name];
+        const originalNames = [panel.name, ...panel.typeProps.templateElements.map((f) => f.name)];
         const copyNames = [copy.name, ...copy.typeProps.templateElements.map((f) => f.name)];
         // Every copied name is fresh…
         for (const name of copyNames) {
@@ -838,9 +848,10 @@ describe('store — template sub-questions are first-class fields', () => {
         }
         // …and unique within the copy.
         expect(new Set(copyNames).size).toBe(copyNames.length);
-        // Structure and content survive the clone.
-        expect(copy.typeProps.templateElements).toHaveLength(2);
-        expect(copy.typeProps.templateElements[0].type).toBe('short_text');
+        // Structure and content survive the clone (seeded starter + two adds).
+        expect(copy.typeProps.templateElements).toHaveLength(3);
+        expect(copy.typeProps.templateElements[1].type).toBe('short_text');
+        expect(copy.typeProps.templateElements[2].type).toBe('number');
     });
 
     it('addFieldSmart inserts after the selected sub-question inside the panel', () => {
@@ -851,8 +862,9 @@ describe('store — template sub-questions are first-class fields', () => {
 
         const added = addFieldSmart('yes_no');
 
-        expect(panel.typeProps.templateElements.map((f) => f.name)[1]).toBe(added.name);
-        expect(panel.typeProps.templateElements).toHaveLength(3);
+        // [seeded, first, added, number]
+        expect(panel.typeProps.templateElements.map((f) => f.name)[2]).toBe(added.name);
+        expect(panel.typeProps.templateElements).toHaveLength(4);
     });
 
     it('addFieldSmart falls back to after the parent panel for a panel_dynamic pick', () => {
@@ -862,8 +874,9 @@ describe('store — template sub-questions are first-class fields', () => {
 
         const added = addFieldSmart('panel_dynamic');
 
-        // No panel-in-panel: the new panel lands top-level, right after its would-be host.
-        expect(panel.typeProps.templateElements).toHaveLength(1);
+        // No panel-in-panel: the new panel lands top-level, right after its
+        // would-be host (seeded starter + sub stay inside the original).
+        expect(panel.typeProps.templateElements).toHaveLength(2);
         const names = store.state.pages[0].fields.map((f) => f.name);
         expect(names).toEqual([panel.name, added.name]);
     });

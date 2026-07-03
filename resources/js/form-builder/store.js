@@ -43,7 +43,7 @@ export const DEFAULT_CHOICE_LABELS = ['الخيار 1', 'الخيار 2', 'ال�
 export const DEFAULT_CHOICE_LABELS_EN = ['Option 1', 'Option 2', 'Option 3'];
 
 /** Builder types that should be seeded with {@link DEFAULT_CHOICE_LABELS}. */
-const SEEDED_CHOICE_TYPES = ['single_choice', 'multi_choice', 'dropdown'];
+const SEEDED_CHOICE_TYPES = ['single_choice', 'multi_choice', 'dropdown', 'ranking', 'tagbox'];
 
 export const store = reactive({
     state: null,
@@ -776,6 +776,14 @@ export function addField(typeId, pageIndex = 0, index = null) {
     page.fields.splice(at, 0, field);
     store.selectedFieldName = field.name;
     store.justAddedFieldName = field.name;
+
+    // A freshly dropped repeating panel starts with one template question so
+    // the card is alive immediately (an empty panel is a dead preview and, at
+    // runtime, an entry with nothing to fill). Seeded here — after the panel
+    // is inserted — so nextName() sees the panel's own name (no collision).
+    if (field.type === 'panel_dynamic') {
+        addTemplateField(field.name, 'short_text');
+    }
     markDirty();
 
     return field;
