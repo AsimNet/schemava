@@ -9,6 +9,7 @@ import {
     addPage,
     movePage,
     setPageTitle,
+    setPageDescription,
     markDirty,
 } from '../store.js';
 import { t } from '../i18n.js';
@@ -37,6 +38,25 @@ function onPageTitleInput(pageIndex, value) {
         lstr.ar = value;
     }
     setPageTitle(pageIndex, lstr);
+}
+
+function pageDescriptionValue(page) {
+    if (!page.description) {
+        return '';
+    }
+
+    return (contentLocale.value === 'en' ? page.description.en : page.description.ar) ?? '';
+}
+
+function onPageDescriptionInput(pageIndex, value) {
+    const page = pages.value[pageIndex];
+    const lstr = page.description ?? emptyLStr();
+    if (contentLocale.value === 'en') {
+        lstr.en = value === '' ? null : value;
+    } else {
+        lstr.ar = value;
+    }
+    setPageDescription(pageIndex, lstr);
 }
 
 /**
@@ -172,6 +192,16 @@ function moveDown(pageIndex) {
                             </svg>
                         </button>
                     </div>
+
+                    <input
+                        v-if="multiPage"
+                        :value="pageDescriptionValue(page)"
+                        type="text"
+                        class="fb-page-desc fb-focus"
+                        :placeholder="t('pageDescriptionPlaceholder')"
+                        :aria-label="t('pageDescriptionPlaceholder')"
+                        @input="onPageDescriptionInput(pageIndex, $event.target.value)"
+                    />
 
                     <draggable
                         :list="page.fields"
@@ -333,6 +363,21 @@ function moveDown(pageIndex) {
     color: var(--fb-text);
     padding: 0.25rem;
     border-radius: 0.375rem;
+}
+
+/* Optional per-page description, shown to respondents under the page title. */
+.fb-page-desc {
+    border: none;
+    background: transparent;
+    font-size: 0.8125rem;
+    color: var(--fb-text-muted);
+    padding: 0 0.25rem 0.25rem;
+    margin-top: -0.375rem;
+    border-radius: 0.375rem;
+}
+
+.fb-page-desc::placeholder {
+    color: #b6bac2;
 }
 
 .fb-page-remove {

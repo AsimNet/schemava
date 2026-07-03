@@ -45,6 +45,14 @@ export const DEFAULT_CHOICE_LABELS_EN = ['Option 1', 'Option 2', 'Option 3'];
 /** Builder types that should be seeded with {@link DEFAULT_CHOICE_LABELS}. */
 const SEEDED_CHOICE_TYPES = ['single_choice', 'multi_choice', 'dropdown', 'ranking', 'tagbox'];
 
+/**
+ * Builder types that CONTAIN other questions (in typeProps.templateElements):
+ * panel_dynamic repeats its children per entry; panel is a static group.
+ * Containers cannot nest inside each other in this editor (imported nested
+ * structures still render and round-trip losslessly).
+ */
+export const CONTAINER_TYPES = ['panel_dynamic', 'panel'];
+
 export const store = reactive({
     state: null,
     selectedFieldName: null,
@@ -179,7 +187,7 @@ function collectFieldNames() {
             if (field.name) {
                 names.add(field.name);
             }
-            if (field.type === 'panel_dynamic' && Array.isArray(field.typeProps?.templateElements)) {
+            if (CONTAINER_TYPES.includes(field.type) && Array.isArray(field.typeProps?.templateElements)) {
                 visit(field.typeProps.templateElements);
             }
         }
@@ -732,7 +740,7 @@ export function findField(name) {
             if (field.name === name) {
                 return { field, pageIndex: p, fieldIndex: f, parent: null };
             }
-            if (field.type === 'panel_dynamic' && Array.isArray(field.typeProps?.templateElements)) {
+            if (CONTAINER_TYPES.includes(field.type) && Array.isArray(field.typeProps?.templateElements)) {
                 const list = field.typeProps.templateElements;
                 for (let s = 0; s < list.length; s += 1) {
                     if (list[s].name === name) {
@@ -781,7 +789,7 @@ export function addField(typeId, pageIndex = 0, index = null) {
     // the card is alive immediately (an empty panel is a dead preview and, at
     // runtime, an entry with nothing to fill). Seeded here — after the panel
     // is inserted — so nextName() sees the panel's own name (no collision).
-    if (field.type === 'panel_dynamic') {
+    if (CONTAINER_TYPES.includes(field.type)) {
         addTemplateField(field.name, 'short_text');
     }
     markDirty();
@@ -828,7 +836,7 @@ export function addFieldSmart(typeId) {
     }
     const found = store.selectedFieldName ? findField(store.selectedFieldName) : null;
     if (found?.parent) {
-        if (typeId !== 'panel_dynamic') {
+        if (!CONTAINER_TYPES.includes(typeId)) {
             return addTemplateQuestion(found.parent.name, typeId, found.fieldIndex + 1);
         }
         const parentSpot = findField(found.parent.name);
@@ -848,7 +856,7 @@ export function addFieldSmart(typeId) {
  */
 function renameClonedTree(copy) {
     copy.name = nextName();
-    if (copy.type === 'panel_dynamic' && Array.isArray(copy.typeProps?.templateElements)) {
+    if (CONTAINER_TYPES.includes(copy.type) && Array.isArray(copy.typeProps?.templateElements)) {
         for (const sub of copy.typeProps.templateElements) {
             // Depth-first so nested names are claimed before the next sibling asks.
             renameClonedTree(sub);
@@ -933,7 +941,7 @@ export function setChoices(name, choices) {
  */
 function findTemplateField(panelName, subName) {
     const found = findField(panelName);
-    if (!found || found.field.type !== 'panel_dynamic') {
+    if (!found || !CONTAINER_TYPES.includes(found.field.type)) {
         return null;
     }
     const list = found.field.typeProps.templateElements ?? [];
@@ -952,7 +960,7 @@ function findTemplateField(panelName, subName) {
  */
 export function addTemplateField(panelName, typeId) {
     const found = findField(panelName);
-    if (!found || found.field.type !== 'panel_dynamic') {
+    if (!found || !CONTAINER_TYPES.includes(found.field.type)) {
         return null;
     }
     const field = makeField(typeId);
@@ -978,7 +986,7 @@ export function addTemplateField(panelName, typeId) {
  */
 export function addTemplateQuestion(panelName, typeId, index = null) {
     const found = findField(panelName);
-    if (!found || found.field.type !== 'panel_dynamic') {
+    if (!found || !CONTAINER_TYPES.includes(found.field.type)) {
         return null;
     }
     const field = makeField(typeId);
@@ -1037,7 +1045,7 @@ export function setTemplateFieldChoices(panelName, subName, choices) {
  */
 export function reorderTemplateFields(panelName, nextList) {
     const found = findField(panelName);
-    if (!found || found.field.type !== 'panel_dynamic') {
+    if (!found || !CONTAINER_TYPES.includes(found.field.type)) {
         return;
     }
     found.field.typeProps.templateElements = Array.isArray(nextList) ? nextList : [];
@@ -1349,6 +1357,15 @@ export function setPageTitle(pageIndex, lstr) {
         return;
     }
     page.title = isEmptyLStr(lstr) ? null : lstr;
+    markDirty();
+}
+
+export function setPageDescription(pageIndex, lstr) {
+    const page = store.state?.pages[pageIndex];
+    if (!page) {
+        return;
+    }
+    page.description = isEmptyLStr(lstr) ? null : lstr;
     markDirty();
 }
 

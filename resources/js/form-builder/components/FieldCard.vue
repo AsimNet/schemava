@@ -145,6 +145,19 @@ const isEmptyImagePicker = computed(() => props.field.type === 'imagepicker' && 
 
 const isMatrixFamily = computed(() => ['matrix', 'matrixdropdown', 'matrixdynamic'].includes(props.field.type));
 
+/* --------------------------------------------------------- slider preview */
+
+const isSlider = computed(() => props.field.type === 'slider');
+
+const sliderBounds = computed(() => {
+    if (!isSlider.value) {
+        return null;
+    }
+    const num = (v, fallback) => (Number.isFinite(Number(v)) ? Number(v) : fallback);
+
+    return { min: num(props.field.typeProps?.min, 0), max: num(props.field.typeProps?.max, 100) };
+});
+
 /* --------------------------------------- multipletext items (canvas rows) */
 
 const isMultipleText = computed(() => props.field.type === 'multipletext');
@@ -374,9 +387,12 @@ const statementHasContent = computed(() => statementHtml.value.trim() !== '');
 const isImage = computed(() => props.field.type === 'image');
 const imageLink = computed(() => props.field.typeProps?.imageLink ?? null);
 
-/* --------------------------------------- panel_dynamic nested authoring */
+/* ------------------------------- container (panel / panel_dynamic) authoring */
 
 const isPanelDynamic = computed(() => props.field.type === 'panel_dynamic');
+const isPanelStatic = computed(() => props.field.type === 'panel');
+/** Both containers share the nested-card canvas; only the chrome differs. */
+const isContainer = computed(() => isPanelDynamic.value || isPanelStatic.value);
 
 /**
  * The panel's template questions — the LIVE store array, so the nested
@@ -585,16 +601,22 @@ function cancelDelete() {
                     <p v-else class="fb-card-image-empty">{{ t('imageCardEmpty') }}</p>
                 </template>
 
-                <!-- panel_dynamic: the panel template IS the card — its questions
-                     render as nested cards with the full inline experience
+                <!-- containers (panel / panel_dynamic): the children ARE the card —
+                     they render as nested cards with the full inline experience
                      (label editing, choices, drag-reorder, duplicate, delete),
-                     and clicking one opens its full settings drawer. -->
-                <div v-if="isPanelDynamic" class="fb-panel">
+                     and clicking one opens its full settings drawer. Only the
+                     chrome differs: repeating panels show the repeat badge, the
+                     stacked-sheets shadow and the respondents-add pill; static
+                     groups are a flat outlined box. -->
+                <div v-if="isContainer" class="fb-panel" :class="{ 'fb-panel--static': isPanelStatic }">
                     <div class="fb-panel-bar">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true" class="fb-panel-bar-icon">
+                        <svg v-if="isPanelDynamic" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true" class="fb-panel-bar-icon">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M21.015 4.356v4.99m0 0l-3.181-3.182a8.25 8.25 0 00-13.803 3.7" />
                         </svg>
-                        <span class="fb-panel-bar-text">{{ t('panelRepeatsBadge') }}</span>
+                        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true" class="fb-panel-bar-icon">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+                        </svg>
+                        <span class="fb-panel-bar-text">{{ isPanelDynamic ? t('panelRepeatsBadge') : t('groupBadge') }}</span>
                         <span class="fb-panel-count-chip">{{ templateQuestionCount }} {{ t('panelQuestionsChip') }}</span>
                     </div>
 
@@ -620,10 +642,14 @@ function cancelDelete() {
                     </draggable>
 
                     <div class="fb-panel-foot" @click.stop>
-                        <AddQuestionMenu :exclude-types="['panel_dynamic']" :hint="t('addQuestionHintPanel')" @select="onAddTemplateQuestion" />
+                        <AddQuestionMenu
+                            :exclude-types="['panel_dynamic', 'panel']"
+                            :hint="isPanelDynamic ? t('addQuestionHintPanel') : t('addQuestionHintGroup')"
+                            @select="onAddTemplateQuestion"
+                        />
                         <!-- Not a builder control: explains that respondents add
                              entries at fill time (tooltip shows their button text). -->
-                        <span class="fb-panel-addpreview" :title="`${t('panelAddPreviewTitle')}: ${panelAddLabel}`" aria-hidden="true">
+                        <span v-if="isPanelDynamic" class="fb-panel-addpreview" :title="`${t('panelAddPreviewTitle')}: ${panelAddLabel}`" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.5v15m7.5-7.5h-15" />
                             </svg>
@@ -631,6 +657,16 @@ function cancelDelete() {
                             <span v-if="panelMaxCount" class="fb-panel-addpreview-max">×{{ panelMaxCount }}</span>
                         </span>
                     </div>
+                </div>
+
+                <!-- slider: mock track reflecting the configured bounds -->
+                <div v-if="sliderBounds" class="fb-card-slider" aria-hidden="true">
+                    <span class="fb-card-slider-bound">{{ sliderBounds.min }}</span>
+                    <span class="fb-card-slider-track">
+                        <span class="fb-card-slider-fill"></span>
+                        <span class="fb-card-slider-thumb"></span>
+                    </span>
+                    <span class="fb-card-slider-bound">{{ sliderBounds.max }}</span>
                 </div>
 
                 <!-- rating: reflect the configured rateType + rateMax (fix 3) -->
@@ -1113,10 +1149,68 @@ function cancelDelete() {
         0 0.625rem 0 -0.3125rem var(--fb-border);
 }
 
+/* Static group: a flat outlined box — no stacked-sheets shadow (that reads
+   as repetition) and a neutral bar color. */
+.fb-panel--static {
+    box-shadow: none;
+    margin-bottom: 0;
+}
+
+.fb-panel--static .fb-panel-bar-icon,
+.fb-panel--static .fb-panel-bar-text {
+    color: var(--fb-text-muted);
+}
+
 .fb-panel-bar {
     display: flex;
     align-items: center;
     gap: 0.375rem;
+}
+
+/* slider mock preview */
+.fb-card-slider {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0;
+}
+
+.fb-card-slider-bound {
+    flex: 0 0 auto;
+    font-size: 0.71875rem;
+    font-weight: 600;
+    color: var(--fb-text-muted);
+}
+
+.fb-card-slider-track {
+    flex: 1 1 auto;
+    position: relative;
+    height: 0.375rem;
+    border-radius: 999px;
+    background: var(--fb-canvas);
+    border: 1px solid var(--fb-border);
+}
+
+.fb-card-slider-fill {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: 40%;
+    border-radius: 999px;
+    background: var(--fb-brand-50);
+    border: 1px solid var(--fb-brand);
+}
+
+.fb-card-slider-thumb {
+    position: absolute;
+    top: 50%;
+    inset-inline-start: 40%;
+    transform: translateY(-50%);
+    width: 0.875rem;
+    height: 0.875rem;
+    border-radius: 999px;
+    background: var(--fb-surface);
+    border: 2px solid var(--fb-brand);
 }
 
 .fb-panel-bar-icon {

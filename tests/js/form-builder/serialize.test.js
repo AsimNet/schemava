@@ -78,6 +78,16 @@ describe('serialize — base round-trip per builder type (ar-only)', () => {
                 { type: 'radiogroup', name: 'member_gender', title: 'الجنس', choices: ['ذكر', 'أنثى'] },
             ],
         },
+        panel: {
+            type: 'panel',
+            name: 'q1',
+            title: 'بيانات أساسية',
+            elements: [
+                { type: 'text', name: 'g_name', title: 'الاسم', inputType: 'text' },
+                { type: 'dropdown', name: 'g_city', title: 'المدينة', choices: ['الرياض', 'بريدة'] },
+            ],
+        },
+        slider: { type: 'slider', name: 'q1', title: 'نسبة الرضا', min: 0, max: 10, step: 1 },
         ranking: { type: 'ranking', name: 'q1', title: 'ترتيب', choices: ['أ', 'ب'] },
         tagbox: { type: 'tagbox', name: 'q1', title: 'وسوم', choices: ['أ', 'ب'] },
         imagepicker: { type: 'imagepicker', name: 'q1', title: 'صورة', choices: ['أ', 'ب'] },
@@ -732,5 +742,26 @@ describe('serialize — multipletext items', () => {
     it('omits items only when the field never had any (legacy import without items)', () => {
         const out = roundTripElement({ type: 'multipletext', name: 'q1' });
         expect(out).toEqual({ type: 'multipletext', name: 'q1' });
+    });
+});
+
+describe('serialize — page descriptions', () => {
+    it('round-trips a page description (localized)', () => {
+        const json = {
+            pages: [{
+                name: 'p1',
+                title: 'الصفحة الأولى',
+                description: { default: 'وصف الصفحة', en: 'Page intro' },
+                elements: [],
+            }],
+        };
+        expect(roundTrip(json).pages[0]).toEqual(json.pages[0]);
+    });
+
+    it('parses a page description into an editable LStr', () => {
+        const state = fromSurveyJson({
+            pages: [{ name: 'p1', description: 'تعليمات', elements: [] }],
+        });
+        expect(state.pages[0].description).toEqual({ ar: 'تعليمات', en: null });
     });
 });
