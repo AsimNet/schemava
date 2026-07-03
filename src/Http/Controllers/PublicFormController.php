@@ -7,6 +7,7 @@ use AsimNet\Schemava\Contracts\SurveyAccessResolver;
 use AsimNet\Schemava\Contracts\SurveyAnswerValidator;
 use AsimNet\Schemava\Contracts\SurveySubmissionHandler;
 use AsimNet\Schemava\Models\SurveySchema;
+use AsimNet\Schemava\Services\SurveyScoreCalculator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -35,7 +36,7 @@ class PublicFormController
 
         return view('schemava::survey-form', [
             'schema' => $schema,
-            'surveyJson' => $schema->survey_json ?: (object) [],
+            'surveyJson' => $this->respondentSurveyJson($schema->survey_json),
             'unavailable' => $unavailable,
             'runtimeValues' => $unavailable ? [] : app(RuntimeContextProvider::class)->values($subject),
             'submitUrl' => route('schemava.public.submit', ['hash' => $schema->hash]),
@@ -90,5 +91,21 @@ class PublicFormController
         $model = config('schemava.models.schema', SurveySchema::class);
 
         return $model::query()->where('hash', $hash)->firstOrFail();
+    }
+
+    /**
+     * The survey definition as served to RESPONDENTS — grading keys
+     * (correctAnswer/score) stripped so the answer key never reaches the
+     * client. Scores are recomputed server-side from the stored schema.
+     *
+     * @return array<string, mixed>|object
+     */
+    private function respondentSurveyJson(?array $surveyJson): array|object
+    {
+        if (empty($surveyJson)) {
+            return (object) [];
+        }
+
+        return app(SurveyScoreCalculator::class)->withoutAnswerKeys($surveyJson);
     }
 }

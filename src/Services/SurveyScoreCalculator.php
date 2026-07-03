@@ -32,6 +32,55 @@ class SurveyScoreCalculator
     }
 
     /**
+     * Strip the grading key from a survey definition before serving it to
+     * RESPONDENTS: `correctAnswer` and `score` are authoring-side secrets — a
+     * respondent reading the raw JSON (DevTools, API) must not see the answer
+     * key. Recurses through pages, panels and paneldynamic templates. Scoring
+     * itself is unaffected: it always recomputes server-side against the
+     * stored schema, never against what the client saw.
+     *
+     * @param  array<string, mixed>  $surveyJson
+     * @return array<string, mixed>
+     */
+    public function withoutAnswerKeys(array $surveyJson): array
+    {
+        if (isset($surveyJson['pages']) && is_array($surveyJson['pages'])) {
+            foreach ($surveyJson['pages'] as $i => $page) {
+                if (is_array($page) && isset($page['elements']) && is_array($page['elements'])) {
+                    $surveyJson['pages'][$i]['elements'] = $this->stripKeysFromElements($page['elements']);
+                }
+            }
+        }
+
+        return $surveyJson;
+    }
+
+    /**
+     * @param  array<int, mixed>  $elements
+     * @return array<int, mixed>
+     */
+    private function stripKeysFromElements(array $elements): array
+    {
+        foreach ($elements as $i => $element) {
+            if (! is_array($element)) {
+                continue;
+            }
+
+            unset($element['correctAnswer'], $element['score']);
+
+            foreach (['elements', 'templateElements'] as $childKey) {
+                if (isset($element[$childKey]) && is_array($element[$childKey])) {
+                    $element[$childKey] = $this->stripKeysFromElements($element[$childKey]);
+                }
+            }
+
+            $elements[$i] = $element;
+        }
+
+        return $elements;
+    }
+
+    /**
      * @param  array<string, mixed>  $submittedData
      * @return array<string, mixed>
      */
