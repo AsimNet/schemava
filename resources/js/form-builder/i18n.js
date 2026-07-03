@@ -171,6 +171,11 @@ const MESSAGES = {
         rowsLabel: 'عدد الأسطر',
         showOtherItem: 'إضافة خيار «أخرى»',
         showSelectAllItem: 'إضافة خيار «تحديد الكل»',
+        rankingSelectToRank: 'تفعيل الترتيب بالاختيار',
+        rankingSelectToRankHint: 'وضع مناسب للجوال: اختر رقم الترتيب بدل السحب.',
+        imagePickerMultiSelect: 'السماح باختيار أكثر من صورة',
+        imagePickerShowLabel: 'إظهار النص أسفل الصورة',
+        colCountLabel: 'عدد الأعمدة',
         labelTrue: 'نص «نعم»',
         labelFalse: 'نص «لا»',
         labelTruePlaceholder: 'نعم',
@@ -235,6 +240,13 @@ const MESSAGES = {
         choiceValueHint: 'القيمة المخزّنة:',
         bulkPasteHint: 'يمكنك لصق عدة أسطر لإضافة خيارات دفعةً واحدة.',
         emptyChoices: 'لا توجد خيارات بعد.',
+
+        // Items editor (multipletext)
+        itemsLabel: 'الحقول الفرعية',
+        addItem: 'إضافة حقل فرعي',
+        removeItem: 'حذف الحقل',
+        emptyItems: 'لا توجد حقول فرعية بعد.',
+        itemNameLabel: 'الاسم (المعرّف)',
 
         // Logic editor
         logicActionLabel: 'الإجراء',
@@ -449,6 +461,11 @@ const MESSAGES = {
         rowsLabel: 'Rows',
         showOtherItem: 'Add an “Other” option',
         showSelectAllItem: 'Add a “Select all” option',
+        rankingSelectToRank: 'Enable select-to-rank',
+        rankingSelectToRankHint: 'Mobile-friendly mode: pick a rank number instead of dragging.',
+        imagePickerMultiSelect: 'Allow selecting multiple images',
+        imagePickerShowLabel: 'Show a label under each image',
+        colCountLabel: 'Columns',
         labelTrue: '“Yes” label',
         labelFalse: '“No” label',
         labelTruePlaceholder: 'Yes',
@@ -513,6 +530,13 @@ const MESSAGES = {
         choiceValueHint: 'Stored value:',
         bulkPasteHint: 'Paste multiple lines to add several choices at once.',
         emptyChoices: 'No choices yet.',
+
+        // Items editor (multipletext)
+        itemsLabel: 'Sub-fields',
+        addItem: 'Add sub-field',
+        removeItem: 'Remove field',
+        emptyItems: 'No sub-fields yet.',
+        itemNameLabel: 'Name (identifier)',
 
         // Logic editor
         logicActionLabel: 'Action',

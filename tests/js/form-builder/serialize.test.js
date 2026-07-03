@@ -59,6 +59,21 @@ describe('serialize — base round-trip per builder type (ar-only)', () => {
         single_choice: { type: 'radiogroup', name: 'q1', title: 'اختيار', choices: ['أ', 'ب'], showOtherItem: true },
         multi_choice: { type: 'checkbox', name: 'q1', title: 'متعدد', choices: ['أ', 'ب'], showSelectAllItem: true, showOtherItem: false },
         dropdown: { type: 'dropdown', name: 'q1', title: 'منسدلة', choices: ['أ', 'ب'] },
+        ranking: { type: 'ranking', name: 'q1', title: 'ترتيب', choices: ['أ', 'ب'], selectToRankEnabled: true },
+        tagbox: { type: 'tagbox', name: 'q1', title: 'اختيار', choices: ['أ', 'ب'], showOtherItem: true },
+        imagepicker: {
+            type: 'imagepicker', name: 'q1', title: 'صور',
+            choices: [{ value: 'a', text: 'أ', imageLink: 'https://x/a.png' }],
+            multiSelect: true, showLabel: false,
+        },
+        multipletext: {
+            type: 'multipletext', name: 'q1', title: 'حقول',
+            items: [
+                { name: 'first', title: 'الاسم الأول' },
+                { name: 'last', title: 'الاسم الأخير', inputType: 'email' },
+            ],
+            colCount: 2,
+        },
         yes_no: { type: 'boolean', name: 'q1', title: 'نعم/لا' },
         rating: { type: 'rating', name: 'q1', title: 'تقييم', rateMax: 7, rateType: 'smileys' },
         image: { type: 'image', name: 'q1', imageLink: 'https://x/y.png' },
@@ -181,6 +196,70 @@ describe('serialize — choices localization', () => {
             choices: [{ value: 'a', text: 'أ', imageLink: 'https://x/a.png' }],
         };
         expect(roundTripElement(element)).toEqual(element);
+    });
+});
+
+describe('serialize — multipletext items', () => {
+    it('string item -> plain string item (ar-only, name === title)', () => {
+        const out = roundTripElement({ type: 'multipletext', name: 'q1', title: 'س', items: ['first', 'last'] });
+        expect(out.items).toEqual(['first', 'last']);
+    });
+
+    it('name/title pair round-trips as {name, title}', () => {
+        const element = {
+            type: 'multipletext', name: 'q1', title: 'س',
+            items: [{ name: 'first', title: 'الاسم الأول' }],
+        };
+        expect(roundTripElement(element)).toEqual(element);
+    });
+
+    it('bilingual item title -> {name, title:{default, en}}', () => {
+        const element = {
+            type: 'multipletext', name: 'q1', title: 'س',
+            items: [{ name: 'first', title: { default: 'الاسم الأول', en: 'First name' } }],
+        };
+        expect(roundTripElement(element)).toEqual(element);
+    });
+
+    it('keeps a non-default inputType', () => {
+        const element = {
+            type: 'multipletext', name: 'q1', title: 'س',
+            items: [{ name: 'email', title: 'البريد', inputType: 'email' }],
+        };
+        expect(roundTripElement(element)).toEqual(element);
+    });
+
+    it('preserves unknown item props', () => {
+        const element = {
+            type: 'multipletext', name: 'q1', title: 'س',
+            items: [{ name: 'first', title: 'الاسم', isRequired: true }],
+        };
+        expect(roundTripElement(element)).toEqual(element);
+    });
+
+    it('a name without a title falls back to the name as the label (no title emitted on serialize)', () => {
+        const state = fromSurveyJson({
+            pages: [{ name: 'p1', elements: [{ type: 'multipletext', name: 'q1', title: 'س', items: ['first'] }] }],
+        });
+        const item = state.pages[0].fields[0].items[0];
+        expect(item.name).toBe('first');
+        expect(item.label).toEqual({ ar: 'first', en: null });
+
+        const out = toSurveyJson(state, { runtimeContextKeys: [] }).pages[0].elements[0];
+        expect(out.items).toEqual(['first']);
+    });
+
+    it('assigns a unique _uid to every parsed item and strips it on output', () => {
+        const state = fromSurveyJson({
+            pages: [{ name: 'p1', elements: [{ type: 'multipletext', name: 'q1', title: 'س', items: ['a', 'b'] }] }],
+        });
+        const items = state.pages[0].fields[0].items;
+        const uids = items.map((item) => item._uid);
+        expect(uids.every((uid) => typeof uid === 'string' && uid !== '')).toBe(true);
+        expect(new Set(uids).size).toBe(2);
+
+        const out = toSurveyJson(state, { runtimeContextKeys: [] }).pages[0].elements[0];
+        expect(JSON.stringify(out)).not.toContain('_uid');
     });
 });
 

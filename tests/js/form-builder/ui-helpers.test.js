@@ -11,6 +11,7 @@ import {
     valueInputKind,
     renameChoiceLabel,
     makeChoice,
+    makeItem,
     splitBulkLines,
     choiceValueDiverged,
     variableMetaFor,
@@ -210,6 +211,19 @@ describe('choices', () => {
         const choice = makeChoice('نعم');
         const next = renameChoiceLabel(choice, 'ar', 'موافق');
         expect(next._uid).toBe(choice._uid);
+    });
+
+    it('builds a multipletext item with a machine name and trimmed arabic label', () => {
+        const item = makeItem('first', '  الاسم الأول  ');
+        expect(item).toMatchObject({ name: 'first', label: { ar: 'الاسم الأول', en: null }, inputType: null, raw: {} });
+        expect(typeof item._uid).toBe('string');
+        expect(item._uid).not.toBe('');
+    });
+
+    it('gives each created item a unique _uid', () => {
+        const a = makeItem('a', '');
+        const b = makeItem('b', '');
+        expect(a._uid).not.toBe(b._uid);
     });
 
     it('splits bulk pasted lines, trimming blanks', () => {

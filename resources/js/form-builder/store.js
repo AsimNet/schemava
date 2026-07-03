@@ -5,8 +5,8 @@
  *   State = { meta, pages, surveyTexts, rawSurveyProps, contentLocale }
  *   Page  = { name, title, fields }
  *   Field = { name, type, label, description, placeholder, required, hidden,
- *             defaultValue?, defaultValueExpression?, choices?, quiz?, logic?,
- *             typeProps, raw }
+ *             defaultValue?, defaultValueExpression?, choices?, items?, quiz?,
+ *             logic?, typeProps, raw }
  *
  * Serialization lives in the model layer; the store only owns the editable
  * State and selection/dirty bookkeeping.
@@ -16,7 +16,7 @@ import { reactive } from 'vue';
 import { fromSurveyJson, toSurveyJson, nextFieldName } from './model/serialize.js';
 import { FIELD_TYPES, ADVANCED_TYPE } from './model/fieldTypes.js';
 import { emptyLStr, isEmptyLStr } from './model/localized.js';
-import { makeChoice } from './ui-helpers.js';
+import { makeChoice, makeItem } from './ui-helpers.js';
 import { t } from './i18n.js';
 
 /**
@@ -33,7 +33,17 @@ export const DEFAULT_CHOICE_LABELS = ['الخيار 1', 'الخيار 2', 'ال�
 export const DEFAULT_CHOICE_LABELS_EN = ['Option 1', 'Option 2', 'Option 3'];
 
 /** Builder types that should be seeded with {@link DEFAULT_CHOICE_LABELS}. */
-const SEEDED_CHOICE_TYPES = ['single_choice', 'multi_choice', 'dropdown'];
+const SEEDED_CHOICE_TYPES = ['single_choice', 'multi_choice', 'dropdown', 'ranking', 'tagbox', 'imagepicker'];
+
+/** Default item names + Arabic labels seeded onto a freshly added multipletext field. */
+export const DEFAULT_ITEM_NAMES = ['item1', 'item2'];
+export const DEFAULT_ITEM_LABELS = ['حقل 1', 'حقل 2'];
+
+/** English equivalents, used when the builder's active content locale is English. */
+export const DEFAULT_ITEM_LABELS_EN = ['Field 1', 'Field 2'];
+
+/** Builder types that should be seeded with {@link DEFAULT_ITEM_NAMES}/{@link DEFAULT_ITEM_LABELS}. */
+const SEEDED_ITEM_TYPES = ['multipletext'];
 
 export const store = reactive({
     state: null,
@@ -259,6 +269,7 @@ function makeField(typeId) {
         hidden: typeId === 'hidden_value',
         readOnly: false,
         choices: def?.hasChoices ? defaultChoices(type) : null,
+        items: def?.hasItems ? defaultItems(type) : null,
         quiz: null,
         logic: null,
         typeProps: baseTypeProps,
@@ -286,6 +297,26 @@ function defaultChoices(type) {
         : DEFAULT_CHOICE_LABELS;
 
     return labels.map((label) => makeChoice(label));
+}
+
+/**
+ * Initial items for a freshly created multipletext field — two defaults (in the
+ * active content locale) so the card immediately reflects the component's
+ * output; everything else starts empty.
+ *
+ * @param {string} type
+ * @returns {Array<{name: string, label: {ar: string, en: string|null}, inputType: string|null, raw: object}>}
+ */
+function defaultItems(type) {
+    if (!SEEDED_ITEM_TYPES.includes(type)) {
+        return [];
+    }
+
+    const labels = store.state?.contentLocale === 'en'
+        ? DEFAULT_ITEM_LABELS_EN
+        : DEFAULT_ITEM_LABELS;
+
+    return DEFAULT_ITEM_NAMES.map((name, index) => makeItem(name, labels[index]));
 }
 
 export function loadFromBoot(bootPayload) {
@@ -658,6 +689,20 @@ export function setChoices(name, choices) {
         return;
     }
     found.field.choices = Array.isArray(choices) ? choices : [];
+    markDirty();
+}
+
+/**
+ * Replace a field's items wholesale (multipletext's labeled sub-textboxes).
+ * `items` is an array of `{name, label:{ar,en}, inputType?, raw?}`. No-op for
+ * an unknown field.
+ */
+export function setItems(name, items) {
+    const found = findField(name);
+    if (!found) {
+        return;
+    }
+    found.field.items = Array.isArray(items) ? items : [];
     markDirty();
 }
 

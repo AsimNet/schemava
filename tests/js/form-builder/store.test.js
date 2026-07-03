@@ -18,7 +18,10 @@ import {
     toasts,
     pushToast,
     dismissToast,
+    setItems,
     DEFAULT_CHOICE_LABELS,
+    DEFAULT_ITEM_NAMES,
+    DEFAULT_ITEM_LABELS,
 } from '../../../resources/js/form-builder/store.js';
 import { toSurveyJson } from '../../../resources/js/form-builder/model/serialize.js';
 
@@ -28,7 +31,7 @@ beforeEach(() => {
 });
 
 describe('store — default choices on creation (fix 1)', () => {
-    for (const type of ['single_choice', 'multi_choice', 'dropdown']) {
+    for (const type of ['single_choice', 'multi_choice', 'dropdown', 'ranking', 'tagbox', 'imagepicker']) {
         it(`seeds ${type} with three Arabic default choices`, () => {
             const field = addField(type);
             expect(field.choices).toHaveLength(3);
@@ -52,6 +55,45 @@ describe('store — default choices on creation (fix 1)', () => {
         const json = toSurveyJson(store.state, { runtimeContextKeys: [] });
         const element = json.pages[0].elements.find((el) => el.name === field.name);
         expect(element.choices).toEqual(['الخيار 1', 'الخيار 2', 'الخيار 3']);
+    });
+});
+
+describe('store — multipletext items on creation', () => {
+    it('seeds multipletext with two default named items', () => {
+        const field = addField('multipletext');
+        expect(field.items).toHaveLength(2);
+        expect(field.items.map((item) => item.name)).toEqual(DEFAULT_ITEM_NAMES);
+        expect(field.items.map((item) => item.label.ar)).toEqual(DEFAULT_ITEM_LABELS);
+        for (const item of field.items) {
+            expect(item.label.en).toBeNull();
+            expect(item.inputType).toBeNull();
+        }
+    });
+
+    it('keeps non-multipletext fields with null items', () => {
+        expect(addField('short_text').items).toBeNull();
+        expect(addField('single_choice').items).toBeNull();
+    });
+
+    it('setItems replaces a field\'s items wholesale', () => {
+        const field = addField('multipletext');
+        setItems(field.name, [{ name: 'x', label: { ar: 'س', en: null }, inputType: null, raw: {} }]);
+        expect(findField(field.name).field.items).toHaveLength(1);
+        expect(findField(field.name).field.items[0].name).toBe('x');
+    });
+
+    it('setItems is a no-op for an unknown field', () => {
+        expect(() => setItems('does_not_exist', [])).not.toThrow();
+    });
+
+    it('serializes the default items as {name, title} objects (name differs from the Arabic label)', () => {
+        const field = addField('multipletext');
+        const json = toSurveyJson(store.state, { runtimeContextKeys: [] });
+        const element = json.pages[0].elements.find((el) => el.name === field.name);
+        expect(element.items).toEqual([
+            { name: 'item1', title: 'حقل 1' },
+            { name: 'item2', title: 'حقل 2' },
+        ]);
     });
 });
 

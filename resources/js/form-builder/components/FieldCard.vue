@@ -123,8 +123,12 @@ onBeforeUnmount(() => stop(cardEl.value));
 const hasLogic = computed(() => Boolean(props.field.logic));
 const hasQuiz = computed(() => Boolean(props.field.quiz));
 
-/** Whether this field's choices are editable inline on the card. */
-const isChoiceField = computed(() => ['single_choice', 'multi_choice', 'dropdown'].includes(props.field.type));
+/**
+ * Whether this field's choices are editable inline on the card. `imagepicker`
+ * is excluded — each choice carries an image best managed in the full drawer
+ * (ChoicesEditor's image upload control), so it keeps the read-only preview.
+ */
+const isChoiceField = computed(() => ['single_choice', 'multi_choice', 'dropdown', 'ranking', 'tagbox'].includes(props.field.type));
 
 const allChoices = computed(() => (Array.isArray(props.field.choices) ? props.field.choices : []));
 
@@ -242,6 +246,18 @@ const yesNoPreview = computed(() => {
         { key: 'true', text: pick(props.field.typeProps?.labelTrue, 'نعم') },
         { key: 'false', text: pick(props.field.typeProps?.labelFalse, 'لا') },
     ];
+});
+
+/** Read-only preview of a multipletext field's sub-field labels (name fallback). */
+const itemsPreview = computed(() => {
+    if (props.field.type !== 'multipletext' || !Array.isArray(props.field.items)) {
+        return [];
+    }
+
+    return props.field.items.map((item, index) => ({
+        key: item._uid ?? `idx_${index}`,
+        text: (contentLocale.value === 'en' ? item.label?.en : item.label?.ar) || item.name,
+    }));
 });
 
 /* ------------------------------------------------- rating preview (fix 3) */
@@ -534,6 +550,13 @@ function cancelDelete() {
                     <li v-for="option in yesNoPreview" :key="option.key" class="fb-card-choice">
                         <span class="fb-card-choice-mark" aria-hidden="true"></span>
                         <span class="fb-card-choice-text">{{ option.text }}</span>
+                    </li>
+                </ul>
+
+                <ul v-if="itemsPreview.length" class="fb-card-choices">
+                    <li v-for="item in itemsPreview" :key="item.key" class="fb-card-choice">
+                        <span class="fb-card-choice-mark" aria-hidden="true"></span>
+                        <span class="fb-card-choice-text">{{ item.text }}</span>
                     </li>
                 </ul>
             </template>

@@ -21,6 +21,7 @@ import {
 } from '../ui-helpers.js';
 import VariableMenu from './VariableMenu.vue';
 import ChoicesEditor from './ChoicesEditor.vue';
+import ItemsEditor from './ItemsEditor.vue';
 import LogicEditor from './LogicEditor.vue';
 import QuizEditor from './QuizEditor.vue';
 import RichTextEditor from './RichTextEditor.vue';
@@ -82,6 +83,7 @@ const supportsQuiz = computed(() => Boolean(def.value?.quizzable) || props.field
 const TYPES_WITH_OPTIONS = [
     'short_text', 'number', 'long_text', 'single_choice', 'multi_choice',
     'dropdown', 'yes_no', 'rating', 'file', 'image', 'statement', 'hidden_value',
+    'multipletext',
 ];
 const hasOptions = computed(() => !isAdvanced.value && (TYPES_WITH_OPTIONS.includes(props.field?.type) || hasChoices.value));
 
@@ -584,11 +586,11 @@ function close() {
                         <input type="number" min="1" class="fb-input fb-focus" :value="numberProp('rows')" @input="setNumberProp('rows', $event.target.value)" />
                     </label>
 
-                    <!-- single_choice / multi_choice / dropdown: choices -->
-                    <ChoicesEditor v-if="hasChoices" :field="field" />
+                    <!-- single_choice / multi_choice / dropdown / ranking / tagbox / imagepicker: choices -->
+                    <ChoicesEditor v-if="hasChoices" :field="field" :with-images="field.type === 'imagepicker'" />
 
-                    <!-- single_choice: showOtherItem -->
-                    <label v-if="field.type === 'single_choice' || field.type === 'multi_choice'" class="fb-toggle">
+                    <!-- single_choice / tagbox: showOtherItem -->
+                    <label v-if="field.type === 'single_choice' || field.type === 'multi_choice' || field.type === 'tagbox'" class="fb-toggle">
                         <input type="checkbox" class="fb-checkbox" :checked="typeProp('showOtherItem', false)" @change="setProp('showOtherItem', $event.target.checked)" />
                         <span>{{ t('showOtherItem') }}</span>
                     </label>
@@ -598,6 +600,34 @@ function close() {
                         <input type="checkbox" class="fb-checkbox" :checked="typeProp('showSelectAllItem', false)" @change="setProp('showSelectAllItem', $event.target.checked)" />
                         <span>{{ t('showSelectAllItem') }}</span>
                     </label>
+
+                    <!-- ranking: selectToRankEnabled -->
+                    <label v-if="field.type === 'ranking'" class="fb-toggle">
+                        <input type="checkbox" class="fb-checkbox" :checked="typeProp('selectToRankEnabled', false)" @change="setProp('selectToRankEnabled', $event.target.checked)" />
+                        <span>{{ t('rankingSelectToRank') }}</span>
+                    </label>
+                    <p v-if="field.type === 'ranking'" class="fb-hint">{{ t('rankingSelectToRankHint') }}</p>
+
+                    <!-- imagepicker: multiSelect + showLabel -->
+                    <template v-if="field.type === 'imagepicker'">
+                        <label class="fb-toggle">
+                            <input type="checkbox" class="fb-checkbox" :checked="typeProp('multiSelect', false)" @change="setProp('multiSelect', $event.target.checked)" />
+                            <span>{{ t('imagePickerMultiSelect') }}</span>
+                        </label>
+                        <label class="fb-toggle">
+                            <input type="checkbox" class="fb-checkbox" :checked="typeProp('showLabel', true)" @change="setProp('showLabel', $event.target.checked)" />
+                            <span>{{ t('imagePickerShowLabel') }}</span>
+                        </label>
+                    </template>
+
+                    <!-- multipletext: items + colCount -->
+                    <template v-if="field.type === 'multipletext'">
+                        <ItemsEditor :field="field" />
+                        <label class="fb-field">
+                            <span class="fb-field-label">{{ t('colCountLabel') }}</span>
+                            <input type="number" min="1" max="4" class="fb-input fb-focus" :value="typeProp('colCount', 1)" @input="setNumberProp('colCount', $event.target.value)" />
+                        </label>
+                    </template>
 
                     <!-- yes_no: labelTrue / labelFalse (localized) -->
                     <template v-if="field.type === 'yes_no'">

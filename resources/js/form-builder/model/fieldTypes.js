@@ -73,6 +73,31 @@ export const FIELD_TYPES = {
         quizzable: true,
         typeProps: {},
     },
+    ranking: {
+        surveyType: 'ranking',
+        group: 'choices',
+        label: { ar: 'ترتيب', en: 'Ranking' },
+        icon: 'M3 7.5L7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5',
+        hasChoices: true,
+        typeProps: { selectToRankEnabled: false },
+    },
+    tagbox: {
+        surveyType: 'tagbox',
+        group: 'choices',
+        label: { ar: 'اختيار متعدد (بحث)', en: 'Tag box' },
+        icon: 'M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z',
+        hasChoices: true,
+        hasPlaceholder: true,
+        typeProps: { showOtherItem: false },
+    },
+    imagepicker: {
+        surveyType: 'imagepicker',
+        group: 'choices',
+        label: { ar: 'اختيار بالصور', en: 'Image picker' },
+        icon: 'M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z',
+        hasChoices: true,
+        typeProps: { multiSelect: false, showLabel: true },
+    },
     yes_no: {
         surveyType: 'boolean',
         group: 'choices',
@@ -123,6 +148,14 @@ export const FIELD_TYPES = {
         icon: 'M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88',
         typeProps: {},
     },
+    multipletext: {
+        surveyType: 'multipletext',
+        group: 'essentials',
+        label: { ar: 'حقول نصية متعددة', en: 'Multiple textboxes' },
+        icon: 'M3.75 5.25h16.5M3.75 9.75h7.5m-7.5 4.5h16.5M3.75 18.75h7.5',
+        hasItems: true,
+        typeProps: { colCount: 1 },
+    },
 };
 
 /** Pseudo-type for unrecognized SurveyJS elements (matrix, paneldynamic, …). */
@@ -150,6 +183,7 @@ export const COMMON_ELEMENT_PROPS = [
     'correctAnswer',
     'score',
     'choices',
+    'items',
 ];
 
 /**
@@ -167,6 +201,9 @@ export const TYPE_PROP_SPECS = {
     single_choice: { props: ['showOtherItem'] },
     multi_choice: { props: ['showOtherItem', 'showSelectAllItem'] },
     dropdown: { props: [] },
+    ranking: { props: ['selectToRankEnabled'] },
+    tagbox: { props: ['showOtherItem'] },
+    imagepicker: { props: ['multiSelect', 'showLabel'] },
     yes_no: { localized: ['labelTrue', 'labelFalse'] },
     rating: { props: ['rateMax', 'rateType'] },
     file: {
@@ -179,6 +216,7 @@ export const TYPE_PROP_SPECS = {
     image: { props: ['imageLink'] },
     statement: { localized: ['html'] },
     hidden_value: {},
+    multipletext: { props: ['colCount'] },
 };
 
 /**

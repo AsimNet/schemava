@@ -439,6 +439,18 @@ export function makeChoice(arText) {
 }
 
 /**
+ * Build a fresh multipletext item from a machine `name` and an Arabic label.
+ * Mirrors {@see makeChoice}'s shape (a stable non-serialized `_uid`, `raw: {}`).
+ *
+ * @param {string} name
+ * @param {string} arLabel
+ * @returns {{_uid: string, name: string, label: {ar: string, en: string|null}, inputType: string|null, raw: object}}
+ */
+export function makeItem(name, arLabel) {
+    return { _uid: choiceUid(), name, label: { ar: (arLabel ?? '').trim(), en: null }, inputType: null, raw: {} };
+}
+
+/**
  * Split bulk-pasted multiline text into one trimmed line per non-empty row.
  *
  * @param {string} text

@@ -122,6 +122,34 @@ function parseChoice(item) {
 }
 
 /**
+ * SurveyJS multipletext item -> Item + leftover raw item props. Mirrors
+ * {@see parseChoice} (`name`/`title` in place of `value`/`text`), plus an
+ * optional `inputType`. Every parsed item gets a fresh non-serialized `_uid`.
+ *
+ * @param {unknown} item
+ * @returns {{_uid: string, name: string, label: {ar: string, en: string|null}, inputType: string|null, raw: object}}
+ */
+function parseItem(item) {
+    if (item === null || item === undefined) {
+        return { _uid: choiceUid(), name: '', label: emptyLStr(), inputType: null, raw: {} };
+    }
+
+    if (typeof item !== 'object') {
+        return { _uid: choiceUid(), name: String(item), label: { ar: String(item), en: null }, inputType: null, raw: {} };
+    }
+
+    const { name, title, inputType, ...rest } = /** @type {Record<string, unknown>} */ (item);
+
+    return {
+        _uid: choiceUid(),
+        name: name ?? '',
+        label: parseLStr(title ?? name),
+        inputType: typeof inputType === 'string' ? inputType : null,
+        raw: rest,
+    };
+}
+
+/**
  * Read a single element into a builder Field.
  *
  * @param {Record<string, unknown>} element
@@ -147,6 +175,7 @@ function elementToField(element, usedNames) {
             required: element.isRequired === true,
             hidden: element.visible === false,
             choices: null,
+            items: null,
             quiz: null,
             logic: null,
             typeProps: {},
@@ -246,6 +275,12 @@ function elementToField(element, usedNames) {
         choices = element.choices.map(parseChoice);
     }
 
+    // Items (multipletext's labeled sub-textboxes).
+    let items = null;
+    if (Array.isArray(element.items)) {
+        items = element.items.map(parseItem);
+    }
+
     return {
         name,
         type: builderType,
@@ -265,6 +300,7 @@ function elementToField(element, usedNames) {
             ? element.defaultValueExpression
             : undefined,
         choices,
+        items,
         quiz,
         logic,
         typeProps,
@@ -379,6 +415,37 @@ function serializeChoice(choice) {
 }
 
 /**
+ * Item -> SurveyJS multipletext item (plain string when ar-only & name===label
+ * text and no inputType override). Mirrors {@see serializeChoice}.
+ *
+ * @param {{_uid?: string, name: string, label: {ar: string, en: string|null}, inputType?: string|null, raw?: object}} item
+ * @returns {unknown}
+ */
+function serializeItem(item) {
+    const label = item.label ?? emptyLStr();
+    const text = serializeLStr(label);
+    const rawItem = item.raw ?? {};
+    const hasRaw = Object.keys(rawItem).length > 0;
+    const arOnly = (label.en ?? '').trim() === '';
+    const hasInputType = typeof item.inputType === 'string' && item.inputType !== '' && item.inputType !== 'text';
+
+    if (arOnly && !hasRaw && !hasInputType && item.name === label.ar) {
+        return item.name;
+    }
+
+    /** @type {Record<string, unknown>} */
+    const out = { ...rawItem, name: item.name };
+    if (text !== undefined) {
+        out.title = text;
+    }
+    if (hasInputType) {
+        out.inputType = item.inputType;
+    }
+
+    return out;
+}
+
+/**
  * Field -> SurveyJS element. Spread `raw` first, then known props win.
  *
  * @param {object} field
@@ -444,6 +511,11 @@ function fieldToElement(field) {
     // Choices.
     if (Array.isArray(field.choices)) {
         element.choices = field.choices.map(serializeChoice);
+    }
+
+    // Items (multipletext).
+    if (Array.isArray(field.items)) {
+        element.items = field.items.map(serializeItem);
     }
 
     // Logic. A `disable` action (or an advanced block tagged `target:'enable'`)
