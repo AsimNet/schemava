@@ -4,6 +4,7 @@ namespace AsimNet\Schemava\Http\Controllers;
 
 use AsimNet\Schemava\Contracts\RuntimeContextProvider;
 use AsimNet\Schemava\Contracts\SurveyAccessResolver;
+use AsimNet\Schemava\Contracts\SurveyAnswerValidator;
 use AsimNet\Schemava\Contracts\SurveySubmissionHandler;
 use AsimNet\Schemava\Models\SurveySchema;
 use Illuminate\Contracts\View\View;
@@ -64,6 +65,16 @@ class PublicFormController
         $validated = $request->validate([
             'data' => ['required', 'array'],
         ]);
+
+        $errors = app(SurveyAnswerValidator::class)->validate($schema, $validated['data']);
+
+        if ($errors !== []) {
+            return response()->json([
+                'success' => false,
+                'message' => $errors[0],
+                'errors' => $errors,
+            ], 422);
+        }
 
         app(SurveySubmissionHandler::class)->store($schema, $subject, $validated['data']);
 

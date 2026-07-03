@@ -3,6 +3,7 @@
 use AsimNet\Schemava\Models\SurveyResult;
 use AsimNet\Schemava\Models\SurveySchema;
 use AsimNet\Schemava\Support\DefaultRuntimeContextProvider;
+use AsimNet\Schemava\Support\DefaultSurveyAnswerValidator;
 use AsimNet\Schemava\Support\DefaultSurveySubmissionHandler;
 use AsimNet\Schemava\Support\DefaultSurveyUrlResolver;
 use AsimNet\Schemava\Support\NullAiAssistant;
@@ -85,6 +86,25 @@ return [
         'ai_assistant' => NullAiAssistant::class,
         'url_resolver' => DefaultSurveyUrlResolver::class,
         'submission_handler' => DefaultSurveySubmissionHandler::class,
+        'answer_validator' => DefaultSurveyAnswerValidator::class,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Answer validation
+    |--------------------------------------------------------------------------
+    |
+    | Limits enforced by the default SurveyAnswerValidator against public/API
+    | submissions, before they reach the SurveySubmissionHandler.
+    |
+    */
+
+    'answer_validation' => [
+        // Max size (bytes) of the JSON-encoded `data` payload.
+        'max_payload_bytes' => 65536,
+
+        // Max nesting depth of the `data` payload.
+        'max_depth' => 10,
     ],
 
     /*

@@ -15,7 +15,8 @@ class PublicFormTest extends TestCase
             'title' => 'Contact',
             'is_active' => true,
             'survey_json' => ['pages' => [['name' => 'p1', 'elements' => [
-                ['type' => 'text', 'name' => 'full_name', 'title' => 'Your name'],
+                ['type' => 'text', 'name' => 'full_name', 'title' => 'Your name', 'isRequired' => true],
+                ['type' => 'radiogroup', 'name' => 'color', 'title' => 'Favorite color', 'choices' => ['red', 'green', 'blue']],
             ]]]],
         ], $attributes));
     }
@@ -73,5 +74,55 @@ class PublicFormTest extends TestCase
     public function it_404s_for_an_unknown_hash(): void
     {
         $this->get(route('schemava.public.show', ['hash' => 'missing000']))->assertNotFound();
+    }
+
+    #[Test]
+    public function it_rejects_a_submission_with_an_unknown_key(): void
+    {
+        $schema = $this->form();
+
+        $this->postJson(route('schemava.public.submit', ['hash' => $schema->hash]), [
+            'data' => ['full_name' => 'Sara', 'not_a_real_field' => 'x'],
+        ])->assertStatus(422);
+
+        $this->assertSame(0, SurveyResult::query()->count());
+    }
+
+    #[Test]
+    public function it_rejects_a_submission_missing_a_required_answer(): void
+    {
+        $schema = $this->form();
+
+        $this->postJson(route('schemava.public.submit', ['hash' => $schema->hash]), [
+            'data' => [],
+        ])->assertStatus(422);
+
+        $this->assertSame(0, SurveyResult::query()->count());
+    }
+
+    #[Test]
+    public function it_rejects_a_submission_with_an_invalid_choice(): void
+    {
+        $schema = $this->form();
+
+        $this->postJson(route('schemava.public.submit', ['hash' => $schema->hash]), [
+            'data' => ['full_name' => 'Sara', 'color' => 'purple'],
+        ])->assertStatus(422);
+
+        $this->assertSame(0, SurveyResult::query()->count());
+    }
+
+    #[Test]
+    public function it_rejects_an_oversized_submission(): void
+    {
+        config()->set('schemava.answer_validation.max_payload_bytes', 50);
+
+        $schema = $this->form();
+
+        $this->postJson(route('schemava.public.submit', ['hash' => $schema->hash]), [
+            'data' => ['full_name' => str_repeat('a', 200)],
+        ])->assertStatus(422);
+
+        $this->assertSame(0, SurveyResult::query()->count());
     }
 }

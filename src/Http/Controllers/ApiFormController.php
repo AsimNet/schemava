@@ -3,6 +3,7 @@
 namespace AsimNet\Schemava\Http\Controllers;
 
 use AsimNet\Schemava\Contracts\SurveyAccessResolver;
+use AsimNet\Schemava\Contracts\SurveyAnswerValidator;
 use AsimNet\Schemava\Contracts\SurveySubmissionHandler;
 use AsimNet\Schemava\Models\SurveySchema;
 use Illuminate\Database\Eloquent\Model;
@@ -74,6 +75,15 @@ class ApiFormController
         }
 
         $validated = $request->validate(['data' => ['required', 'array']]);
+
+        $errors = app(SurveyAnswerValidator::class)->validate($schema, $validated['data']);
+
+        if ($errors !== []) {
+            return response()->json([
+                'message' => $errors[0],
+                'errors' => $errors,
+            ], 422);
+        }
 
         $result = app(SurveySubmissionHandler::class)->store($schema, $subject, $validated['data']);
 
