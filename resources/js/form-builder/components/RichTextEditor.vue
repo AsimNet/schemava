@@ -132,6 +132,7 @@ const active = ref({
     bold: false, italic: false, underline: false,
     h2: false, h3: false, list: false,
     alignRight: false, alignCenter: false, alignLeft: false,
+    dirRtl: false,
 });
 
 function refreshActiveStates() {
@@ -166,6 +167,11 @@ function refreshActiveStates() {
         alignRight: state('justifyRight'),
         alignCenter: state('justifyCenter'),
         alignLeft: state('justifyLeft'),
+        dirRtl: (() => {
+            const blockEl = closestBlock(selection.anchorNode) ?? el;
+
+            return getComputedStyle(blockEl).direction === 'rtl';
+        })(),
     };
 }
 
@@ -179,6 +185,63 @@ onMounted(() => {
 onBeforeUnmount(() => {
     document.removeEventListener('selectionchange', refreshActiveStates);
 });
+
+/**
+ * Closest block-level element of `node` inside the editable — lists win over
+ * their items so direction applies to the WHOLE list (markers flip side as a
+ * unit, matching what an author means by "make this list RTL").
+ */
+function closestBlock(node) {
+    const el = editable.value;
+    let current = node instanceof Element ? node : node?.parentElement;
+    let target = null;
+    while (current && current !== el) {
+        const tag = current.tagName?.toLowerCase();
+        if (tag === 'ul' || tag === 'ol') {
+            return current;
+        }
+        if (['div', 'p', 'h2', 'h3', 'li', 'blockquote'].includes(tag)) {
+            target = current;
+        }
+        current = current.parentElement;
+    }
+
+    return target;
+}
+
+/**
+ * Toggle the caret block's text direction (dir attribute — semantic bidi, no
+ * styles). This is what moves LIST MARKERS: bullets sit on the start side of
+ * the block's direction, which text-align alone never changes.
+ */
+function toggleDirection() {
+    const el = editable.value;
+    if (!el) {
+        return;
+    }
+    el.focus();
+    const selection = document.getSelection();
+    if (!selection || !selection.anchorNode || !el.contains(selection.anchorNode)) {
+        return;
+    }
+    let block = closestBlock(selection.anchorNode);
+    if (!block) {
+        // Bare text at the root: promote the line to a block first.
+        try {
+            document.execCommand('formatBlock', false, 'div');
+        } catch {
+            /* unsupported */
+        }
+        block = closestBlock(document.getSelection()?.anchorNode);
+    }
+    if (!block) {
+        return;
+    }
+    const currentDir = block.getAttribute('dir') || getComputedStyle(block).direction || 'rtl';
+    block.setAttribute('dir', currentDir === 'rtl' ? 'ltr' : 'rtl');
+    onInput();
+    refreshActiveStates();
+}
 
 /** Heading buttons toggle: clicking the active heading returns to paragraph. */
 function formatBlock(tag) {
@@ -265,6 +328,7 @@ const TOOL_GROUPS = [
             icon: 'M20.25 6.75H3.75m16.5 5.25H9.75m10.5 5.25H6.75',
             command: () => exec('justifyRight'),
         },
+        { key: 'direction', label: 'richDirection', glyph: '¶', style: 'font-weight:700', state: 'dirRtl', command: toggleDirection },
     ],
     [
         {

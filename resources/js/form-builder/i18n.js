@@ -357,6 +357,7 @@ const MESSAGES = {
         richAlignRight: 'محاذاة لليمين',
         richAlignCenter: 'توسيط',
         richAlignLeft: 'محاذاة لليسار',
+        richDirection: 'اتجاه الفقرة (يمين ↔ يسار)',
 
         // Expression / calculated values
         expressionFormula: 'الصيغة الحسابية',
@@ -718,6 +719,7 @@ const MESSAGES = {
         richAlignRight: 'Align right',
         richAlignCenter: 'Center',
         richAlignLeft: 'Align left',
+        richDirection: 'Paragraph direction (RTL ↔ LTR)',
 
         // Expression / calculated values
         expressionFormula: 'Formula',
