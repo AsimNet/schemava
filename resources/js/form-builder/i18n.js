@@ -354,6 +354,9 @@ const MESSAGES = {
         sliderStep: 'مقدار الخطوة',
         richModeVisual: 'نص',
         richPlaceholder: 'اكتب النص هنا…',
+        richAlignRight: 'محاذاة لليمين',
+        richAlignCenter: 'توسيط',
+        richAlignLeft: 'محاذاة لليسار',
 
         // Expression / calculated values
         expressionFormula: 'الصيغة الحسابية',
@@ -712,6 +715,9 @@ const MESSAGES = {
         sliderStep: 'Step size',
         richModeVisual: 'Text',
         richPlaceholder: 'Write your text here…',
+        richAlignRight: 'Align right',
+        richAlignCenter: 'Center',
+        richAlignLeft: 'Align left',
 
         // Expression / calculated values
         expressionFormula: 'Formula',
