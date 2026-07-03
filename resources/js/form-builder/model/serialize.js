@@ -232,6 +232,53 @@ function serializeMatrixProps(builderType, typeProps, element) {
 }
 
 /**
+ * SurveyJS multipletext item -> TextItem + leftover raw props. Mirrors
+ * {@see parseMatrixColumn}'s shape/uid handling (name + localizable title).
+ *
+ * @param {unknown} item
+ * @returns {{_uid: string, name: string, title: {ar: string, en: string|null}, isRequired: boolean, raw: object}}
+ */
+function parseTextItem(item) {
+    if (item === null || item === undefined) {
+        return { _uid: choiceUid(), name: '', title: emptyLStr(), isRequired: false, raw: {} };
+    }
+
+    if (typeof item !== 'object') {
+        return { _uid: choiceUid(), name: String(item), title: emptyLStr(), isRequired: false, raw: {} };
+    }
+
+    const { name, title, isRequired, ...rest } = /** @type {Record<string, unknown>} */ (item);
+
+    return {
+        _uid: choiceUid(),
+        name: typeof name === 'string' ? name : String(name ?? ''),
+        title: title !== undefined && title !== null ? parseLStr(title) : emptyLStr(),
+        isRequired: isRequired === true,
+        raw: rest,
+    };
+}
+
+/**
+ * TextItem -> SurveyJS multipletext item. Mirrors {@see serializeMatrixColumn}.
+ *
+ * @param {{name: string, title?: {ar: string, en: string|null}, isRequired?: boolean, raw?: object}} item
+ * @returns {unknown}
+ */
+function serializeTextItem(item) {
+    const out = { ...(item.raw ?? {}) };
+    out.name = item.name;
+
+    if (item.title && !isEmptyLStr(item.title)) {
+        assignLocalized(out, 'title', item.title);
+    }
+    if (item.isRequired) {
+        out.isRequired = true;
+    }
+
+    return out;
+}
+
+/**
  * SurveyJS `calculatedValues` entry -> CalculatedValue + leftover raw props
  * (e.g. a `title` used by result exports). Invalid (non-object) entries are
  * dropped by the caller.
@@ -391,6 +438,11 @@ function elementToField(element, usedNames) {
 
     // Matrix family: parse rows/columns into typeProps.
     parseMatrixProps(builderType, element, typeProps);
+
+    // multipletext: parse the textbox items into typeProps.
+    if (builderType === 'multipletext' && Array.isArray(element.items)) {
+        typeProps.items = element.items.map(parseTextItem);
+    }
 
     // panel_dynamic: recursively parse the panel template's sub-questions into
     // real Fields (sharing `usedNames` so template question names stay unique
@@ -610,6 +662,11 @@ function fieldToElement(field) {
 
     // Matrix family: emit rows/columns from typeProps.
     serializeMatrixProps(field.type, field.typeProps, element);
+
+    // multipletext: re-emit the textbox items.
+    if (field.type === 'multipletext' && Array.isArray(field.typeProps?.items)) {
+        element.items = field.typeProps.items.map(serializeTextItem);
+    }
 
     // Choices.
     if (Array.isArray(field.choices)) {

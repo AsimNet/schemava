@@ -175,7 +175,7 @@ export const FIELD_TYPES = {
         label: { ar: 'حقول نصية متعددة', en: 'Multiple textboxes' },
         icon: 'M3.75 5.25h16.5M3.75 9.75h7.5m-7.5 4.5h16.5M3.75 18.75h7.5',
         hasItems: true,
-        typeProps: { colCount: 1 },
+        typeProps: { colCount: 1, items: [] },
     },
     expression: {
         surveyType: 'expression',
@@ -256,7 +256,8 @@ export const TYPE_PROP_SPECS = {
     image: { props: ['imageLink'] },
     statement: { localized: ['html'] },
     hidden_value: {},
-    multipletext: { props: ['colCount'] },
+    // items need custom (LStr-title) parsing/emitting — see serialize.js.
+    multipletext: { props: ['colCount'], custom: ['items'] },
     // rows/columns need custom (non-passthrough) parsing/emitting — see
     // elementToField/fieldToElement in serialize.js — so they are declared here
     // via `custom` purely to keep them out of `field.raw` (see managedPropsFor).

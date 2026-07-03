@@ -17,7 +17,7 @@ import {
 } from '../store.js';
 import { t, i18n } from '../i18n.js';
 import { fadeInUp, collapseOut, stop } from '../motion.js';
-import { renameChoiceLabel, makeChoice, sanitizeStatementHtml } from '../ui-helpers.js';
+import { renameChoiceLabel, makeChoice, makeTextItem, sanitizeStatementHtml } from '../ui-helpers.js';
 import { FIELD_TYPES, ADVANCED_TYPE } from '../model/fieldTypes.js';
 import { ratingPreviewItems } from '../ui-helpers.js';
 import AddQuestionMenu from './AddQuestionMenu.vue';
@@ -141,6 +141,68 @@ const isChoiceField = computed(() => ['single_choice', 'multi_choice', 'dropdown
 /* --------------------------------------------- matrix family (canvas grid) */
 
 const isMatrixFamily = computed(() => ['matrix', 'matrixdropdown', 'matrixdynamic'].includes(props.field.type));
+
+/* --------------------------------------- multipletext items (canvas rows) */
+
+const isMultipleText = computed(() => props.field.type === 'multipletext');
+
+const textItems = computed(() => {
+    const list = props.field.typeProps?.items;
+
+    return Array.isArray(list) ? list : [];
+});
+
+function itemTitleText(item) {
+    const lstr = item?.title ?? { ar: '', en: null };
+
+    return (contentLocale.value === 'en' ? lstr.en : lstr.ar) ?? '';
+}
+
+const itemInputs = ref([]);
+
+function setItemInputRef(el, index) {
+    if (el) {
+        itemInputs.value[index] = el;
+    }
+}
+
+function onItemTitleInput(index, value) {
+    const next = [...textItems.value];
+    const item = { ...next[index] };
+    const lstr = { ...(item.title ?? { ar: '', en: null }) };
+    if (contentLocale.value === 'en') {
+        lstr.en = value === '' ? null : value;
+    } else {
+        lstr.ar = value;
+    }
+    item.title = lstr;
+    next[index] = item;
+    updateTypeProp(props.field.name, 'items', next);
+}
+
+function removeItemAt(index) {
+    updateTypeProp(props.field.name, 'items', textItems.value.filter((_, i) => i !== index));
+}
+
+function addItem() {
+    const next = [...textItems.value, makeTextItem('', textItems.value.map((item) => item.name))];
+    updateTypeProp(props.field.name, 'items', next);
+    nextTick(() => itemInputs.value[next.length - 1]?.focus());
+}
+
+function onItemKeydown(index, event) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        if (index === textItems.value.length - 1) {
+            addItem();
+        } else {
+            itemInputs.value[index + 1]?.focus();
+        }
+    } else if (event.key === 'Escape') {
+        event.preventDefault();
+        event.target.blur();
+    }
+}
 
 const allChoices = computed(() => (Array.isArray(props.field.choices) ? props.field.choices : []));
 
@@ -666,6 +728,47 @@ function cancelDelete() {
                 <!-- matrix family: the grid IS the card — rows/columns edited
                      in place; cell types & per-column choices in the drawer. -->
                 <MatrixCardGrid v-if="isMatrixFamily" :field="field" />
+
+                <!-- multipletext: its textbox items, edited in place -->
+                <ul v-if="isMultipleText" class="fb-card-items" @click.stop>
+                    <li v-for="(item, index) in textItems" :key="item._uid ?? index" class="fb-card-item">
+                        <span class="fb-card-item-mark" aria-hidden="true"></span>
+                        <input
+                            :ref="(el) => setItemInputRef(el, index)"
+                            :value="itemTitleText(item)"
+                            type="text"
+                            size="1"
+                            class="fb-card-item-edit fb-focus"
+                            :placeholder="t('textItemTitlePlaceholder')"
+                            :aria-label="t('textItemsLabel')"
+                            @input="onItemTitleInput(index, $event.target.value)"
+                            @keydown="onItemKeydown(index, $event)"
+                        />
+                        <button
+                            type="button"
+                            class="fb-card-choice-remove fb-focus"
+                            :title="t('removeTextItem')"
+                            :aria-label="t('removeTextItem')"
+                            @click.stop="removeItemAt(index)"
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </li>
+                </ul>
+
+                <button
+                    v-if="isMultipleText"
+                    type="button"
+                    class="fb-card-add-choice fb-focus"
+                    @click.stop="addItem"
+                >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    <span>{{ t('addTextItem') }}</span>
+                </button>
             </template>
         </div>
 
@@ -1340,6 +1443,59 @@ function cancelDelete() {
 
 .fb-card-choice--editable {
     gap: 0.375rem;
+}
+
+/* multipletext items — same rhythm as editable choices, text-line mark */
+.fb-card-items {
+    list-style: none;
+    margin: 0.125rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1875rem;
+    cursor: default;
+}
+
+.fb-card-item {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.8125rem;
+    color: var(--fb-text-muted);
+}
+
+.fb-card-item-mark {
+    flex: 0 0 auto;
+    width: 0.875rem;
+    height: 0;
+    border-bottom: 1.5px solid var(--fb-border-strong);
+}
+
+.fb-card-item-edit {
+    flex: 1 1 0;
+    min-width: 0;
+    border: 1px solid transparent;
+    background: transparent;
+    font-size: 0.8125rem;
+    color: var(--fb-text);
+    padding: 0.25rem 0.375rem;
+    border-radius: 0.375rem;
+    font-family: inherit;
+    transition: border-color 0.15s, background-color 0.15s;
+}
+
+.fb-card-item-edit:hover {
+    border-color: var(--fb-border);
+}
+
+.fb-card-item-edit:focus {
+    border-color: var(--fb-border-strong);
+    background: var(--fb-surface);
+}
+
+.fb-card-item-edit::placeholder {
+    color: #b6bac2;
+    font-weight: 400;
 }
 
 .fb-card-choice-edit {

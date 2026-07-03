@@ -119,6 +119,7 @@ const TYPES_WITH_OPTIONS = [
     'panel_dynamic',
     'expression',
     'matrix', 'matrixdropdown', 'matrixdynamic',
+    'multipletext',
 ];
 const hasOptions = computed(() => !isAdvanced.value && (TYPES_WITH_OPTIONS.includes(props.field?.type) || hasChoices.value));
 
@@ -811,6 +812,16 @@ function close() {
                         />
                         <span class="fb-hint">{{ t('hiddenValueExpressionHint') }}</span>
                     </div>
+
+                    <!-- multipletext: column layout; items are edited on the canvas card -->
+                    <template v-if="field.type === 'multipletext'">
+                        <label class="fb-field">
+                            <span class="fb-field-label">{{ t('textItemsColCount') }}</span>
+                            <input type="number" min="1" max="5" class="fb-input fb-focus" :value="typeProp('colCount', 1)" @input="setNumberProp('colCount', $event.target.value)" />
+                            <span class="fb-hint">{{ t('textItemsColCountHint') }}</span>
+                        </label>
+                        <p class="fb-hint">{{ t('textItemsEditOnCanvas') }}</p>
+                    </template>
 
                     <!-- panel_dynamic: panel count bounds + add/remove texts + template -->
                     <template v-if="field.type === 'panel_dynamic'">

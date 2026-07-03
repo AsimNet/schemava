@@ -23,6 +23,9 @@ import {
     DEFAULT_MATRIX_ROW_LABELS_EN,
     DEFAULT_MATRIX_COLUMN_LABELS,
     DEFAULT_MATRIX_COLUMN_LABELS_EN,
+    makeTextItem,
+    DEFAULT_TEXT_ITEM_LABELS,
+    DEFAULT_TEXT_ITEM_LABELS_EN,
 } from './ui-helpers.js';
 import { t } from './i18n.js';
 
@@ -277,6 +280,12 @@ function makeField(typeId) {
         baseTypeProps.columns = [makeMatrixColumn(defaultMatrixColumnLabel())];
     }
 
+    // multipletext: seed two items so the question works (and previews) the
+    // moment it is dropped — an item-less multipletext renders nothing.
+    if (type === 'multipletext') {
+        baseTypeProps.items = defaultTextItems();
+    }
+
     const field = {
         name: nextName(),
         type,
@@ -324,6 +333,19 @@ function defaultMatrixRows() {
         : DEFAULT_MATRIX_ROW_LABELS;
 
     return labels.map((label) => makeChoice(label));
+}
+
+/** Default items for a freshly created multipletext field. */
+function defaultTextItems() {
+    const labels = store.state?.contentLocale === 'en'
+        ? DEFAULT_TEXT_ITEM_LABELS_EN
+        : DEFAULT_TEXT_ITEM_LABELS;
+    const items = [];
+    for (const label of labels) {
+        items.push(makeTextItem(label, items.map((item) => item.name)));
+    }
+
+    return items;
 }
 
 /** Default plain-choice columns for a freshly created `matrix` field. */

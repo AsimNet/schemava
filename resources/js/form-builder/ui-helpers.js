@@ -499,6 +499,38 @@ export function makeMatrixColumn(labelText, existingNames = []) {
     };
 }
 
+/**
+ * Build a fresh multipletext item with an auto-generated unique `name`
+ * (`item_1`, `item_2`, …). Mirrors {@see makeMatrixColumn}'s shape/uid handling.
+ *
+ * @param {string} labelText  the item title (active content locale)
+ * @param {string[]} [existingNames]  item names already used on this field
+ * @returns {{_uid: string, name: string, title: {ar: string, en: string|null}, isRequired: boolean, raw: object}}
+ */
+export function makeTextItem(labelText, existingNames = []) {
+    const taken = new Set(existingNames);
+    let n = 1;
+    let name = `item_${n}`;
+    while (taken.has(name)) {
+        n += 1;
+        name = `item_${n}`;
+    }
+
+    return {
+        _uid: choiceUid(),
+        name,
+        title: { ar: (labelText ?? '').trim(), en: null },
+        isRequired: false,
+        raw: {},
+    };
+}
+
+/** Default Arabic item titles seeded onto a freshly added multipletext field. */
+export const DEFAULT_TEXT_ITEM_LABELS = ['الحقل الأول', 'الحقل الثاني'];
+
+/** English equivalents, used when the builder's active content locale is English. */
+export const DEFAULT_TEXT_ITEM_LABELS_EN = ['Field 1', 'Field 2'];
+
 /** Matrix-family cellType values choosable from the columns editor (matrixdropdown/matrixdynamic). */
 export const MATRIX_CELL_TYPES = ['text', 'comment', 'checkbox', 'radiogroup', 'dropdown', 'boolean', 'rating'];
 

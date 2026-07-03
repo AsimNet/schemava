@@ -878,3 +878,18 @@ describe('store — template sub-questions are first-class fields', () => {
         expect(sub.name).toBe('employee_name');
     });
 });
+
+describe('store — multipletext default items', () => {
+    it('seeds two items with unique names so a fresh question actually renders', () => {
+        const field = addField('multipletext');
+        const items = field.typeProps.items;
+        expect(items).toHaveLength(2);
+        expect(items.map((item) => item.name)).toEqual(['item_1', 'item_2']);
+        expect(items[0].title.ar).not.toBe('');
+        // Serializes with the items attached (the pre-fix output had none).
+        const json = toSurveyJson(store.state, { runtimeContextKeys: [] });
+        const element = json.pages[0].elements[0];
+        expect(element.items).toHaveLength(2);
+        expect(element.items[0].name).toBe('item_1');
+    });
+});
