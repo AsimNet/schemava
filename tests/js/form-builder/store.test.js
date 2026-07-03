@@ -29,6 +29,12 @@ import {
     updateTemplateField,
     setTemplateFieldChoices,
     reorderTemplateFields,
+    addTemplateQuestion,
+    addFieldSmart,
+    updateField,
+    setChoices,
+    removeField,
+    duplicateField,
 } from '../../../resources/js/form-builder/store.js';
 import { toSurveyJson } from '../../../resources/js/form-builder/model/serialize.js';
 
@@ -742,5 +748,133 @@ describe('store — panel_dynamic template authoring', () => {
         reorderTemplateFields(panel.name, [second, first]);
 
         expect(panel.typeProps.templateElements.map((f) => f.name)).toEqual([second.name, first.name]);
+    });
+});
+
+describe('store — template sub-questions are first-class fields', () => {
+    it('findField resolves a template sub-question with its parent panel', () => {
+        const panel = addField('panel_dynamic');
+        const sub = addTemplateField(panel.name, 'short_text');
+
+        const found = findField(sub.name);
+
+        expect(found).toBeTruthy();
+        // Name identity (not object identity): findField walks the reactive
+        // store, so it returns the proxy wrapper of the same underlying field.
+        expect(found.field.name).toBe(sub.name);
+        expect(found.parent?.name).toBe(panel.name);
+        expect(found.fieldIndex).toBe(0);
+    });
+
+    it('findField returns parent: null for top-level fields', () => {
+        const field = addField('short_text');
+        expect(findField(field.name).parent).toBeNull();
+    });
+
+    it('addTemplateQuestion inserts at an index, selects, and requests focus', () => {
+        const panel = addField('panel_dynamic');
+        const first = addTemplateField(panel.name, 'short_text');
+
+        const sub = addTemplateQuestion(panel.name, 'number', 0);
+
+        expect(panel.typeProps.templateElements.map((f) => f.name)).toEqual([sub.name, first.name]);
+        expect(store.selectedFieldName).toBe(sub.name);
+        expect(store.justAddedFieldName).toBe(sub.name);
+        expect(store.focusFieldName).toBe(sub.name);
+    });
+
+    it('updateField / setChoices reach template sub-questions by name', () => {
+        const panel = addField('panel_dynamic');
+        const sub = addTemplateField(panel.name, 'single_choice');
+
+        updateField(sub.name, { required: true });
+        const next = [{ value: 'x', label: { ar: 'س', en: null }, raw: {} }];
+        setChoices(sub.name, next);
+
+        expect(sub.required).toBe(true);
+        expect(sub.choices).toEqual(next);
+    });
+
+    it('removeField removes a template sub-question from its panel', () => {
+        const panel = addField('panel_dynamic');
+        const first = addTemplateField(panel.name, 'short_text');
+        const second = addTemplateField(panel.name, 'number');
+        store.selectedFieldName = first.name;
+
+        removeField(first.name);
+
+        expect(panel.typeProps.templateElements.map((f) => f.name)).toEqual([second.name]);
+        expect(store.selectedFieldName).toBeNull();
+        // Top-level fields are untouched (the panel itself survives).
+        expect(findField(panel.name)).toBeTruthy();
+    });
+
+    it('duplicateField duplicates a sub-question inside the same panel with a fresh name', () => {
+        const panel = addField('panel_dynamic');
+        const sub = addTemplateField(panel.name, 'short_text');
+        sub.label.ar = 'الاسم';
+
+        const copy = duplicateField(sub.name);
+
+        expect(panel.typeProps.templateElements).toHaveLength(2);
+        expect(panel.typeProps.templateElements[1]).toBe(copy);
+        expect(copy.name).not.toBe(sub.name);
+        expect(copy.label.ar).toBe('الاسم');
+        expect(store.selectedFieldName).toBe(copy.name);
+    });
+
+    it('duplicating a whole panel renames its template children (no collisions)', () => {
+        const panel = addField('panel_dynamic');
+        const subA = addTemplateField(panel.name, 'short_text');
+        const subB = addTemplateField(panel.name, 'number');
+
+        const copy = duplicateField(panel.name);
+
+        const originalNames = [panel.name, subA.name, subB.name];
+        const copyNames = [copy.name, ...copy.typeProps.templateElements.map((f) => f.name)];
+        // Every copied name is fresh…
+        for (const name of copyNames) {
+            expect(originalNames).not.toContain(name);
+        }
+        // …and unique within the copy.
+        expect(new Set(copyNames).size).toBe(copyNames.length);
+        // Structure and content survive the clone.
+        expect(copy.typeProps.templateElements).toHaveLength(2);
+        expect(copy.typeProps.templateElements[0].type).toBe('short_text');
+    });
+
+    it('addFieldSmart inserts after the selected sub-question inside the panel', () => {
+        const panel = addField('panel_dynamic');
+        const first = addTemplateField(panel.name, 'short_text');
+        addTemplateField(panel.name, 'number');
+        store.selectedFieldName = first.name;
+
+        const added = addFieldSmart('yes_no');
+
+        expect(panel.typeProps.templateElements.map((f) => f.name)[1]).toBe(added.name);
+        expect(panel.typeProps.templateElements).toHaveLength(3);
+    });
+
+    it('addFieldSmart falls back to after the parent panel for a panel_dynamic pick', () => {
+        const panel = addField('panel_dynamic');
+        const sub = addTemplateField(panel.name, 'short_text');
+        store.selectedFieldName = sub.name;
+
+        const added = addFieldSmart('panel_dynamic');
+
+        // No panel-in-panel: the new panel lands top-level, right after its would-be host.
+        expect(panel.typeProps.templateElements).toHaveLength(1);
+        const names = store.state.pages[0].fields.map((f) => f.name);
+        expect(names).toEqual([panel.name, added.name]);
+    });
+
+    it('renameField renames a sub-question and rejects duplicates across scopes', () => {
+        const panel = addField('panel_dynamic');
+        const sub = addTemplateField(panel.name, 'short_text');
+        const top = addField('short_text');
+
+        expect(renameField(sub.name, top.name)).toBe('fieldNameDuplicate');
+        expect(renameField(sub.name, 'employee_name')).toBeNull();
+        expect(sub.name).toBe('employee_name');
     });
 });

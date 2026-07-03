@@ -1,5 +1,6 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import draggable from 'vuedraggable';
 import {
     store,
     selectField,
@@ -11,15 +12,23 @@ import {
     clearLabelFocus,
     clearFieldAdded,
     markDirty,
+    addTemplateQuestion,
 } from '../store.js';
 import { t, i18n } from '../i18n.js';
 import { fadeInUp, collapseOut, stop } from '../motion.js';
 import { renameChoiceLabel, makeChoice, sanitizeStatementHtml } from '../ui-helpers.js';
 import { FIELD_TYPES, ADVANCED_TYPE } from '../model/fieldTypes.js';
 import { ratingPreviewItems } from '../ui-helpers.js';
+import AddQuestionMenu from './AddQuestionMenu.vue';
+// Self-import: panel_dynamic cards render their template questions as nested
+// FieldCards, so authoring inside a repeating panel is the same experience as
+// authoring at the page level (Vite resolves the circular self-reference).
+import FieldCard from './FieldCard.vue';
 
 const props = defineProps({
     field: { type: Object, required: true },
+    /** True when this card is a panel_dynamic template question (nested render). */
+    nested: { type: Boolean, default: false },
 });
 
 /** Max choice rows rendered inline before the "+N" hint hands off to the drawer. */
@@ -285,16 +294,55 @@ const statementHasContent = computed(() => statementHtml.value.trim() !== '');
 const isImage = computed(() => props.field.type === 'image');
 const imageLink = computed(() => props.field.typeProps?.imageLink ?? null);
 
-/* ------------------------------------------------- panel_dynamic preview */
+/* --------------------------------------- panel_dynamic nested authoring */
 
 const isPanelDynamic = computed(() => props.field.type === 'panel_dynamic');
-const templateQuestionCount = computed(() => {
+
+/**
+ * The panel's template questions — the LIVE store array, so the nested
+ * draggable's in-place mutations persist (mirrors BuilderCanvas's binding).
+ * makeField/serialize always seed `templateElements: []` for panel_dynamic,
+ * so the fallback only guards hand-crafted states.
+ */
+const templateList = computed(() => {
     const list = props.field.typeProps?.templateElements;
 
-    return Array.isArray(list) ? list.length : 0;
+    return Array.isArray(list) ? list : [];
 });
 
-function onSelect() {
+const templateQuestionCount = computed(() => templateList.value.length);
+
+/** What the respondent's add-entry button will say (falls back like the runtime). */
+const panelAddLabel = computed(() => {
+    const lstr = props.field.typeProps?.panelAddText;
+    const text = (contentLocale.value === 'en' ? lstr?.en : lstr?.ar) ?? lstr?.ar ?? '';
+
+    return text !== '' ? text : t('panelAddTextPlaceholder');
+});
+
+const panelMaxCount = computed(() => {
+    const max = props.field.typeProps?.maxPanelCount;
+
+    return typeof max === 'number' && Number.isFinite(max) ? max : null;
+});
+
+/** Add a question inside this panel (selects it + auto-focuses its label). */
+function onAddTemplateQuestion(typeId) {
+    addTemplateQuestion(props.field.name, typeId);
+}
+
+/**
+ * Nested draggable change handler — vuedraggable already mutated the bound
+ * template array in place, so only the dirty flag needs to be raised.
+ */
+function onTemplateChange() {
+    markDirty();
+}
+
+function onSelect(event) {
+    // Nested cards live inside their parent's clickable body: stop the click
+    // here so the parent card doesn't immediately steal the selection back.
+    event?.stopPropagation?.();
     selectField(props.field.name);
 }
 
@@ -351,13 +399,13 @@ function cancelDelete() {
     <div
         ref="cardEl"
         class="fb-card"
-        :class="{ 'fb-card--selected': isSelected, 'fb-card--locked': isAdvanced }"
+        :class="{ 'fb-card--selected': isSelected, 'fb-card--locked': isAdvanced, 'fb-card--nested': nested }"
         :data-field-name="field.name"
         @click="onSelect"
     >
         <button
             type="button"
-            class="fb-drag-handle"
+            :class="nested ? 'fb-subdrag-handle' : 'fb-drag-handle'"
             :title="t('dragHandle')"
             :aria-label="t('dragHandle')"
             @click.stop
@@ -457,10 +505,51 @@ function cancelDelete() {
                     <p v-else class="fb-card-image-empty">{{ t('imageCardEmpty') }}</p>
                 </template>
 
-                <!-- panel_dynamic: how many questions repeat per panel -->
-                <p v-if="isPanelDynamic" class="fb-card-panel-hint">
-                    {{ templateQuestionCount }} {{ t('panelTemplateCount') }}
-                </p>
+                <!-- panel_dynamic: the panel template IS the card — its questions
+                     render as nested cards with the full inline experience
+                     (label editing, choices, drag-reorder, duplicate, delete),
+                     and clicking one opens its full settings drawer. -->
+                <div v-if="isPanelDynamic" class="fb-panel">
+                    <div class="fb-panel-bar">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true" class="fb-panel-bar-icon">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M21.015 4.356v4.99m0 0l-3.181-3.182a8.25 8.25 0 00-13.803 3.7" />
+                        </svg>
+                        <span class="fb-panel-bar-text">{{ t('panelRepeatsBadge') }}</span>
+                        <span class="fb-panel-count-chip">{{ templateQuestionCount }} {{ t('panelQuestionsChip') }}</span>
+                    </div>
+
+                    <p v-if="templateQuestionCount === 0" class="fb-panel-empty">
+                        {{ t('panelTemplateEmpty') }}
+                    </p>
+
+                    <draggable
+                        v-else
+                        :list="templateList"
+                        item-key="name"
+                        handle=".fb-subdrag-handle"
+                        class="fb-panel-sublist"
+                        ghost-class="fb-ghost"
+                        chosen-class="fb-chosen"
+                        drag-class="fb-drag"
+                        :animation="150"
+                        @change="onTemplateChange"
+                    >
+                        <template #item="{ element }">
+                            <FieldCard :field="element" nested />
+                        </template>
+                    </draggable>
+
+                    <div class="fb-panel-foot" @click.stop>
+                        <AddQuestionMenu :exclude-types="['panel_dynamic']" @select="onAddTemplateQuestion" />
+                        <span class="fb-panel-addpreview" :title="t('panelAddPreviewTitle')" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.5v15m7.5-7.5h-15" />
+                            </svg>
+                            <span>{{ panelAddLabel }}</span>
+                            <span v-if="panelMaxCount" class="fb-panel-addpreview-max">×{{ panelMaxCount }}</span>
+                        </span>
+                    </div>
+                </div>
 
                 <!-- rating: reflect the configured rateType + rateMax (fix 3) -->
                 <div v-if="ratingPreview" class="fb-card-rating" :aria-label="t('ratePreview')">
@@ -865,16 +954,155 @@ function cancelDelete() {
     object-fit: cover;
 }
 
-.fb-card-panel-hint {
-    margin: 0;
-    font-size: 0.75rem;
+/* ------------------- panel_dynamic: nested template container ------------------- */
+
+/*
+ * The template container reads as a "stack of sheets" (offset shadow layers
+ * below) so the repetition is visible at a glance without any copy.
+ */
+.fb-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    background: var(--fb-canvas);
+    border: 1px solid var(--fb-border);
+    border-radius: 0.625rem;
+    padding: 0.625rem;
+    margin-bottom: 0.5rem;
+    box-shadow:
+        0 0.25rem 0 -0.125rem var(--fb-surface),
+        0 0.3125rem 0 -0.125rem var(--fb-border),
+        0 0.5625rem 0 -0.3125rem var(--fb-surface),
+        0 0.625rem 0 -0.3125rem var(--fb-border);
+}
+
+.fb-panel-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.fb-panel-bar-icon {
+    flex: 0 0 auto;
+    width: 0.875rem;
+    height: 0.875rem;
+    color: var(--fb-brand-600);
+}
+
+.fb-panel-bar-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 0.71875rem;
+    font-weight: 700;
+    color: var(--fb-brand-600);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fb-panel-count-chip {
+    flex: 0 0 auto;
+    font-size: 0.6875rem;
     font-weight: 600;
     color: var(--fb-text-muted);
-    background: var(--fb-canvas);
+    background: var(--fb-surface);
+    border: 1px solid var(--fb-border);
+    padding: 0.125rem 0.4375rem;
+    border-radius: 0.4375rem;
+    white-space: nowrap;
+}
+
+.fb-panel-empty {
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--fb-text-muted);
+    background: var(--fb-surface);
     border: 1px dashed var(--fb-border-strong);
     border-radius: 0.5rem;
-    padding: 0.375rem 0.625rem;
-    align-self: flex-start;
+    padding: 0.75rem;
+    text-align: center;
+}
+
+.fb-panel-sublist {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.fb-panel-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    cursor: default;
+}
+
+/* Faithful mini-preview of the respondent's add-entry button (decorative). */
+.fb-panel-addpreview {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.71875rem;
+    font-weight: 600;
+    color: var(--fb-text-muted);
+    border: 1px dashed var(--fb-border-strong);
+    border-radius: 999px;
+    padding: 0.25rem 0.625rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 45%;
+}
+
+.fb-panel-addpreview svg {
+    flex: 0 0 auto;
+    width: 0.6875rem;
+    height: 0.6875rem;
+}
+
+.fb-panel-addpreview-max {
+    color: var(--fb-brand-600);
+    font-weight: 700;
+}
+
+/* Nested (template) cards: compact chrome, same interaction model. */
+.fb-card--nested {
+    padding: 0.5rem 0.625rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+}
+
+.fb-card--nested .fb-card-label {
+    font-size: 0.875rem;
+}
+
+.fb-subdrag-handle {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.5rem;
+    border: none;
+    background: transparent;
+    color: #c4c7cd;
+    cursor: grab;
+    border-radius: 0.375rem;
+    padding: 0;
+}
+
+.fb-subdrag-handle:hover {
+    color: var(--fb-text-muted);
+    background: var(--fb-canvas);
+}
+
+.fb-subdrag-handle:active {
+    cursor: grabbing;
+}
+
+.fb-subdrag-handle svg {
+    width: 1rem;
+    height: 1rem;
 }
 
 .fb-card-image-empty {

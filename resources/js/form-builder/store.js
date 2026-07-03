@@ -688,7 +688,17 @@ export function markClean() {
     store.dirty = false;
 }
 
-/** Locate a field plus its page index/field index by name. */
+/**
+ * Locate a field plus its page index/field index by name. Searches top-level
+ * page fields AND panel_dynamic template questions, so template sub-questions
+ * are first-class citizens: selectable, editable through the same store
+ * functions, and resolvable by every name-keyed consumer.
+ *
+ * Top-level hits return `{ field, pageIndex, fieldIndex, parent: null }`.
+ * Template hits return the SAME shape plus `parent` — the owning panel_dynamic
+ * field — with `fieldIndex` being the index inside the panel's template list
+ * (and `pageIndex` the parent's page).
+ */
 export function findField(name) {
     if (!store.state) {
         return null;
@@ -696,8 +706,17 @@ export function findField(name) {
     for (let p = 0; p < store.state.pages.length; p += 1) {
         const fields = store.state.pages[p].fields;
         for (let f = 0; f < fields.length; f += 1) {
-            if (fields[f].name === name) {
-                return { field: fields[f], pageIndex: p, fieldIndex: f };
+            const field = fields[f];
+            if (field.name === name) {
+                return { field, pageIndex: p, fieldIndex: f, parent: null };
+            }
+            if (field.type === 'panel_dynamic' && Array.isArray(field.typeProps?.templateElements)) {
+                const list = field.typeProps.templateElements;
+                for (let s = 0; s < list.length; s += 1) {
+                    if (list[s].name === name) {
+                        return { field: list[s], pageIndex: p, fieldIndex: s, parent: field };
+                    }
+                }
             }
         }
     }
@@ -767,12 +786,25 @@ export function addQuestionToPage(typeId, pageIndex = 0) {
     return field;
 }
 
-/** Add a field after the currently-selected one, or at the end of its page. */
+/**
+ * Add a field after the currently-selected one, or at the end of its page.
+ * When the selection is a panel_dynamic template question, the new question
+ * joins the same panel right after it (repeating panels can't nest, so a
+ * panel_dynamic pick falls back to just after the parent panel instead).
+ */
 export function addFieldSmart(typeId) {
     if (!store.state) {
         return null;
     }
     const found = store.selectedFieldName ? findField(store.selectedFieldName) : null;
+    if (found?.parent) {
+        if (typeId !== 'panel_dynamic') {
+            return addTemplateQuestion(found.parent.name, typeId, found.fieldIndex + 1);
+        }
+        const parentSpot = findField(found.parent.name);
+
+        return addField(typeId, parentSpot.pageIndex, parentSpot.fieldIndex + 1);
+    }
     if (found) {
         return addField(typeId, found.pageIndex, found.fieldIndex + 1);
     }
@@ -780,14 +812,32 @@ export function addFieldSmart(typeId) {
     return addField(typeId, 0, null);
 }
 
+/**
+ * Give a cloned field (and any panel_dynamic template questions inside it)
+ * fresh unique names, so duplicating never introduces name collisions.
+ */
+function renameClonedTree(copy) {
+    copy.name = nextName();
+    if (copy.type === 'panel_dynamic' && Array.isArray(copy.typeProps?.templateElements)) {
+        for (const sub of copy.typeProps.templateElements) {
+            // Depth-first so nested names are claimed before the next sibling asks.
+            renameClonedTree(sub);
+        }
+    }
+
+    return copy;
+}
+
 export function duplicateField(name) {
     const found = findField(name);
     if (!found) {
         return null;
     }
-    const copy = clone(found.field);
-    copy.name = nextName();
-    store.state.pages[found.pageIndex].fields.splice(found.fieldIndex + 1, 0, copy);
+    const copy = renameClonedTree(clone(found.field));
+    const siblings = found.parent
+        ? found.parent.typeProps.templateElements
+        : store.state.pages[found.pageIndex].fields;
+    siblings.splice(found.fieldIndex + 1, 0, copy);
     store.selectedFieldName = copy.name;
     store.justAddedFieldName = copy.name;
     markDirty();
@@ -800,7 +850,10 @@ export function removeField(name) {
     if (!found) {
         return;
     }
-    store.state.pages[found.pageIndex].fields.splice(found.fieldIndex, 1);
+    const siblings = found.parent
+        ? found.parent.typeProps.templateElements
+        : store.state.pages[found.pageIndex].fields;
+    siblings.splice(found.fieldIndex, 1);
     if (store.selectedFieldName === name) {
         store.selectedFieldName = null;
     }
@@ -877,6 +930,39 @@ export function addTemplateField(panelName, typeId) {
         found.field.typeProps.templateElements = [];
     }
     found.field.typeProps.templateElements.push(field);
+    markDirty();
+
+    return field;
+}
+
+/**
+ * Canvas-flavoured {@link addTemplateField}: inserts at `index` (appends when
+ * omitted), selects the new question, plays the enter animation, and requests
+ * label auto-focus — the exact affordance top-level "add question" has, so
+ * authoring inside a repeating panel feels identical to authoring outside it.
+ *
+ * @param {string} panelName
+ * @param {string} typeId
+ * @param {number|null} index
+ * @returns {object|null}
+ */
+export function addTemplateQuestion(panelName, typeId, index = null) {
+    const found = findField(panelName);
+    if (!found || found.field.type !== 'panel_dynamic') {
+        return null;
+    }
+    const field = makeField(typeId);
+    if (!Array.isArray(found.field.typeProps.templateElements)) {
+        found.field.typeProps.templateElements = [];
+    }
+    const list = found.field.typeProps.templateElements;
+    const at = index === null || index === undefined ? list.length : index;
+    list.splice(at, 0, field);
+    store.selectedFieldName = field.name;
+    store.justAddedFieldName = field.name;
+    if (!NO_INLINE_LABEL_TYPES.includes(field.type)) {
+        requestLabelFocus(field.name);
+    }
     markDirty();
 
     return field;
@@ -1037,7 +1123,10 @@ export function removeFieldCascade(name) {
         }
     }
 
-    store.state.pages[found.pageIndex].fields.splice(found.fieldIndex, 1);
+    const siblings = found.parent
+        ? found.parent.typeProps.templateElements
+        : store.state.pages[found.pageIndex].fields;
+    siblings.splice(found.fieldIndex, 1);
     if (store.selectedFieldName === name) {
         store.selectedFieldName = null;
     }

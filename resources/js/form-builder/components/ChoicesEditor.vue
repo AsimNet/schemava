@@ -19,10 +19,10 @@ const props = defineProps({
     /** Persist the next `items` array; required alongside `items`. */
     onUpdate: { type: Function, default: null },
     /**
-     * Optional override for persisting a new choices array when `field` isn't
-     * a top-level page field the store can find by name (e.g. a panel_dynamic
-     * template question — see PanelTemplateEditor.vue). Ignored when `onUpdate`
-     * is set. Defaults to the store's `setChoices(field.name, ...)`.
+     * Optional override for persisting a new choices array when the default
+     * store write isn't wanted. Ignored when `onUpdate` is set. Defaults to
+     * the store's `setChoices(field.name, ...)`, which resolves panel_dynamic
+     * template sub-questions too (findField is nested-aware).
      */
     onChange: { type: Function, default: null },
     /** Overrides the section label (defaults to the generic "Choices" label). */
