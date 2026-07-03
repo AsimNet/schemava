@@ -91,6 +91,9 @@ const isMatrixFamily = computed(() => MATRIX_TYPES.includes(props.field?.type));
 const parentPanel = computed(() => (props.field ? findField(props.field.name)?.parent ?? null : null));
 const isNested = computed(() => parentPanel.value !== null);
 
+/** Breadcrumb copy: repeating panel vs static question group. */
+const insideLabel = computed(() => (parentPanel.value?.type === 'panel' ? t('insideGroup') : t('insidePanel')));
+
 const parentPanelTitle = computed(() => {
     const lstr = parentPanel.value?.label;
     const text = (contentLocale.value === 'en' ? lstr?.en : lstr?.ar) ?? lstr?.ar ?? '';
@@ -120,6 +123,7 @@ const TYPES_WITH_OPTIONS = [
     'expression',
     'matrix', 'matrixdropdown', 'matrixdynamic',
     'multipletext',
+    'slider',
 ];
 const hasOptions = computed(() => !isAdvanced.value && (TYPES_WITH_OPTIONS.includes(props.field?.type) || hasChoices.value));
 
@@ -496,7 +500,7 @@ function close() {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M21.015 4.356v4.99m0 0l-3.181-3.182a8.25 8.25 0 00-13.803 3.7" />
                 </svg>
-                <span class="fb-nested-crumb-label">{{ t('insidePanel') }}</span>
+                <span class="fb-nested-crumb-label">{{ insideLabel }}</span>
                 <span class="fb-nested-crumb-name">{{ parentPanelTitle }}</span>
             </button>
 
@@ -812,6 +816,24 @@ function close() {
                         />
                         <span class="fb-hint">{{ t('hiddenValueExpressionHint') }}</span>
                     </div>
+
+                    <!-- slider: numeric bounds + step -->
+                    <template v-if="field.type === 'slider'">
+                        <div class="fb-row">
+                            <label class="fb-field">
+                                <span class="fb-field-label">{{ t('sliderMin') }}</span>
+                                <input type="number" class="fb-input fb-focus" :value="typeProp('min', 0)" @input="setNumberProp('min', $event.target.value)" />
+                            </label>
+                            <label class="fb-field">
+                                <span class="fb-field-label">{{ t('sliderMax') }}</span>
+                                <input type="number" class="fb-input fb-focus" :value="typeProp('max', 100)" @input="setNumberProp('max', $event.target.value)" />
+                            </label>
+                        </div>
+                        <label class="fb-field">
+                            <span class="fb-field-label">{{ t('sliderStep') }}</span>
+                            <input type="number" min="0" class="fb-input fb-focus" :value="typeProp('step', 1)" @input="setNumberProp('step', $event.target.value)" />
+                        </label>
+                    </template>
 
                     <!-- multipletext: column layout; items are edited on the canvas card -->
                     <template v-if="field.type === 'multipletext'">

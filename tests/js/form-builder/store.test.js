@@ -906,3 +906,52 @@ describe('store — multipletext default items', () => {
         expect(element.items[0].name).toBe('item_1');
     });
 });
+
+describe('store — static panel (question group) container', () => {
+    it('a fresh group seeds one starter question and accepts more', () => {
+        const group = addField('panel');
+        expect(group.typeProps.templateElements).toHaveLength(1);
+
+        const sub = addTemplateField(group.name, 'dropdown');
+        expect(group.typeProps.templateElements).toHaveLength(2);
+        expect(findField(sub.name).parent?.name).toBe(group.name);
+    });
+
+    it('nested-aware ops work inside a group (update/duplicate/remove)', () => {
+        const group = addField('panel');
+        const sub = addTemplateField(group.name, 'short_text');
+
+        updateField(sub.name, { required: true });
+        expect(sub.required).toBe(true);
+
+        const copy = duplicateField(sub.name);
+        expect(group.typeProps.templateElements.map((f) => f.name)).toContain(copy.name);
+
+        removeField(copy.name);
+        expect(group.typeProps.templateElements.map((f) => f.name)).not.toContain(copy.name);
+    });
+
+    it('addFieldSmart refuses containers inside a group (adds after it instead)', () => {
+        const group = addField('panel');
+        const sub = addTemplateField(group.name, 'short_text');
+        store.selectedFieldName = sub.name;
+
+        const addedPanel = addFieldSmart('panel_dynamic');
+        const addedGroup = addFieldSmart('panel');
+
+        const topNames = store.state.pages[0].fields.map((f) => f.name);
+        expect(topNames).toContain(addedPanel.name);
+        expect(topNames).toContain(addedGroup.name);
+        // Only the seeded starter + sub stayed inside.
+        expect(group.typeProps.templateElements).toHaveLength(2);
+    });
+
+    it('a group serializes its children as SurveyJS `elements`', () => {
+        const group = addField('panel');
+        const json = toSurveyJson(store.state, { runtimeContextKeys: [] });
+        const element = json.pages[0].elements.find((el) => el.name === group.name);
+        expect(element.type).toBe('panel');
+        expect(Array.isArray(element.elements)).toBe(true);
+        expect(element.elements).toHaveLength(1);
+    });
+});

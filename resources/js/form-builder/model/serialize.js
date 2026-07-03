@@ -455,6 +455,17 @@ function elementToField(element, usedNames) {
             : [];
     }
 
+    // panel (static group): children live in SurveyJS `elements`; internally
+    // they share panel_dynamic's templateElements slot so every nested-aware
+    // store/canvas path treats both containers identically.
+    if (builderType === 'panel') {
+        typeProps.templateElements = Array.isArray(element.elements)
+            ? element.elements
+                .filter((sub) => sub && typeof sub === 'object')
+                .map((sub) => elementToField(sub, usedNames))
+            : [];
+    }
+
     // Choices.
     let choices = null;
     if (Array.isArray(element.choices)) {
@@ -525,13 +536,15 @@ export function fromSurveyJson(json) {
 
     const builtPages = sourcePages.map((page, index) => {
         const pageObject = page && typeof page === 'object' ? page : {};
-        const { name, title: pageTitle, elements, ...pageRest } = pageObject;
+        const { name, title: pageTitle, description: pageDescription, elements, ...pageRest } = pageObject;
         const elementList = Array.isArray(elements) ? elements : [];
 
         return {
             name: typeof name === 'string' && name !== '' ? name : `page${index + 1}`,
             title: pageTitle !== undefined && pageTitle !== null ? parseLStr(pageTitle) : null,
             titlePreserveRaw: hasUnsupportedLocales(pageTitle),
+            description: pageDescription !== undefined && pageDescription !== null ? parseLStr(pageDescription) : null,
+            descriptionPreserveRaw: hasUnsupportedLocales(pageDescription),
             rawPageProps: pageRest,
             fields: elementList
                 .filter((element) => element && typeof element === 'object')
@@ -680,6 +693,13 @@ function fieldToElement(field) {
             : [];
     }
 
+    // panel (static group): re-emit children as SurveyJS `elements`.
+    if (field.type === 'panel') {
+        element.elements = Array.isArray(field.typeProps?.templateElements)
+            ? field.typeProps.templateElements.map(fieldToElement)
+            : [];
+    }
+
     // Logic. A `disable` action (or an advanced block tagged `target:'enable'`)
     // serializes to `enableIf`; everything else (show/hide/advanced-visible) to
     // `visibleIf`. In the both-present import case the logic targets visibleIf
@@ -774,6 +794,12 @@ export function toSurveyJson(state, options = { runtimeContextKeys: [] }) {
             // Extra-locale page title round-tripped via rawPageProps already.
         } else if (page.title && !isEmptyLStr(page.title)) {
             assignLocalized(pageObject, 'title', page.title);
+        }
+
+        if (page.descriptionPreserveRaw && pageObject.description === undefined) {
+            // Extra-locale page description round-tripped via rawPageProps already.
+        } else if (page.description && !isEmptyLStr(page.description)) {
+            assignLocalized(pageObject, 'description', page.description);
         }
 
         pageObject.elements = (page.fields ?? []).map(fieldToElement);

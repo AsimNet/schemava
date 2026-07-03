@@ -345,6 +345,13 @@ const MESSAGES = {
         textItemsEditOnCanvas: 'الحقول تُحرَّر مباشرة على البطاقة في مساحة التصميم.',
         addQuestionHintPanel: 'اختر نوع سؤال يتكرر مع كل إدخال في هذه اللوحة',
         imagePickerCardEmpty: 'أضف الصور وخياراتها من لوحة الإعدادات.',
+        groupBadge: 'مجموعة أسئلة',
+        addQuestionHintGroup: 'اختر نوع سؤال يُضاف إلى هذه المجموعة',
+        insideGroup: 'داخل المجموعة',
+        pageDescriptionPlaceholder: 'وصف اختياري للصفحة',
+        sliderMin: 'أقل قيمة',
+        sliderMax: 'أقصى قيمة',
+        sliderStep: 'مقدار الخطوة',
 
         // Expression / calculated values
         expressionFormula: 'الصيغة الحسابية',
@@ -694,6 +701,13 @@ const MESSAGES = {
         textItemsEditOnCanvas: 'Fields are edited directly on the card in the canvas.',
         addQuestionHintPanel: 'Pick a question type to repeat with every entry of this panel',
         imagePickerCardEmpty: 'Add images and their options from the settings drawer.',
+        groupBadge: 'Question group',
+        addQuestionHintGroup: 'Pick a question type to add to this group',
+        insideGroup: 'Inside group',
+        pageDescriptionPlaceholder: 'Optional page description',
+        sliderMin: 'Minimum value',
+        sliderMax: 'Maximum value',
+        sliderStep: 'Step size',
 
         // Expression / calculated values
         expressionFormula: 'Formula',
