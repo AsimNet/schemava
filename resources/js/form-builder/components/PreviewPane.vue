@@ -17,7 +17,11 @@ const props = defineProps({
     active: { type: Boolean, default: false },
 });
 
-const previewLocale = ref('ar');
+// Default to the HOST PLATFORM's locale (boot.locale = app()->getLocale()) —
+// the same locale the public form renders with — so the preview opens showing
+// exactly what respondents on this platform will see. The toggle remains for
+// checking the other content slot. Falls back to Arabic (the storage default).
+const previewLocale = ref(store.boot?.locale === 'en' ? 'en' : 'ar');
 const device = ref('mobile'); // 'mobile' | 'full'
 
 /**
