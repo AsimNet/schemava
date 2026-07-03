@@ -365,6 +365,10 @@ const MESSAGES = {
         logicAnd: 'و',
         logicOr: 'أو',
         logicConnectorHint: 'بدّل بين «كل الشروط» و«أي شرط»',
+        pageLogicBtn: 'منطق الصفحة',
+        pageLogicTitle: 'إظهار أو إخفاء هذه الصفحة حسب إجابات سابقة',
+        pageLogicWhen: 'هذه الصفحة عندما',
+        pageLogicNoPriors: 'أضف أسئلة في صفحات سابقة لتستخدمها كشروط لهذه الصفحة.',
 
         // Expression / calculated values
         expressionFormula: 'الصيغة الحسابية',
@@ -734,6 +738,10 @@ const MESSAGES = {
         logicAnd: 'and',
         logicOr: 'or',
         logicConnectorHint: 'Toggle between "all conditions" and "any condition"',
+        pageLogicBtn: 'Page logic',
+        pageLogicTitle: 'Show or hide this page based on earlier answers',
+        pageLogicWhen: 'this page when',
+        pageLogicNoPriors: 'Add questions on earlier pages to use them as conditions for this page.',
 
         // Expression / calculated values
         expressionFormula: 'Formula',
