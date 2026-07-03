@@ -157,7 +157,6 @@ function moveDown(pageIndex) {
                         <input
                             :value="pageTitleValue(page)"
                             type="text"
-                            dir="auto"
                             class="fb-page-title fb-focus"
                             :placeholder="t('pageTitlePlaceholder')"
                             :aria-label="t('pageTitlePlaceholder')"
@@ -229,7 +228,6 @@ function moveDown(pageIndex) {
                         v-if="multiPage"
                         :value="pageDescriptionValue(page)"
                         type="text"
-                        dir="auto"
                         class="fb-page-desc fb-focus"
                         :placeholder="t('pageDescriptionPlaceholder')"
                         :aria-label="t('pageDescriptionPlaceholder')"
