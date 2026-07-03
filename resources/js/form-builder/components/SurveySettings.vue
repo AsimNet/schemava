@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { t } from '../i18n.js';
 import { store, setSurveyText } from '../store.js';
+import CalculatedValuesEditor from './CalculatedValuesEditor.vue';
 
 const props = defineProps({
     open: { type: Boolean, default: false },
@@ -107,6 +108,9 @@ function close() {
                         @input="update(field.key, $event.target.value)"
                     />
                 </div>
+
+                <h3 class="fb-settings-section-title">{{ t('surveySettingsCalculatedValues') }}</h3>
+                <CalculatedValuesEditor />
             </div>
         </div>
     </div>

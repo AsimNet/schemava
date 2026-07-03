@@ -121,6 +121,155 @@ function parseChoice(item) {
     };
 }
 
+/** Builder types whose `rows` prop is a plain choice-item list (matrix, matrixdropdown). */
+const MATRIX_ROW_TYPES = ['matrix', 'matrixdropdown'];
+
+/** Builder types whose `columns` prop is a plain choice-item list (matrix only). */
+const MATRIX_SIMPLE_COLUMN_TYPES = ['matrix'];
+
+/** Builder types whose `columns` prop is a list of cell-definition columns. */
+const MATRIX_CELL_COLUMN_TYPES = ['matrixdropdown', 'matrixdynamic'];
+
+/**
+ * SurveyJS matrixdropdown/matrixdynamic column (cell) definition -> MatrixColumn
+ * + leftover raw props. Mirrors {@see parseChoice}'s shape/uid handling, plus
+ * `cellType` (the column's sub-question type) and its own nested `choices` for
+ * choice-based cell types (dropdown/checkbox/radiogroup) — recursively editable
+ * as a fully-fledged (if narrow) sub-question.
+ *
+ * @param {unknown} item
+ * @returns {{_uid: string, name: string, title: {ar: string, en: string|null}, cellType: string|null, isRequired: boolean, choices: unknown[]|null, raw: object}}
+ */
+function parseMatrixColumn(item) {
+    if (item === null || item === undefined) {
+        return { _uid: choiceUid(), name: '', title: emptyLStr(), cellType: null, isRequired: false, choices: null, raw: {} };
+    }
+
+    if (typeof item !== 'object') {
+        return { _uid: choiceUid(), name: String(item), title: emptyLStr(), cellType: null, isRequired: false, choices: null, raw: {} };
+    }
+
+    const { name, title, cellType, choices, isRequired, ...rest } = /** @type {Record<string, unknown>} */ (item);
+
+    return {
+        _uid: choiceUid(),
+        name: typeof name === 'string' ? name : String(name ?? ''),
+        title: title !== undefined && title !== null ? parseLStr(title) : emptyLStr(),
+        cellType: typeof cellType === 'string' && cellType !== '' ? cellType : null,
+        isRequired: isRequired === true,
+        choices: Array.isArray(choices) ? choices.map(parseChoice) : null,
+        raw: rest,
+    };
+}
+
+/**
+ * MatrixColumn -> SurveyJS matrixdropdown/matrixdynamic column definition.
+ *
+ * @param {{name: string, title?: {ar: string, en: string|null}, cellType?: string|null, isRequired?: boolean, choices?: unknown[]|null, raw?: object}} column
+ * @returns {unknown}
+ */
+function serializeMatrixColumn(column) {
+    const item = { ...(column.raw ?? {}) };
+    item.name = column.name;
+
+    if (column.title && !isEmptyLStr(column.title)) {
+        assignLocalized(item, 'title', column.title);
+    }
+    if (column.cellType) {
+        item.cellType = column.cellType;
+    }
+    if (column.isRequired) {
+        item.isRequired = true;
+    }
+    if (Array.isArray(column.choices)) {
+        item.choices = column.choices.map(serializeChoice);
+    }
+
+    return item;
+}
+
+/**
+ * Parse a matrix-family element's `rows`/`columns` into typeProps, keyed by
+ * builder type: `matrix`/`matrixdropdown` rows and `matrix` columns are plain
+ * choice-item lists; `matrixdropdown`/`matrixdynamic` columns are cell
+ * definitions (see {@see parseMatrixColumn}). `matrixdynamic` has no `rows`
+ * (rows are added dynamically by the respondent, up to `rowCount`).
+ *
+ * @param {string} builderType
+ * @param {Record<string, unknown>} element
+ * @param {Record<string, unknown>} typeProps  mutated in place
+ */
+function parseMatrixProps(builderType, element, typeProps) {
+    if (MATRIX_ROW_TYPES.includes(builderType) && Array.isArray(element.rows)) {
+        typeProps.rows = element.rows.map(parseChoice);
+    }
+    if (MATRIX_SIMPLE_COLUMN_TYPES.includes(builderType) && Array.isArray(element.columns)) {
+        typeProps.columns = element.columns.map(parseChoice);
+    }
+    if (MATRIX_CELL_COLUMN_TYPES.includes(builderType) && Array.isArray(element.columns)) {
+        typeProps.columns = element.columns.map(parseMatrixColumn);
+    }
+}
+
+/**
+ * Emit a matrix-family field's `rows`/`columns` typeProps back onto the
+ * SurveyJS element. Mirrors {@see parseMatrixProps}.
+ *
+ * @param {string} builderType
+ * @param {Record<string, unknown>} typeProps
+ * @param {Record<string, unknown>} element  mutated in place
+ */
+function serializeMatrixProps(builderType, typeProps, element) {
+    if (MATRIX_ROW_TYPES.includes(builderType) && Array.isArray(typeProps?.rows)) {
+        element.rows = typeProps.rows.map(serializeChoice);
+    }
+    if (MATRIX_SIMPLE_COLUMN_TYPES.includes(builderType) && Array.isArray(typeProps?.columns)) {
+        element.columns = typeProps.columns.map(serializeChoice);
+    }
+    if (MATRIX_CELL_COLUMN_TYPES.includes(builderType) && Array.isArray(typeProps?.columns)) {
+        element.columns = typeProps.columns.map(serializeMatrixColumn);
+    }
+}
+
+/**
+ * SurveyJS `calculatedValues` entry -> CalculatedValue + leftover raw props
+ * (e.g. a `title` used by result exports). Invalid (non-object) entries are
+ * dropped by the caller.
+ *
+ * @param {unknown} item
+ * @returns {{name: string, expression: string, includeIntoResult: boolean, raw: object}|null}
+ */
+function parseCalculatedValue(item) {
+    if (!item || typeof item !== 'object') {
+        return null;
+    }
+
+    const { name, expression, includeIntoResult, ...rest } = /** @type {Record<string, unknown>} */ (item);
+
+    return {
+        name: typeof name === 'string' ? name : '',
+        expression: typeof expression === 'string' ? expression : '',
+        includeIntoResult: includeIntoResult === true,
+        raw: rest,
+    };
+}
+
+/**
+ * CalculatedValue -> SurveyJS `calculatedValues` entry. `includeIntoResult` is
+ * only emitted when true (mirrors the `required`/`hidden` boolean convention).
+ *
+ * @param {{name: string, expression: string, includeIntoResult?: boolean, raw?: object}} value
+ * @returns {Record<string, unknown>}
+ */
+function serializeCalculatedValue(value) {
+    const item = { ...(value.raw ?? {}), name: value.name, expression: value.expression };
+    if (value.includeIntoResult) {
+        item.includeIntoResult = true;
+    }
+
+    return item;
+}
+
 /**
  * Read a single element into a builder Field.
  *
@@ -286,6 +435,7 @@ export function fromSurveyJson(json) {
         title,
         description,
         pages,
+        calculatedValues,
         ...rest
     } = source;
 
@@ -328,6 +478,9 @@ export function fromSurveyJson(json) {
         pages: builtPages,
         surveyTexts,
         rawSurveyProps,
+        calculatedValues: Array.isArray(calculatedValues)
+            ? calculatedValues.map(parseCalculatedValue).filter(Boolean)
+            : [],
         contentLocale: 'ar',
     };
 }
@@ -564,10 +717,13 @@ export function toSurveyJson(state, options = { runtimeContextKeys: [] }) {
         }
     }
 
-    // Runtime calculatedValues injection.
-    if (runtimeContextKeys.length > 0 || result.calculatedValues !== undefined) {
+    // Author-defined calculatedValues + runtime injection for missing keys.
+    const authoredCalculatedValues = Array.isArray(state.calculatedValues)
+        ? state.calculatedValues.map(serializeCalculatedValue)
+        : [];
+    if (runtimeContextKeys.length > 0 || authoredCalculatedValues.length > 0) {
         result.calculatedValues = ensureRuntimeCalculatedValues(
-            result.calculatedValues,
+            authoredCalculatedValues,
             runtimeContextKeys,
         );
     }

@@ -501,6 +501,129 @@ export function setSurveyText(key, lstr) {
     markDirty();
 }
 
+/* ---------------------------------------------------- calculated values */
+
+/**
+ * Fresh unique name for a new calculated value (`calc_1`, `calc_2`, ...),
+ * checked against both field names ({@link collectFieldNames}) and existing
+ * calculated value names.
+ *
+ * @returns {string}
+ */
+function nextCalculatedValueName() {
+    const names = collectFieldNames();
+    for (const entry of store.state?.calculatedValues ?? []) {
+        if (entry.name) {
+            names.add(entry.name);
+        }
+    }
+    let n = 1;
+    let name = `calc_${n}`;
+    while (names.has(name)) {
+        n += 1;
+        name = `calc_${n}`;
+    }
+
+    return name;
+}
+
+/**
+ * Append a new survey-level calculated value with a fresh unique name and an
+ * empty formula. Returns the new entry, or null when there is no state.
+ *
+ * @returns {{name: string, expression: string, includeIntoResult: boolean, raw: object}|null}
+ */
+export function addCalculatedValue() {
+    if (!store.state) {
+        return null;
+    }
+    if (!Array.isArray(store.state.calculatedValues)) {
+        store.state.calculatedValues = [];
+    }
+    const entry = { name: nextCalculatedValueName(), expression: '', includeIntoResult: false, raw: {} };
+    store.state.calculatedValues.push(entry);
+    markDirty();
+
+    return entry;
+}
+
+/** Patch arbitrary props (e.g. `expression`, `includeIntoResult`) on the calculated value at `index`. */
+export function updateCalculatedValue(index, patch) {
+    const entry = store.state?.calculatedValues?.[index];
+    if (!entry) {
+        return;
+    }
+    Object.assign(entry, patch);
+    markDirty();
+}
+
+/** Remove the calculated value at `index`. */
+export function removeCalculatedValue(index) {
+    const list = store.state?.calculatedValues;
+    if (!Array.isArray(list) || !list[index]) {
+        return;
+    }
+    list.splice(index, 1);
+    markDirty();
+}
+
+/**
+ * Rename the calculated value at `index`. Returns an error key on
+ * invalid/duplicate names (checked against field names + other calculated
+ * value names, mirroring {@link renameField}'s validation), or null on success.
+ */
+export function renameCalculatedValue(index, nextValue) {
+    const list = store.state?.calculatedValues;
+    const entry = list?.[index];
+    if (!entry) {
+        return null;
+    }
+    const trimmed = (nextValue ?? '').trim();
+    if (trimmed === '') {
+        return 'fieldNameRequired';
+    }
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(trimmed)) {
+        return 'fieldNameInvalid';
+    }
+    const names = collectFieldNames();
+    list.forEach((other, i) => {
+        if (i !== index && other.name) {
+            names.add(other.name);
+        }
+    });
+    if (names.has(trimmed)) {
+        return 'fieldNameDuplicate';
+    }
+    entry.name = trimmed;
+    markDirty();
+
+    return null;
+}
+
+/**
+ * Every named field in the survey, in document order — used to offer
+ * question-reference options when authoring an expression formula
+ * (calculated values are survey-level, so unlike {@link priorFields} every
+ * field is a valid reference regardless of position).
+ *
+ * @returns {Array<{name: string, type: string, label: {ar: string, en: string|null}}>}
+ */
+export function allFieldEntries() {
+    if (!store.state) {
+        return [];
+    }
+    const out = [];
+    for (const page of store.state.pages) {
+        for (const field of page.fields) {
+            if (field.name) {
+                out.push({ name: field.name, type: field.type, label: field.label });
+            }
+        }
+    }
+
+    return out;
+}
+
 export function markDirty() {
     store.dirty = true;
 }
