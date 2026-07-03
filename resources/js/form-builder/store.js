@@ -16,7 +16,14 @@ import { reactive } from 'vue';
 import { fromSurveyJson, toSurveyJson, nextFieldName } from './model/serialize.js';
 import { FIELD_TYPES, ADVANCED_TYPE } from './model/fieldTypes.js';
 import { emptyLStr, isEmptyLStr } from './model/localized.js';
-import { makeChoice } from './ui-helpers.js';
+import {
+    makeChoice,
+    makeMatrixColumn,
+    DEFAULT_MATRIX_ROW_LABELS,
+    DEFAULT_MATRIX_ROW_LABELS_EN,
+    DEFAULT_MATRIX_COLUMN_LABELS,
+    DEFAULT_MATRIX_COLUMN_LABELS_EN,
+} from './ui-helpers.js';
 import { t } from './i18n.js';
 
 /**
@@ -258,6 +265,18 @@ function makeField(typeId) {
         baseTypeProps.labelFalse = { ar: 'لا', en: null };
     }
 
+    // Matrix family: seed rows/columns (or rowCount for matrixdynamic) so a
+    // freshly dropped question already shows a concrete grid instead of an
+    // empty table — mirrors the SEEDED_CHOICE_TYPES rationale above.
+    if (type === 'matrix' || type === 'matrixdropdown') {
+        baseTypeProps.rows = defaultMatrixRows();
+    }
+    if (type === 'matrix') {
+        baseTypeProps.columns = defaultMatrixSimpleColumns();
+    } else if (type === 'matrixdropdown' || type === 'matrixdynamic') {
+        baseTypeProps.columns = [makeMatrixColumn(defaultMatrixColumnLabel())];
+    }
+
     const field = {
         name: nextName(),
         type,
@@ -296,6 +315,33 @@ function defaultChoices(type) {
         : DEFAULT_CHOICE_LABELS;
 
     return labels.map((label) => makeChoice(label));
+}
+
+/** Default rows for a freshly created matrix/matrixdropdown field. */
+function defaultMatrixRows() {
+    const labels = store.state?.contentLocale === 'en'
+        ? DEFAULT_MATRIX_ROW_LABELS_EN
+        : DEFAULT_MATRIX_ROW_LABELS;
+
+    return labels.map((label) => makeChoice(label));
+}
+
+/** Default plain-choice columns for a freshly created `matrix` field. */
+function defaultMatrixSimpleColumns() {
+    const labels = store.state?.contentLocale === 'en'
+        ? DEFAULT_MATRIX_COLUMN_LABELS_EN
+        : DEFAULT_MATRIX_COLUMN_LABELS;
+
+    return labels.map((label) => makeChoice(label));
+}
+
+/** Default single-column title for a freshly created matrixdropdown/matrixdynamic field. */
+function defaultMatrixColumnLabel() {
+    const labels = store.state?.contentLocale === 'en'
+        ? DEFAULT_MATRIX_COLUMN_LABELS_EN
+        : DEFAULT_MATRIX_COLUMN_LABELS;
+
+    return labels[0];
 }
 
 export function loadFromBoot(bootPayload) {
