@@ -342,6 +342,8 @@ const MESSAGES = {
         textItemsColCount: 'عدد الأعمدة',
         textItemsColCountHint: 'عدد أعمدة عرض الحقول جنباً إلى جنب.',
         textItemsEditOnCanvas: 'الحقول تُحرَّر مباشرة على البطاقة في مساحة التصميم.',
+        addQuestionHintPanel: 'اختر نوع سؤال يتكرر مع كل إدخال في هذه اللوحة',
+        imagePickerCardEmpty: 'أضف الصور وخياراتها من لوحة الإعدادات.',
 
         // Expression / calculated values
         expressionFormula: 'الصيغة الحسابية',
@@ -688,6 +690,8 @@ const MESSAGES = {
         textItemsColCount: 'Column count',
         textItemsColCountHint: 'How many columns the fields are laid out in.',
         textItemsEditOnCanvas: 'Fields are edited directly on the card in the canvas.',
+        addQuestionHintPanel: 'Pick a question type to repeat with every entry of this panel',
+        imagePickerCardEmpty: 'Add images and their options from the settings drawer.',
 
         // Expression / calculated values
         expressionFormula: 'Formula',

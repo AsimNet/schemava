@@ -134,9 +134,12 @@ onBeforeUnmount(() => stop(cardEl.value));
 const hasLogic = computed(() => Boolean(props.field.logic));
 const hasQuiz = computed(() => Boolean(props.field.quiz));
 
-/** Whether this field's choices are editable inline on the card. image_picker
+/** Whether this field's choices are editable inline on the card. imagepicker
  * stays read-only here — its choices carry image links that need the drawer. */
-const isChoiceField = computed(() => ['single_choice', 'multi_choice', 'dropdown', 'ranking', 'tag_box'].includes(props.field.type));
+const isChoiceField = computed(() => ['single_choice', 'multi_choice', 'dropdown', 'ranking', 'tagbox'].includes(props.field.type));
+
+/** imagepicker with no choices yet: point at the drawer instead of a dead void. */
+const isEmptyImagePicker = computed(() => props.field.type === 'imagepicker' && allChoices.value.length === 0);
 
 /* --------------------------------------------- matrix family (canvas grid) */
 
@@ -617,7 +620,7 @@ function cancelDelete() {
                     </draggable>
 
                     <div class="fb-panel-foot" @click.stop>
-                        <AddQuestionMenu :exclude-types="['panel_dynamic']" @select="onAddTemplateQuestion" />
+                        <AddQuestionMenu :exclude-types="['panel_dynamic']" :hint="t('addQuestionHintPanel')" @select="onAddTemplateQuestion" />
                         <span class="fb-panel-addpreview" :title="t('panelAddPreviewTitle')" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.5v15m7.5-7.5h-15" />
@@ -709,6 +712,8 @@ function cancelDelete() {
                         +{{ extraChoiceCount }}
                     </li>
                 </ul>
+
+                <p v-if="isEmptyImagePicker" class="fb-card-image-empty">{{ t('imagePickerCardEmpty') }}</p>
 
                 <ul v-if="yesNoPreview.length" class="fb-card-choices">
                     <li v-for="option in yesNoPreview" :key="option.key" class="fb-card-choice fb-card-choice--editable">
