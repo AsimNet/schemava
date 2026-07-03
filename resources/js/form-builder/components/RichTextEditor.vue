@@ -46,13 +46,27 @@ watch(
     },
 );
 
+/**
+ * Strip inline font-size declarations from WYSIWYG output. execCommand
+ * block-wrapping (e.g. justify*) makes Chromium bake the EDITOR UI's computed
+ * font-size into a <span style="font-size: …"> — which would override the
+ * runtime renderer's own typography in the published form. Authors can't set
+ * font sizes from the toolbar, so any such declaration is an editor artifact.
+ * Raw-HTML mode is left untouched (hand-written styles are intentional).
+ */
+function stripEditorFontSize(html) {
+    return String(html ?? '')
+        .replace(/font-size:\s*[^;"']+;?\s*/gi, '')
+        .replace(/\s*style="\s*"/gi, '');
+}
+
 /** Emit the current contenteditable html (sanitized) on every input. */
 function onInput() {
     const el = editable.value;
     if (!el) {
         return;
     }
-    emit('update:modelValue', sanitizeStatementHtml(el.innerHTML));
+    emit('update:modelValue', stripEditorFontSize(sanitizeStatementHtml(el.innerHTML)));
 }
 
 /**
@@ -66,7 +80,7 @@ function onPaste() {
         if (!el) {
             return;
         }
-        const cleaned = stripStyleBlocks(sanitizeStatementHtml(el.innerHTML));
+        const cleaned = stripEditorFontSize(stripStyleBlocks(sanitizeStatementHtml(el.innerHTML)));
         if (el.innerHTML !== cleaned) {
             el.innerHTML = cleaned;
         }
@@ -107,7 +121,11 @@ function exec(command, value = null) {
  * Which formats are live at the caret/selection — drives the toolbar's pressed
  * states so the buttons answer "what am I inside of?" instead of being inert.
  */
-const active = ref({ bold: false, italic: false, underline: false, h2: false, h3: false, list: false });
+const active = ref({
+    bold: false, italic: false, underline: false,
+    h2: false, h3: false, list: false,
+    alignRight: false, alignCenter: false, alignLeft: false,
+});
 
 function refreshActiveStates() {
     const el = editable.value;
@@ -138,6 +156,9 @@ function refreshActiveStates() {
         h2: block === 'h2',
         h3: block === 'h3',
         list: state('insertUnorderedList'),
+        alignRight: state('justifyRight'),
+        alignCenter: state('justifyCenter'),
+        alignLeft: state('justifyLeft'),
     };
 }
 
@@ -214,6 +235,29 @@ const TOOL_GROUPS = [
     [
         { key: 'h2', label: 'richHeading2', glyph: 'H2', style: 'font-weight:700;font-size:0.8125rem', state: 'h2', command: () => formatBlock('h2') },
         { key: 'h3', label: 'richHeading3', glyph: 'H3', style: 'font-weight:700;font-size:0.71875rem', state: 'h3', command: () => formatBlock('h3') },
+    ],
+    [
+        {
+            key: 'alignRight',
+            label: 'richAlignRight',
+            state: 'alignRight',
+            icon: 'M20.25 6.75H3.75m16.5 5.25H9.75m10.5 5.25H6.75',
+            command: () => exec('justifyRight'),
+        },
+        {
+            key: 'alignCenter',
+            label: 'richAlignCenter',
+            state: 'alignCenter',
+            icon: 'M20.25 6.75H3.75M16.5 12h-9m11.25 5.25H5.25',
+            command: () => exec('justifyCenter'),
+        },
+        {
+            key: 'alignLeft',
+            label: 'richAlignLeft',
+            state: 'alignLeft',
+            icon: 'M20.25 6.75H3.75M14.25 12H3.75m13.5 5.25H3.75',
+            command: () => exec('justifyLeft'),
+        },
     ],
     [
         {
@@ -351,6 +395,7 @@ const TOOL_GROUPS = [
     justify-content: space-between;
     gap: 0.5rem;
     flex-wrap: wrap;
+    row-gap: 0.25rem;
     padding: 0.25rem 0.375rem;
     background: var(--fb-canvas);
     border-bottom: 1px solid var(--fb-border);
@@ -424,6 +469,7 @@ const TOOL_GROUPS = [
 .fb-rte-mode {
     display: inline-flex;
     align-items: center;
+    margin-inline-start: auto;
     border: 1px solid var(--fb-border-strong);
     border-radius: 0.5rem;
     background: var(--fb-surface);
