@@ -352,6 +352,8 @@ const MESSAGES = {
         sliderMin: 'أقل قيمة',
         sliderMax: 'أقصى قيمة',
         sliderStep: 'مقدار الخطوة',
+        richModeVisual: 'نص',
+        richPlaceholder: 'اكتب النص هنا…',
 
         // Expression / calculated values
         expressionFormula: 'الصيغة الحسابية',
@@ -708,6 +710,8 @@ const MESSAGES = {
         sliderMin: 'Minimum value',
         sliderMax: 'Maximum value',
         sliderStep: 'Step size',
+        richModeVisual: 'Text',
+        richPlaceholder: 'Write your text here…',
 
         // Expression / calculated values
         expressionFormula: 'Formula',
