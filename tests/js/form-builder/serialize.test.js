@@ -694,3 +694,43 @@ describe('serialize — panel_dynamic (repeating panel)', () => {
         expect(sub.raw).toEqual({ type: 'customwidget', name: 'weird', config: 'x' });
     });
 });
+
+describe('serialize — multipletext items', () => {
+    it('round-trips items losslessly (name, localized title, isRequired, extras)', () => {
+        const element = {
+            type: 'multipletext',
+            name: 'q1',
+            title: 'بيانات التواصل',
+            colCount: 2,
+            items: [
+                { name: 'first_name', title: 'الاسم الأول', isRequired: true },
+                { name: 'phone', title: { default: 'الجوال', en: 'Phone' }, inputType: 'tel' },
+                { name: 'bare' },
+            ],
+        };
+        expect(roundTripElement(element)).toEqual(element);
+    });
+
+    it('parses items into editable TextItems (LStr titles, raw leftovers)', () => {
+        const state = fromSurveyJson({
+            pages: [{
+                name: 'p1',
+                elements: [{
+                    type: 'multipletext',
+                    name: 'q1',
+                    items: [{ name: 'a', title: 'حقل', maxLength: 10 }],
+                }],
+            }],
+        });
+        const items = state.pages[0].fields[0].typeProps.items;
+        expect(items).toHaveLength(1);
+        expect(items[0].name).toBe('a');
+        expect(items[0].title.ar).toBe('حقل');
+        expect(items[0].raw).toEqual({ maxLength: 10 });
+    });
+
+    it('omits items only when the field never had any (legacy import without items)', () => {
+        const out = roundTripElement({ type: 'multipletext', name: 'q1' });
+        expect(out).toEqual({ type: 'multipletext', name: 'q1' });
+    });
+});

@@ -334,6 +334,15 @@ const MESSAGES = {
         matrixCellType_boolean: 'نعم / لا',
         matrixCellType_rating: 'تقييم',
 
+        // multipletext (multiple textboxes)
+        textItemsLabel: 'الحقول النصية',
+        textItemTitlePlaceholder: 'عنوان الحقل',
+        addTextItem: 'إضافة حقل',
+        removeTextItem: 'حذف الحقل',
+        textItemsColCount: 'عدد الأعمدة',
+        textItemsColCountHint: 'عدد أعمدة عرض الحقول جنباً إلى جنب.',
+        textItemsEditOnCanvas: 'الحقول تُحرَّر مباشرة على البطاقة في مساحة التصميم.',
+
         // Expression / calculated values
         expressionFormula: 'الصيغة الحسابية',
         expressionFormulaPlaceholder: '{q1} + {q2}',
@@ -670,6 +679,15 @@ const MESSAGES = {
         matrixCellType_dropdown: 'Dropdown',
         matrixCellType_boolean: 'Yes / No',
         matrixCellType_rating: 'Rating',
+
+        // multipletext (multiple textboxes)
+        textItemsLabel: 'Text fields',
+        textItemTitlePlaceholder: 'Field title',
+        addTextItem: 'Add field',
+        removeTextItem: 'Remove field',
+        textItemsColCount: 'Column count',
+        textItemsColCountHint: 'How many columns the fields are laid out in.',
+        textItemsEditOnCanvas: 'Fields are edited directly on the card in the canvas.',
 
         // Expression / calculated values
         expressionFormula: 'Formula',
