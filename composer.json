@@ -30,6 +30,8 @@
         "spatie/laravel-package-tools": "^1.15"
     },
     "require-dev": {
+        "larastan/larastan": "^3.0",
+        "laravel/pint": "^1.29",
         "orchestra/testbench": "^9.0|^10.0",
         "phpunit/phpunit": "^11.0"
     },

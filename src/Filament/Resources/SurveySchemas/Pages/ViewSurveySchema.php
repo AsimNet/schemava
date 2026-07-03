@@ -4,6 +4,7 @@ namespace AsimNet\Schemava\Filament\Resources\SurveySchemas\Pages;
 
 use AsimNet\Schemava\Contracts\SurveyUrlResolver;
 use AsimNet\Schemava\Filament\Resources\SurveySchemas\SurveySchemaResource;
+use AsimNet\Schemava\Models\SurveySchema;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
@@ -30,7 +31,13 @@ class ViewSurveySchema extends ViewRecord
                 ->label('Open public form')
                 ->icon(Heroicon::OutlinedLink)
                 ->color('gray')
-                ->url(fn (): ?string => app(SurveyUrlResolver::class)->publicUrl($this->record))
+                ->url(function (): ?string {
+                    $record = $this->record;
+
+                    return $record instanceof SurveySchema
+                        ? app(SurveyUrlResolver::class)->publicUrl($record)
+                        : null;
+                })
                 ->openUrlInNewTab(),
             EditAction::make(),
         ];
