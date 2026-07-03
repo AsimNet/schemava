@@ -654,7 +654,8 @@ function cancelDelete() {
                     ref="labelInput"
                     v-model="labelValue"
                     type="text"
-                    class="fb-card-label fb-focus"
+                    dir="auto"
+                            class="fb-card-label fb-focus"
                     :placeholder="t('fieldLabelPlaceholder')"
                     :aria-label="t('labelField')"
                     @click.stop
@@ -781,6 +782,7 @@ function cancelDelete() {
                             :ref="(el) => setChoiceInputRef(el, choice.index)"
                             :value="choice.text"
                             type="text"
+                            dir="auto"
                             class="fb-card-choice-edit fb-focus"
                             :placeholder="t('fieldLabelPlaceholder')"
                             :aria-label="t('choicesLabel')"
@@ -841,6 +843,7 @@ function cancelDelete() {
                         <input
                             :value="option.text"
                             type="text"
+                            dir="auto"
                             class="fb-card-choice-edit fb-focus"
                             :placeholder="option.placeholder"
                             :aria-label="t('labelField')"
@@ -863,6 +866,7 @@ function cancelDelete() {
                             :value="itemTitleText(item)"
                             type="text"
                             size="1"
+                            dir="auto"
                             class="fb-card-item-edit fb-focus"
                             :placeholder="t('textItemTitlePlaceholder')"
                             :aria-label="t('textItemsLabel')"
