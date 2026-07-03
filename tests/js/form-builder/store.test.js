@@ -24,6 +24,11 @@ import {
     removeCalculatedValue,
     renameCalculatedValue,
     allFieldEntries,
+    addTemplateField,
+    removeTemplateField,
+    updateTemplateField,
+    setTemplateFieldChoices,
+    reorderTemplateFields,
 } from '../../../resources/js/form-builder/store.js';
 import { toSurveyJson } from '../../../resources/js/form-builder/model/serialize.js';
 
@@ -669,5 +674,73 @@ describe('store — calculated values (HSB-45)', () => {
         addPage();
         const f2 = addField('number', 1);
         expect(allFieldEntries().map((f) => f.name)).toEqual([f1.name, f2.name]);
+    });
+});
+
+describe('store — panel_dynamic template authoring', () => {
+    it('addTemplateField appends a new sub-question and marks dirty', () => {
+        const panel = addField('panel_dynamic');
+        store.dirty = false;
+
+        const sub = addTemplateField(panel.name, 'short_text');
+
+        expect(sub).toBeTruthy();
+        expect(panel.typeProps.templateElements).toHaveLength(1);
+        expect(panel.typeProps.templateElements[0]).toBe(sub);
+        expect(store.dirty).toBe(true);
+    });
+
+    it('addTemplateField is a no-op for a non-panel_dynamic field', () => {
+        const field = addField('short_text');
+        expect(addTemplateField(field.name, 'number')).toBeNull();
+    });
+
+    it('template question names stay unique against top-level field names', () => {
+        const panel = addField('panel_dynamic');
+        const sub = addTemplateField(panel.name, 'short_text');
+        // Adding a top-level field must not collide with the nested name.
+        const other = addField('short_text');
+        expect(other.name).not.toBe(sub.name);
+        expect(other.name).not.toBe(panel.name);
+    });
+
+    it('updateTemplateField patches props on the sub-question in place', () => {
+        const panel = addField('panel_dynamic');
+        const sub = addTemplateField(panel.name, 'short_text');
+
+        updateTemplateField(panel.name, sub.name, { required: true });
+
+        expect(panel.typeProps.templateElements[0].required).toBe(true);
+    });
+
+    it('setTemplateFieldChoices replaces a sub-question\'s choices wholesale', () => {
+        const panel = addField('panel_dynamic');
+        const sub = addTemplateField(panel.name, 'single_choice');
+
+        const next = [{ value: 'a', label: { ar: 'أ', en: null }, raw: {} }];
+        setTemplateFieldChoices(panel.name, sub.name, next);
+
+        expect(panel.typeProps.templateElements[0].choices).toEqual(next);
+    });
+
+    it('removeTemplateField removes only the targeted sub-question', () => {
+        const panel = addField('panel_dynamic');
+        const first = addTemplateField(panel.name, 'short_text');
+        const second = addTemplateField(panel.name, 'number');
+
+        removeTemplateField(panel.name, first.name);
+
+        expect(panel.typeProps.templateElements).toHaveLength(1);
+        expect(panel.typeProps.templateElements[0]).toBe(second);
+    });
+
+    it('reorderTemplateFields replaces the whole template list (drag reorder)', () => {
+        const panel = addField('panel_dynamic');
+        const first = addTemplateField(panel.name, 'short_text');
+        const second = addTemplateField(panel.name, 'number');
+
+        reorderTemplateFields(panel.name, [second, first]);
+
+        expect(panel.typeProps.templateElements.map((f) => f.name)).toEqual([second.name, first.name]);
     });
 });

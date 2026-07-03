@@ -389,6 +389,17 @@ function elementToField(element, usedNames) {
         delete raw.enableIf;
     }
 
+    // panel_dynamic: recursively parse the panel template's sub-questions into
+    // real Fields (sharing `usedNames` so template question names stay unique
+    // across the whole survey, not just within the panel).
+    if (builderType === 'panel_dynamic') {
+        typeProps.templateElements = Array.isArray(element.templateElements)
+            ? element.templateElements
+                .filter((sub) => sub && typeof sub === 'object')
+                .map((sub) => elementToField(sub, usedNames))
+            : [];
+    }
+
     // Choices.
     let choices = null;
     if (Array.isArray(element.choices)) {
@@ -597,6 +608,13 @@ function fieldToElement(field) {
     // Choices.
     if (Array.isArray(field.choices)) {
         element.choices = field.choices.map(serializeChoice);
+    }
+
+    // panel_dynamic: re-emit the panel template's sub-questions as real elements.
+    if (field.type === 'panel_dynamic') {
+        element.templateElements = Array.isArray(field.typeProps?.templateElements)
+            ? field.typeProps.templateElements.map(fieldToElement)
+            : [];
     }
 
     // Logic. A `disable` action (or an advanced block tagged `target:'enable'`)

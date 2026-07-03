@@ -292,7 +292,6 @@ const MESSAGES = {
         logicMapQuizSection: 'الأسئلة التقييمية',
         logicMapQuizPoints: 'نقطة',
         logicMapQuizTotal: 'مجموع النقاط',
-
         // panel_dynamic (repeating panel)
         panelMinCount: 'أقل عدد للوحات',
         panelMaxCount: 'أقصى عدد للوحات',
@@ -603,6 +602,20 @@ const MESSAGES = {
         logicMapQuizSection: 'Scored questions',
         logicMapQuizPoints: 'pts',
         logicMapQuizTotal: 'Total points',
+        // panel_dynamic (repeating panel)
+        panelMinCount: 'Minimum panels',
+        panelMaxCount: 'Maximum panels',
+        panelInitialCount: 'Initial panel count',
+        panelInitialCountHint: 'How many panels are shown when the form first opens.',
+        panelAddText: 'Add-panel button text',
+        panelAddTextPlaceholder: 'Add',
+        panelRemoveText: 'Remove-panel button text',
+        panelRemoveTextPlaceholder: 'Remove',
+        panelTemplateLabel: 'Repeating panel questions',
+        panelTemplateHint: 'These questions repeat with every panel the respondent adds.',
+        panelTemplateEmpty: 'No questions yet. Add one with the button below.',
+        removeTemplateQuestion: 'Remove question',
+        panelTemplateCount: 'repeating question',
 
         // Expression / calculated values
         expressionFormula: 'Formula',
