@@ -306,6 +306,12 @@ const MESSAGES = {
         panelTemplateEmpty: 'لا توجد أسئلة بعد. أضف سؤالاً من الزر أدناه.',
         removeTemplateQuestion: 'حذف السؤال',
         panelTemplateCount: 'سؤال متكرر',
+        panelRepeatsBadge: 'تتكرر مع كل إدخال',
+        panelQuestionsChip: 'أسئلة',
+        panelAddPreviewTitle: 'معاينة زر الإضافة الذي يراه المجيب',
+        insidePanel: 'داخل اللوحة المتكررة',
+        backToPanel: 'فتح إعدادات اللوحة',
+        panelEditOnCanvas: 'أسئلة اللوحة تُحرَّر مباشرة داخل بطاقة اللوحة في مساحة التصميم.',
 
         // Expression / calculated values
         expressionFormula: 'الصيغة الحسابية',
@@ -616,6 +622,12 @@ const MESSAGES = {
         panelTemplateEmpty: 'No questions yet. Add one with the button below.',
         removeTemplateQuestion: 'Remove question',
         panelTemplateCount: 'repeating question',
+        panelRepeatsBadge: 'Repeats with every entry',
+        panelQuestionsChip: 'questions',
+        panelAddPreviewTitle: 'Preview of the add-entry button respondents see',
+        insidePanel: 'Inside repeating panel',
+        backToPanel: 'Open the panel settings',
+        panelEditOnCanvas: 'Panel questions are edited directly on the panel card in the canvas.',
 
         // Expression / calculated values
         expressionFormula: 'Formula',

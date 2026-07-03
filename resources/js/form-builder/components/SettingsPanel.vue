@@ -3,6 +3,7 @@ import { computed, nextTick, reactive, ref, watch } from 'vue';
 import {
     store,
     selectField,
+    findField,
     renameField,
     updateField,
     updateTypeProp,
@@ -29,7 +30,6 @@ import MatrixEditor from './MatrixEditor.vue';
 import LogicEditor from './LogicEditor.vue';
 import QuizEditor from './QuizEditor.vue';
 import RichTextEditor from './RichTextEditor.vue';
-import PanelTemplateEditor from './PanelTemplateEditor.vue';
 
 const props = defineProps({
     open: { type: Boolean, default: false },
@@ -79,6 +79,31 @@ const hasPlaceholder = computed(() => Boolean(def.value?.hasPlaceholder));
 const hasChoices = computed(() => Boolean(def.value?.hasChoices));
 const MATRIX_TYPES = ['matrix', 'matrixdropdown', 'matrixdynamic'];
 const isMatrixFamily = computed(() => MATRIX_TYPES.includes(props.field?.type));
+
+/* ------------------------------------ panel_dynamic template sub-questions */
+
+/**
+ * The owning panel_dynamic when the selected field is a template question.
+ * Template questions get the full drawer except Logic and Quiz, which are
+ * page-scope concepts (rules target top-level questions; scores sum at the
+ * survey level) and would serialize to broken references from inside a panel.
+ */
+const parentPanel = computed(() => (props.field ? findField(props.field.name)?.parent ?? null : null));
+const isNested = computed(() => parentPanel.value !== null);
+
+const parentPanelTitle = computed(() => {
+    const lstr = parentPanel.value?.label;
+    const text = (contentLocale.value === 'en' ? lstr?.en : lstr?.ar) ?? lstr?.ar ?? '';
+
+    return text !== '' ? text : (parentPanel.value?.name ?? '');
+});
+
+/** Jump the drawer to the owning panel's own settings. */
+function goToParentPanel() {
+    if (parentPanel.value) {
+        selectField(parentPanel.value.name);
+    }
+}
 
 /** Types that support a static/piped prefill value in Basics. */
 const PREFILLABLE = ['short_text', 'long_text', 'number', 'date', 'dropdown', 'single_choice'];
@@ -459,6 +484,21 @@ function close() {
         </div>
 
         <div v-else ref="drawerBody" class="fb-drawer-body">
+            <!-- Template sub-question breadcrumb: where am I, and a way back up. -->
+            <button
+                v-if="isNested"
+                type="button"
+                class="fb-nested-crumb fb-focus"
+                :title="t('backToPanel')"
+                @click="goToParentPanel"
+            >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M21.015 4.356v4.99m0 0l-3.181-3.182a8.25 8.25 0 00-13.803 3.7" />
+                </svg>
+                <span class="fb-nested-crumb-label">{{ t('insidePanel') }}</span>
+                <span class="fb-nested-crumb-name">{{ parentPanelTitle }}</span>
+            </button>
+
             <!-- ===================== Basics ===================== -->
             <section class="fb-section">
                 <h3 class="fb-section-title">{{ t('sectionBasics') }}</h3>
@@ -797,7 +837,7 @@ function close() {
                             <span class="fb-field-label">{{ t('panelRemoveText') }}</span>
                             <input type="text" class="fb-input fb-focus" :placeholder="t('panelRemoveTextPlaceholder')" :value="localizedProp('panelRemoveText')" @input="setLocalizedProp('panelRemoveText', $event.target.value)" />
                         </label>
-                        <PanelTemplateEditor :field="field" />
+                        <p class="fb-hint">{{ t('panelEditOnCanvas') }}</p>
                     </template>
 
                     <!-- matrix family: rows/columns editor -->
@@ -806,7 +846,9 @@ function close() {
             </section>
 
             <!-- ===================== Logic ===================== -->
-            <section v-if="!isAdvanced" class="fb-section">
+            <!-- Hidden for template sub-questions: rules target top-level fields
+                 and would serialize to dangling references from inside a panel. -->
+            <section v-if="!isAdvanced && !isNested" class="fb-section">
                 <button
                     type="button"
                     class="fb-disclosure fb-focus"
@@ -824,7 +866,7 @@ function close() {
             </section>
 
             <!-- ===================== Quiz ===================== -->
-            <section v-if="supportsQuiz" class="fb-section">
+            <section v-if="supportsQuiz && !isNested" class="fb-section">
                 <button
                     type="button"
                     class="fb-disclosure fb-focus"
@@ -967,6 +1009,48 @@ function close() {
     display: flex;
     flex-direction: column;
     gap: 1rem;
+}
+
+/* Breadcrumb back to the owning repeating panel (template sub-questions). */
+.fb-nested-crumb {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    border: 1px solid var(--fb-border);
+    background: var(--fb-brand-50);
+    color: var(--fb-brand-600);
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.4375rem 0.625rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    text-align: start;
+    transition: border-color 0.15s;
+}
+
+.fb-nested-crumb:hover {
+    border-color: var(--fb-brand);
+}
+
+.fb-nested-crumb svg {
+    flex: 0 0 auto;
+    width: 0.875rem;
+    height: 0.875rem;
+}
+
+.fb-nested-crumb-label {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+.fb-nested-crumb-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--fb-text);
+    font-weight: 500;
 }
 
 .fb-section {
