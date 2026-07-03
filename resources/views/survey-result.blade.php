@@ -12,7 +12,7 @@
       - $surveyJson      array   The schema's SurveyJS definition.
       - $data            array   The submitted answers (SurveyResult->data).
       - $locale          string  Active locale (drives UI strings + RTL).
-      - $rendererVersion string  Pinned survey-core/survey-js-ui version.
+      - $rendererVersion string  Pinned survey-core/survey-js-ui version (informational).
 --}}
 @php($isRtl = $locale === 'ar')
 @php($storageDefaultLocale = 'ar')
@@ -22,7 +22,13 @@
     dir="{{ $isRtl ? 'rtl' : 'ltr' }}"
     style="--sjs-font-family: 'IBM Plex Sans Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;"
     x-data="schemavaSurveyResult(@js([
-        'version' => $rendererVersion,
+        // Self-hosted renderer URLs — CDN tags break behind TLS-inspection proxies.
+        'urls' => [
+            'css' => \Filament\Support\Facades\FilamentAsset::getStyleHref('surveyjs-core', package: 'asimnet/schemava'),
+            'core' => \Filament\Support\Facades\FilamentAsset::getScriptSrc('surveyjs-core', package: 'asimnet/schemava'),
+            'i18n' => \Filament\Support\Facades\FilamentAsset::getScriptSrc('surveyjs-i18n', package: 'asimnet/schemava'),
+            'ui' => \Filament\Support\Facades\FilamentAsset::getScriptSrc('surveyjs-ui', package: 'asimnet/schemava'),
+        ],
         'surveyJson' => $surveyJson ?: (object) [],
         'data' => (object) ($data ?: []),
         'locale' => $locale ?: $storageDefaultLocale,

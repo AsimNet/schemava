@@ -31,18 +31,16 @@
          tab and the AI assistant's validation engine. NO survey-creator-* scripts:
          the custom builder replaces the SurveyJS Creator.
 
-         The version is pinned via config('schemava.renderer_version') so
-         the builder validates/previews on the SAME engine that renders the saved
-         JSON downstream (e.g. a mobile app's survey-angular-ui). Bump it only in
-         lockstep with those renderer clients. --}}
-    {{-- URLs are built inside a single {{ }} expression so the `@` in
-         `survey-core@<version>` is not adjacent to `{{` (which Blade would treat
-         as the @{{ }} escape and emit verbatim instead of interpolating). --}}
-    <link href="{{ 'https://unpkg.com/survey-core@'.$rendererVersion.'/survey-core.min.css' }}" rel="stylesheet"/>
-    <script src="{{ 'https://unpkg.com/survey-core@'.$rendererVersion.'/survey.core.min.js' }}"></script>
+         Served from the package's own published assets (see registerAssets) at
+         the version pinned in config('schemava.renderer_version') — self-hosted
+         because corporate TLS-inspection proxies (e.g. Zscaler) silently break
+         CDN <script> tags, blanking the Preview tab. Bump the bundled files in
+         lockstep with downstream renderer clients (e.g. a mobile app). --}}
+    <link href="{{ \Filament\Support\Facades\FilamentAsset::getStyleHref('surveyjs-core', package: 'asimnet/schemava') }}" rel="stylesheet"/>
+    <script src="{{ \Filament\Support\Facades\FilamentAsset::getScriptSrc('surveyjs-core', package: 'asimnet/schemava') }}"></script>
     {{-- Arabic (ar) locale bundle — must load AFTER survey.core.min.js. --}}
-    <script src="{{ 'https://unpkg.com/survey-core@'.$rendererVersion.'/survey.i18n.min.js' }}"></script>
-    <script src="{{ 'https://unpkg.com/survey-js-ui@'.$rendererVersion.'/survey-js-ui.min.js' }}"></script>
+    <script src="{{ \Filament\Support\Facades\FilamentAsset::getScriptSrc('surveyjs-i18n', package: 'asimnet/schemava') }}"></script>
+    <script src="{{ \Filament\Support\Facades\FilamentAsset::getScriptSrc('surveyjs-ui', package: 'asimnet/schemava') }}"></script>
 
     <link rel="stylesheet"
           href="{{ \Filament\Support\Facades\FilamentAsset::getStyleHref('schemava-builder', package: 'asimnet/schemava') }}">
