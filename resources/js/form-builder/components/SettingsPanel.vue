@@ -25,6 +25,7 @@ import {
 } from '../ui-helpers.js';
 import VariableMenu from './VariableMenu.vue';
 import ChoicesEditor from './ChoicesEditor.vue';
+import MatrixEditor from './MatrixEditor.vue';
 import LogicEditor from './LogicEditor.vue';
 import QuizEditor from './QuizEditor.vue';
 import RichTextEditor from './RichTextEditor.vue';
@@ -76,6 +77,8 @@ const isStatement = computed(() => props.field?.type === 'statement');
 const isExpression = computed(() => props.field?.type === 'expression');
 const hasPlaceholder = computed(() => Boolean(def.value?.hasPlaceholder));
 const hasChoices = computed(() => Boolean(def.value?.hasChoices));
+const MATRIX_TYPES = ['matrix', 'matrixdropdown', 'matrixdynamic'];
+const isMatrixFamily = computed(() => MATRIX_TYPES.includes(props.field?.type));
 
 /** Types that support a static/piped prefill value in Basics. */
 const PREFILLABLE = ['short_text', 'long_text', 'number', 'date', 'dropdown', 'single_choice'];
@@ -90,6 +93,7 @@ const TYPES_WITH_OPTIONS = [
     'dropdown', 'yes_no', 'rating', 'file', 'image', 'statement', 'hidden_value',
     'panel_dynamic',
     'expression',
+    'matrix', 'matrixdropdown', 'matrixdynamic',
 ];
 const hasOptions = computed(() => !isAdvanced.value && (TYPES_WITH_OPTIONS.includes(props.field?.type) || hasChoices.value));
 
@@ -795,6 +799,9 @@ function close() {
                         </label>
                         <PanelTemplateEditor :field="field" />
                     </template>
+
+                    <!-- matrix family: rows/columns editor -->
+                    <MatrixEditor v-if="isMatrixFamily" :field="field" />
                 </div>
             </section>
 

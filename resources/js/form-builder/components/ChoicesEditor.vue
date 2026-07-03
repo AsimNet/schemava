@@ -11,26 +11,38 @@ import {
 } from '../ui-helpers.js';
 
 const props = defineProps({
-    field: { type: Object, required: true },
+    field: { type: Object, default: null },
+    /** When set, the editor operates on this array instead of `field.choices`
+     * (e.g. a matrix field's `typeProps.rows`/`typeProps.columns`) — paired
+     * with `onUpdate` to persist changes. */
+    items: { type: Array, default: null },
+    /** Persist the next `items` array; required alongside `items`. */
+    onUpdate: { type: Function, default: null },
     /**
-     * Optional override for persisting a new choices array, used when `field`
-     * isn't a top-level page field the store can find by name (e.g. a
-     * panel_dynamic template question — see PanelTemplateEditor.vue). Defaults
-     * to the store's `setChoices(field.name, ...)`.
+     * Optional override for persisting a new choices array when `field` isn't
+     * a top-level page field the store can find by name (e.g. a panel_dynamic
+     * template question — see PanelTemplateEditor.vue). Ignored when `onUpdate`
+     * is set. Defaults to the store's `setChoices(field.name, ...)`.
      */
     onChange: { type: Function, default: null },
+    /** Overrides the section label (defaults to the generic "Choices" label). */
+    label: { type: String, default: null },
 });
 
 const contentLocale = computed(() => store.state?.contentLocale ?? 'ar');
 
-const choices = computed(() => props.field.choices ?? []);
+const choices = computed(() => props.items ?? props.field?.choices ?? []);
 
 const draftInput = ref('');
 
+/** Persist the next list via `onUpdate` (items mode), `onChange` (field-alias
+ * mode), or the store (plain field mode). */
 function applyChoices(next) {
-    if (typeof props.onChange === 'function') {
+    if (props.onUpdate) {
+        props.onUpdate(next);
+    } else if (props.onChange) {
         props.onChange(next);
-    } else {
+    } else if (props.field) {
         setChoices(props.field.name, next);
     }
 }
@@ -96,13 +108,13 @@ function diverged(choice) {
 
 <template>
     <div class="fb-choices">
-        <span class="fb-field-label">{{ t('choicesLabel') }}</span>
+        <span class="fb-field-label">{{ label ?? t('choicesLabel') }}</span>
 
         <p v-if="choices.length === 0" class="fb-choices-empty">{{ t('emptyChoices') }}</p>
 
         <draggable
             v-else
-            :list="props.field.choices"
+            :list="choices"
             item-key="_uid"
             handle=".fb-choice-handle"
             class="fb-choice-list"
