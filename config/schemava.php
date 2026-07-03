@@ -6,6 +6,7 @@ use AsimNet\Schemava\Support\DefaultRuntimeContextProvider;
 use AsimNet\Schemava\Support\DefaultSurveyAnswerValidator;
 use AsimNet\Schemava\Support\DefaultSurveySubmissionHandler;
 use AsimNet\Schemava\Support\DefaultSurveyUrlResolver;
+use AsimNet\Schemava\Support\LaravelAiAssistant;
 use AsimNet\Schemava\Support\NullAiAssistant;
 use AsimNet\Schemava\Support\OpenSurveyAccessResolver;
 
@@ -61,14 +62,55 @@ return [
     |--------------------------------------------------------------------------
     |
     | The survey-core engine the builder validates and previews against, and the
-    | engine that renders saved schemas in production. Keep this in lockstep
-    | with every client that renders the saved JSON (e.g. a mobile app using
-    | survey-angular-ui) so the builder never validates on a different engine
-    | than the one that ultimately renders the result.
+    | engine that renders saved schemas in production. The renderer is BUNDLED
+    | with the package (resources/dist/vendor/surveyjs, served as published
+    | assets — no CDN, so previews work behind TLS-inspection proxies); this
+    | value records that bundled version. Keep it in lockstep with every client
+    | that renders the saved JSON (e.g. a mobile app using survey-angular-ui),
+    | and replace the bundled files when bumping it.
     |
     */
 
     'renderer_version' => '2.3.16',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Designer interface language
+    |--------------------------------------------------------------------------
+    |
+    | Default UI language ('ar' | 'en') for the visual form designer. Applies
+    | until the author picks a language from the designer's own menu (that
+    | choice is remembered per browser and then wins over this default).
+    |
+    */
+
+    'designer_ui_locale' => 'ar',
+
+    /*
+    |--------------------------------------------------------------------------
+    | AI assistant
+    |--------------------------------------------------------------------------
+    |
+    | The designer's AI building assistant, built on Laravel's first-party AI
+    | SDK (composer require laravel/ai). Provider credentials live in the
+    | SDK's own config/ai.php (OPENAI_API_KEY, ANTHROPIC_API_KEY, …) — here
+    | you only pick which provider/model Schemava uses. The assistant appears
+    | ONLY when 'enabled' is on AND laravel/ai is installed AND the chosen
+    | provider has credentials; otherwise the button is hidden and the
+    | endpoint refuses queries. Hard-off: 'enabled' => false (or bind
+    | NullAiAssistant). OpenRouter: use the SDK's openai provider with
+    | OPENAI_URL=https://openrouter.ai/api/v1.
+    |
+    */
+
+    'ai' => [
+        'enabled' => env('SCHEMAVA_AI_ENABLED', true),
+        // null = the laravel/ai default provider (config('ai.default')).
+        'provider' => env('SCHEMAVA_AI_PROVIDER'),
+        // null = the provider's default model.
+        'model' => env('SCHEMAVA_AI_MODEL'),
+        'timeout' => env('SCHEMAVA_AI_TIMEOUT', 90),
+    ],
 
     /*
     |--------------------------------------------------------------------------
@@ -83,7 +125,7 @@ return [
     'contracts' => [
         'runtime_context' => DefaultRuntimeContextProvider::class,
         'access_resolver' => OpenSurveyAccessResolver::class,
-        'ai_assistant' => NullAiAssistant::class,
+        'ai_assistant' => LaravelAiAssistant::class,
         'url_resolver' => DefaultSurveyUrlResolver::class,
         'submission_handler' => DefaultSurveySubmissionHandler::class,
         'answer_validator' => DefaultSurveyAnswerValidator::class,

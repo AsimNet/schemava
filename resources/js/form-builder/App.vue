@@ -77,7 +77,10 @@ function closeJson() {
             <template v-if="activeTab === 'build'">
                 <FieldPalette class="fb-palette" />
 
-                <section ref="canvasPane" class="fb-canvas-wrap fb-scroll" :dir="contentDir">
+                <!-- Canvas CHROME follows the UI direction (inherited); each authored
+                     input aligns to its own text via dir="auto" — mixing an RTL
+                     interface with LTR content must not flip the whole canvas. -->
+                <section ref="canvasPane" class="fb-canvas-wrap fb-scroll">
                     <BuilderCanvas />
                 </section>
 
@@ -87,7 +90,7 @@ function closeJson() {
             <PreviewPane ref="previewPane" v-show="activeTab === 'preview'" :active="activeTab === 'preview'" />
         </main>
 
-        <AiAssistant @open-json="(text) => openJson(text)" />
+        <AiAssistant v-if="props.boot?.aiEnabled" @open-json="(text) => openJson(text)" />
 
         <JsonPanel :open="jsonOpen" :initial-text="jsonInitialText" @close="closeJson" />
         <SurveySettings :open="settingsOpen" @close="settingsOpen = false" />

@@ -31,12 +31,13 @@
     },
     "require-dev": {
         "larastan/larastan": "^3.0",
+        "laravel/ai": "^0.8.1",
         "laravel/pint": "^1.29",
         "orchestra/testbench": "^9.0|^10.0",
         "phpunit/phpunit": "^11.0"
     },
     "suggest": {
-        "laravel/ai": "Required only for the bundled AI assistant adapter (LaravelAiOpenRouterAssistant). Install ^0.1.5 to enable AI-assisted form building."
+        "laravel/ai": "Required for the bundled AI assistant adapter (LaravelAiAssistant). Install ^0.8 and configure a provider key to enable AI-assisted form building."
     },
     "autoload": {
         "psr-4": {

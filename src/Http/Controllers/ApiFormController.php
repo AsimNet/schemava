@@ -6,6 +6,7 @@ use AsimNet\Schemava\Contracts\SurveyAccessResolver;
 use AsimNet\Schemava\Contracts\SurveyAnswerValidator;
 use AsimNet\Schemava\Contracts\SurveySubmissionHandler;
 use AsimNet\Schemava\Models\SurveySchema;
+use AsimNet\Schemava\Services\SurveyScoreCalculator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -50,7 +51,7 @@ class ApiFormController
             'hash' => $schema->hash,
             'title' => $schema->title,
             'description' => $schema->description,
-            'survey_json' => $schema->survey_json ?: (object) [],
+            'survey_json' => $this->respondentSurveyJson($schema->survey_json),
             'renderer_version' => config('schemava.renderer_version'),
             'can_submit' => $canSubmit,
             'unavailable_message' => $canSubmit
@@ -111,5 +112,21 @@ class ApiFormController
     protected function model(): string
     {
         return config('schemava.models.schema', SurveySchema::class);
+    }
+
+    /**
+     * The survey definition as served to RESPONDENTS — grading keys
+     * (correctAnswer/score) stripped so the answer key never reaches the
+     * client. Scores are recomputed server-side from the stored schema.
+     *
+     * @return array<string, mixed>|object
+     */
+    private function respondentSurveyJson(?array $surveyJson): array|object
+    {
+        if (empty($surveyJson)) {
+            return (object) [];
+        }
+
+        return app(SurveyScoreCalculator::class)->withoutAnswerKeys($surveyJson);
     }
 }
