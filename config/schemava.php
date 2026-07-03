@@ -74,6 +74,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Designer interface language
+    |--------------------------------------------------------------------------
+    |
+    | Default UI language ('ar' | 'en') for the visual form designer. Applies
+    | until the author picks a language from the designer's own menu (that
+    | choice is remembered per browser and then wins over this default).
+    |
+    */
+
+    'designer_ui_locale' => 'ar',
+
+    /*
+    |--------------------------------------------------------------------------
     | Contracts
     |--------------------------------------------------------------------------
     |
