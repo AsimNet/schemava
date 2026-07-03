@@ -245,11 +245,11 @@ const TOOL_GROUPS = [
     ],
     [
         {
-            key: 'alignRight',
-            label: 'richAlignRight',
-            state: 'alignRight',
+            key: 'alignLeft',
+            label: 'richAlignLeft',
+            state: 'alignLeft',
             icon: 'M20.25 6.75H3.75M14.25 12H3.75m13.5 5.25H3.75',
-            command: () => exec('justifyRight'),
+            command: () => exec('justifyLeft'),
         },
         {
             key: 'alignCenter',
@@ -259,11 +259,11 @@ const TOOL_GROUPS = [
             command: () => exec('justifyCenter'),
         },
         {
-            key: 'alignLeft',
-            label: 'richAlignLeft',
-            state: 'alignLeft',
+            key: 'alignRight',
+            label: 'richAlignRight',
+            state: 'alignRight',
             icon: 'M20.25 6.75H3.75m16.5 5.25H9.75m10.5 5.25H6.75',
-            command: () => exec('justifyLeft'),
+            command: () => exec('justifyRight'),
         },
     ],
     [
