@@ -797,3 +797,31 @@ describe('serialize — page show/hide logic (visibleIf)', () => {
         expect(out.pages[1].visibleIf).toBe('({q1} > 18)');
     });
 });
+
+describe('serialize — survey triggers (jump / finish)', () => {
+    it('round-trips skip and complete triggers losslessly', () => {
+        const json = {
+            pages: [{ name: 'p1', elements: [{ type: 'text', name: 'q1', title: 'س', inputType: 'text' }] }],
+            triggers: [
+                { type: 'skip', expression: "{q1} = 'نعم'", gotoName: 'q9' },
+                { type: 'complete', expression: '{q1} notempty' },
+                { type: 'setvalue', expression: '{q1} = 1', setToName: 'q2', setValue: 'x' },
+            ],
+        };
+        expect(roundTrip(json).triggers).toEqual(json.triggers);
+    });
+
+    it('drops triggers with an empty expression and omits the prop when none remain', () => {
+        const state = fromSurveyJson({ pages: [{ name: 'p1', elements: [] }] });
+        state.triggers = [{ type: 'skip', expression: '   ', gotoName: 'q1', raw: {} }];
+        const out = toSurveyJson(state, { runtimeContextKeys: [] });
+        expect(out.triggers).toBeUndefined();
+    });
+
+    it('drops a skip trigger without a jump target', () => {
+        const state = fromSurveyJson({ pages: [{ name: 'p1', elements: [] }] });
+        state.triggers = [{ type: 'skip', expression: '{q1} = 1', gotoName: '', raw: {} }];
+        const out = toSurveyJson(state, { runtimeContextKeys: [] });
+        expect(out.triggers).toBeUndefined();
+    });
+});

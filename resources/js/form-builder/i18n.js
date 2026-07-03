@@ -369,6 +369,14 @@ const MESSAGES = {
         pageLogicTitle: 'إظهار أو إخفاء هذه الصفحة حسب إجابات سابقة',
         pageLogicWhen: 'هذه الصفحة عندما',
         pageLogicNoPriors: 'أضف أسئلة في صفحات سابقة لتستخدمها كشروط لهذه الصفحة.',
+        surveySettingsTriggers: 'القفز والإنهاء',
+        triggersHint: 'قواعد تُقيَّم بعد كل إجابة: اقفز إلى سؤال لاحق أو أنهِ الاستبيان عند تحقق شرط.',
+        triggerJump: 'اقفز إلى',
+        triggerFinish: 'أنهِ الاستبيان',
+        triggerJumpTarget: 'اختر السؤال الهدف',
+        triggerWhen: 'عندما يتحقق الشرط (صيغة SurveyJS)',
+        triggerAdd: 'إضافة قاعدة',
+        triggerRemove: 'حذف القاعدة',
 
         // Expression / calculated values
         expressionFormula: 'الصيغة الحسابية',
@@ -742,6 +750,14 @@ const MESSAGES = {
         pageLogicTitle: 'Show or hide this page based on earlier answers',
         pageLogicWhen: 'this page when',
         pageLogicNoPriors: 'Add questions on earlier pages to use them as conditions for this page.',
+        surveySettingsTriggers: 'Jumps & endings',
+        triggersHint: 'Rules evaluated after every answer: jump to a later question or finish the survey when a condition holds.',
+        triggerJump: 'Jump to',
+        triggerFinish: 'Finish the survey',
+        triggerJumpTarget: 'Pick the target question',
+        triggerWhen: 'When this condition holds (SurveyJS expression)',
+        triggerAdd: 'Add rule',
+        triggerRemove: 'Remove rule',
 
         // Expression / calculated values
         expressionFormula: 'Formula',
