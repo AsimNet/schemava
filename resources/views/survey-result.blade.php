@@ -23,6 +23,11 @@
 <style>
     .schemava-result .sd-html ul { list-style: disc; margin: .25rem 0; padding-inline-start: 1.25rem; }
     .schemava-result .sd-html ol { list-style: decimal; margin: .25rem 0; padding-inline-start: 1.25rem; }
+    /* per-question grading badge (scored quizzes, admin review only) */
+    .schemava-grade-badge { display: inline-block; margin-inline-start: .5rem; padding: .125rem .5rem;
+        border-radius: 999px; font-size: .6875rem; font-weight: 700; vertical-align: middle; }
+    .schemava-grade-badge--correct { background: #dcfce7; color: #15803d; }
+    .schemava-grade-badge--incorrect { background: #fee2e2; color: #b91c1c; }
 </style>
 
 <div
