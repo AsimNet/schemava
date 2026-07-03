@@ -8,6 +8,8 @@ import {
     updateTypeProp,
     setPrefill,
     pushToast,
+    priorFields,
+    allFieldEntries,
 } from '../store.js';
 import { t } from '../i18n.js';
 import { fadeInUp, staggerIn } from '../motion.js';
@@ -18,12 +20,15 @@ import {
     bytesToMb,
     mbToBytes,
     ratingPreviewItems,
+    fieldReferenceOptions,
+    calculatedValueOptions,
 } from '../ui-helpers.js';
 import VariableMenu from './VariableMenu.vue';
 import ChoicesEditor from './ChoicesEditor.vue';
 import LogicEditor from './LogicEditor.vue';
 import QuizEditor from './QuizEditor.vue';
 import RichTextEditor from './RichTextEditor.vue';
+import PanelTemplateEditor from './PanelTemplateEditor.vue';
 
 const props = defineProps({
     open: { type: Boolean, default: false },
@@ -68,6 +73,7 @@ const contentLocale = computed(() => store.state?.contentLocale ?? 'ar');
 const def = computed(() => (props.field ? FIELD_TYPES[props.field.type] ?? null : null));
 const isAdvanced = computed(() => props.field?.type === ADVANCED_TYPE);
 const isStatement = computed(() => props.field?.type === 'statement');
+const isExpression = computed(() => props.field?.type === 'expression');
 const hasPlaceholder = computed(() => Boolean(def.value?.hasPlaceholder));
 const hasChoices = computed(() => Boolean(def.value?.hasChoices));
 
@@ -82,6 +88,8 @@ const supportsQuiz = computed(() => Boolean(def.value?.quizzable) || props.field
 const TYPES_WITH_OPTIONS = [
     'short_text', 'number', 'long_text', 'single_choice', 'multi_choice',
     'dropdown', 'yes_no', 'rating', 'file', 'image', 'statement', 'hidden_value',
+    'panel_dynamic',
+    'expression',
 ];
 const hasOptions = computed(() => !isAdvanced.value && (TYPES_WITH_OPTIONS.includes(props.field?.type) || hasChoices.value));
 
@@ -179,7 +187,7 @@ const readOnlyValue = computed({
  * fields, and advanced passthrough fields are never editable here.
  */
 const supportsReadOnly = computed(
-    () => !isAdvanced.value && !isStatement.value && props.field?.type !== 'image',
+    () => !isAdvanced.value && !isStatement.value && !isExpression.value && props.field?.type !== 'image',
 );
 
 /** Per-field required-error override (LStr), serialized as requiredErrorText (fix 7). */
@@ -203,7 +211,7 @@ const requiredErrorValue = computed({
 
 /** The required-error override only makes sense for fields that can be required. */
 const supportsRequiredError = computed(
-    () => !isAdvanced.value && !isStatement.value && props.field?.type !== 'image' && props.field?.type !== 'hidden_value',
+    () => !isAdvanced.value && !isStatement.value && !isExpression.value && props.field?.type !== 'image' && props.field?.type !== 'hidden_value',
 );
 
 /* --------------------------------------------- variable-menu caret handling */
@@ -331,6 +339,12 @@ const maxSizeMb = computed({
 });
 
 /* rating preview (shares ratingPreviewItems with the canvas card — fix 3) */
+const DISPLAY_STYLES = ['none', 'decimal', 'percent', 'currency'];
+
+/** Prior fields (document order, mirrors visibleIf) offered as formula references. */
+const expressionFieldOptions = computed(() => fieldReferenceOptions(priorFields(props.field?.name ?? ''), contentLocale.value));
+const expressionCalcOptions = computed(() => calculatedValueOptions(store.state?.calculatedValues ?? []));
+
 const RATE_TYPES = ['stars', 'labels', 'smileys'];
 const ratePreview = computed(() => ratingPreviewItems(props.field?.typeProps));
 
@@ -522,7 +536,7 @@ function close() {
                         />
                     </div>
 
-                    <label v-if="!isStatement" class="fb-toggle">
+                    <label v-if="!isStatement && !isExpression" class="fb-toggle">
                         <input v-model="requiredValue" type="checkbox" class="fb-checkbox" />
                         <span>{{ t('requiredToggle') }}</span>
                     </label>
@@ -699,6 +713,40 @@ function close() {
                         />
                     </div>
 
+                    <!-- expression: formula + display style -->
+                    <template v-if="field.type === 'expression'">
+                        <div class="fb-field">
+                            <div class="fb-field-head">
+                                <span class="fb-field-label">{{ t('expressionFormula') }}</span>
+                                <VariableMenu
+                                    :fields="expressionFieldOptions"
+                                    :calculated-values="expressionCalcOptions"
+                                    @insert="(k) => insertVariable('expression', k, typeProp('expression', ''), (v) => setProp('expression', v))"
+                                />
+                            </div>
+                            <input
+                                :ref="(el) => registerRef('expression', el)"
+                                :value="typeProp('expression', '')"
+                                type="text"
+                                class="fb-input fb-mono fb-focus"
+                                dir="ltr"
+                                spellcheck="false"
+                                :placeholder="t('expressionFormulaPlaceholder')"
+                                @input="setProp('expression', $event.target.value)"
+                                @keyup="rememberCaret('expression', $event)"
+                                @click="rememberCaret('expression', $event)"
+                                @blur="rememberCaret('expression', $event)"
+                            />
+                            <span class="fb-hint">{{ t('expressionFormulaHint') }}</span>
+                        </div>
+                        <label class="fb-field">
+                            <span class="fb-field-label">{{ t('expressionDisplayStyle') }}</span>
+                            <select class="fb-input fb-focus" :value="typeProp('displayStyle', 'none')" @change="setProp('displayStyle', $event.target.value)">
+                                <option v-for="ds in DISPLAY_STYLES" :key="ds" :value="ds">{{ t('expressionDisplayStyle' + ds.charAt(0).toUpperCase() + ds.slice(1)) }}</option>
+                            </select>
+                        </label>
+                    </template>
+
                     <!-- hidden_value: defaultValueExpression -->
                     <div v-if="field.type === 'hidden_value'" class="fb-field">
                         <div class="fb-field-head">
@@ -719,6 +767,34 @@ function close() {
                         />
                         <span class="fb-hint">{{ t('hiddenValueExpressionHint') }}</span>
                     </div>
+
+                    <!-- panel_dynamic: panel count bounds + add/remove texts + template -->
+                    <template v-if="field.type === 'panel_dynamic'">
+                        <div class="fb-row">
+                            <label class="fb-field">
+                                <span class="fb-field-label">{{ t('panelMinCount') }}</span>
+                                <input type="number" min="0" class="fb-input fb-focus" :value="numberProp('minPanelCount')" @input="setNumberProp('minPanelCount', $event.target.value)" />
+                            </label>
+                            <label class="fb-field">
+                                <span class="fb-field-label">{{ t('panelMaxCount') }}</span>
+                                <input type="number" min="1" class="fb-input fb-focus" :value="numberProp('maxPanelCount')" @input="setNumberProp('maxPanelCount', $event.target.value)" />
+                            </label>
+                        </div>
+                        <label class="fb-field">
+                            <span class="fb-field-label">{{ t('panelInitialCount') }}</span>
+                            <input type="number" min="0" class="fb-input fb-focus" :value="typeProp('panelCount', 1)" @input="setNumberProp('panelCount', $event.target.value)" />
+                            <span class="fb-hint">{{ t('panelInitialCountHint') }}</span>
+                        </label>
+                        <label class="fb-field">
+                            <span class="fb-field-label">{{ t('panelAddText') }}</span>
+                            <input type="text" class="fb-input fb-focus" :placeholder="t('panelAddTextPlaceholder')" :value="localizedProp('panelAddText')" @input="setLocalizedProp('panelAddText', $event.target.value)" />
+                        </label>
+                        <label class="fb-field">
+                            <span class="fb-field-label">{{ t('panelRemoveText') }}</span>
+                            <input type="text" class="fb-input fb-focus" :placeholder="t('panelRemoveTextPlaceholder')" :value="localizedProp('panelRemoveText')" @input="setLocalizedProp('panelRemoveText', $event.target.value)" />
+                        </label>
+                        <PanelTemplateEditor :field="field" />
+                    </template>
                 </div>
             </section>
 
