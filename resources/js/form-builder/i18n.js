@@ -263,7 +263,9 @@ const MESSAGES = {
 
         // Quiz editor
         quizToggle: 'سؤال تقييمي',
-        quizToggleHint: 'يُحتسب ضمن درجة المستخدم.',
+        quizToggleHint: 'يُصحَّح تلقائياً وتُضاف نقاطه إلى درجة المجيب النهائية.',
+        quizExplainer: 'اجعل النموذج اختباراً يُصحَّح تلقائياً:\n\n١. فعّل هذا الخيار وحدّد الإجابة الصحيحة وعدد النقاط.\n٢. عند إرسال المجيب لإجاباته تُقارن بالإجابة الصحيحة تلقائياً.\n٣. تُجمع نقاط كل الأسئلة التقييمية في درجة نهائية (مثل: ٨ من ١٠).\n\nترى الدرجة أثناء التجربة في تبويب «معاينة»، وتظهر لكل مجيب في عارض النتائج. المجيب لا يرى الإجابة الصحيحة أثناء التعبئة.',
+        quizFlagTitle: 'سؤال تقييمي — نقاطه تُحتسب في الدرجة النهائية',
         quizPoints: 'النقاط',
         quizCorrectAnswer: 'الإجابة الصحيحة المتوقّعة',
         quizCorrectHint: 'حدّد الإجابة الصحيحة من الخيارات.',
@@ -644,7 +646,9 @@ const MESSAGES = {
 
         // Quiz editor
         quizToggle: 'Scored question',
-        quizToggleHint: 'Counts toward the respondent’s score.',
+        quizToggleHint: 'Auto-graded — its points add up to the respondent’s final score.',
+        quizExplainer: 'Turn the form into an auto-graded quiz:\n\n1. Enable this and mark the correct answer and its points.\n2. When a respondent submits, their answer is checked automatically.\n3. Points from all scored questions add up to a final score (e.g. 8 / 10).\n\nYou see the score in the Preview tab while testing, and per respondent in the results viewer. Respondents never see the correct answer while filling.',
+        quizFlagTitle: 'Scored question — its points count toward the final score',
         quizPoints: 'Points',
         quizCorrectAnswer: 'Expected correct answer',
         quizCorrectHint: 'Mark the correct answer among the choices.',

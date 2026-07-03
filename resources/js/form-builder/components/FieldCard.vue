@@ -606,7 +606,7 @@ function cancelDelete() {
                 <span v-if="field.hidden" class="fb-hidden-pill">{{ t('hiddenToggle') }}</span>
 
                 <span class="fb-card-flags">
-                    <span v-if="hasQuiz" class="fb-flag fb-flag--quiz" :title="t('sectionQuiz')" :aria-label="t('sectionQuiz')">
+                    <span v-if="hasQuiz" class="fb-flag fb-flag--quiz" :title="t('quizFlagTitle')" :aria-label="t('quizFlagTitle')">
                         Σ{{ Number(field.quiz.score ?? 1) }}
                     </span>
                 </span>
