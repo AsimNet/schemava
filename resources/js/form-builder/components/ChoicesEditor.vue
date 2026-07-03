@@ -75,7 +75,7 @@ function addFromDraft() {
     if (lines.length === 0) {
         return;
     }
-    const next = [...choices.value, ...lines.map((line) => makeChoice(line))];
+    const next = [...choices.value, ...lines.map((line) => makeChoice(line, contentLocale.value))];
     applyChoices(next);
     draftInput.value = '';
 }
@@ -90,7 +90,7 @@ function onDraftPaste(event) {
     if (lines.length === 0) {
         return;
     }
-    const next = [...choices.value, ...lines.map((line) => makeChoice(line))];
+    const next = [...choices.value, ...lines.map((line) => makeChoice(line, contentLocale.value))];
     applyChoices(next);
     draftInput.value = '';
 }

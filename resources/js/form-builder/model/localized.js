@@ -9,6 +9,8 @@
  *               object o           -> { ar: o.ar ?? o.default ?? firstValue(o), en: o.en ?? null }
  *  - serialize: en empty           -> plain string (Arabic is the SurveyJS default)
  *               ar + en            -> { default: ar, en }
+ *               ar empty + en      -> { default: en, en }   (en-authored content
+ *                                     must render in the default locale too)
  */
 
 /** @returns {{ar: string, en: string|null}} */
@@ -90,7 +92,11 @@ export function serializeLStr(lstr) {
         return ar;
     }
 
-    return { default: ar, en };
+    // English-only content: emit the English text as `default` too, so the
+    // Arabic (default-locale) renderer shows the authored text instead of an
+    // empty/null default — the "Build and Preview don't sync" bug when a form
+    // is authored with the EN content toggle active.
+    return { default: ar === '' ? en : ar, en };
 }
 
 /**

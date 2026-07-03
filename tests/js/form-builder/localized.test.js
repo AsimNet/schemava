@@ -89,8 +89,10 @@ describe('localized.serializeLStr', () => {
         expect(serializeLStr({ ar: '  نعم  ', en: '  Yes  ' })).toEqual({ default: 'نعم', en: 'Yes' });
     });
 
-    it('en only (no ar) -> {default:"", en}', () => {
-        expect(serializeLStr({ ar: '', en: 'Yes' })).toEqual({ default: '', en: 'Yes' });
+    it('en only (no ar) -> {default: en, en} so the default locale still renders it', () => {
+        // An empty/null `default` made English-authored content vanish in the
+        // Arabic preview (the Build/Preview desync bug) — en backfills default.
+        expect(serializeLStr({ ar: '', en: 'Yes' })).toEqual({ default: 'Yes', en: 'Yes' });
     });
 });
 
