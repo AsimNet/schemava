@@ -285,6 +285,15 @@ const statementHasContent = computed(() => statementHtml.value.trim() !== '');
 const isImage = computed(() => props.field.type === 'image');
 const imageLink = computed(() => props.field.typeProps?.imageLink ?? null);
 
+/* ------------------------------------------------- panel_dynamic preview */
+
+const isPanelDynamic = computed(() => props.field.type === 'panel_dynamic');
+const templateQuestionCount = computed(() => {
+    const list = props.field.typeProps?.templateElements;
+
+    return Array.isArray(list) ? list.length : 0;
+});
+
 function onSelect() {
     selectField(props.field.name);
 }
@@ -447,6 +456,11 @@ function cancelDelete() {
                     </div>
                     <p v-else class="fb-card-image-empty">{{ t('imageCardEmpty') }}</p>
                 </template>
+
+                <!-- panel_dynamic: how many questions repeat per panel -->
+                <p v-if="isPanelDynamic" class="fb-card-panel-hint">
+                    {{ templateQuestionCount }} {{ t('panelTemplateCount') }}
+                </p>
 
                 <!-- rating: reflect the configured rateType + rateMax (fix 3) -->
                 <div v-if="ratingPreview" class="fb-card-rating" :aria-label="t('ratePreview')">
@@ -849,6 +863,18 @@ function cancelDelete() {
     width: 100%;
     max-height: 160px;
     object-fit: cover;
+}
+
+.fb-card-panel-hint {
+    margin: 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--fb-text-muted);
+    background: var(--fb-canvas);
+    border: 1px dashed var(--fb-border-strong);
+    border-radius: 0.5rem;
+    padding: 0.375rem 0.625rem;
+    align-self: flex-start;
 }
 
 .fb-card-image-empty {

@@ -12,6 +12,13 @@ import {
 
 const props = defineProps({
     field: { type: Object, required: true },
+    /**
+     * Optional override for persisting a new choices array, used when `field`
+     * isn't a top-level page field the store can find by name (e.g. a
+     * panel_dynamic template question — see PanelTemplateEditor.vue). Defaults
+     * to the store's `setChoices(field.name, ...)`.
+     */
+    onChange: { type: Function, default: null },
 });
 
 const contentLocale = computed(() => store.state?.contentLocale ?? 'ar');
@@ -19,6 +26,14 @@ const contentLocale = computed(() => store.state?.contentLocale ?? 'ar');
 const choices = computed(() => props.field.choices ?? []);
 
 const draftInput = ref('');
+
+function applyChoices(next) {
+    if (typeof props.onChange === 'function') {
+        props.onChange(next);
+    } else {
+        setChoices(props.field.name, next);
+    }
+}
 
 function labelText(choice) {
     const lstr = choice.label ?? { ar: '', en: null };
@@ -35,12 +50,12 @@ function isMissingTranslation(choice) {
 function onLabelInput(index, value) {
     const next = [...choices.value];
     next[index] = renameChoiceLabel(next[index], contentLocale.value, value);
-    setChoices(props.field.name, next);
+    applyChoices(next);
 }
 
 function removeChoice(index) {
     const next = choices.value.filter((_, i) => i !== index);
-    setChoices(props.field.name, next);
+    applyChoices(next);
 }
 
 function addFromDraft() {
@@ -49,7 +64,7 @@ function addFromDraft() {
         return;
     }
     const next = [...choices.value, ...lines.map((line) => makeChoice(line))];
-    setChoices(props.field.name, next);
+    applyChoices(next);
     draftInput.value = '';
 }
 
@@ -64,14 +79,14 @@ function onDraftPaste(event) {
         return;
     }
     const next = [...choices.value, ...lines.map((line) => makeChoice(line))];
-    setChoices(props.field.name, next);
+    applyChoices(next);
     draftInput.value = '';
 }
 
 function onReorder() {
     // vuedraggable mutates field.choices in place; persist via setChoices to
     // keep the dirty flag honest.
-    setChoices(props.field.name, [...choices.value]);
+    applyChoices([...choices.value]);
 }
 
 function diverged(choice) {

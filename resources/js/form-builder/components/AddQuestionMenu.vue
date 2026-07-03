@@ -7,6 +7,8 @@ import { popIn } from '../motion.js';
 const props = defineProps({
     /** Compact variant for the empty-state (centered, dashed). */
     variant: { type: String, default: 'default' },
+    /** Builder type ids to hide from the catalog (e.g. to prevent nesting). */
+    excludeTypes: { type: Array, default: () => [] },
 });
 
 const emit = defineEmits(['select']);
@@ -21,7 +23,7 @@ const groups = computed(() =>
     FIELD_GROUPS.map((group) => ({
         ...group,
         items: Object.entries(FIELD_TYPES)
-            .filter(([, def]) => def.group === group.id)
+            .filter(([id, def]) => def.group === group.id && !props.excludeTypes.includes(id))
             .map(([id, def]) => ({ id, ...def })),
     })).filter((group) => group.items.length > 0),
 );

@@ -154,18 +154,28 @@ export function setActiveTab(tab) {
     store.activeTab = next;
 }
 
-/** Collect every field name currently in use across all pages. */
+/**
+ * Collect every field name in use, including panel_dynamic template questions
+ * (nested inside `field.typeProps.templateElements`), so names stay unique
+ * across the whole survey rather than just within a page or a panel.
+ */
 function collectFieldNames() {
     const names = new Set();
     if (!store.state) {
         return names;
     }
-    for (const page of store.state.pages) {
-        for (const field of page.fields) {
+    const visit = (fields) => {
+        for (const field of fields) {
             if (field.name) {
                 names.add(field.name);
             }
+            if (field.type === 'panel_dynamic' && Array.isArray(field.typeProps?.templateElements)) {
+                visit(field.typeProps.templateElements);
+            }
         }
+    };
+    for (const page of store.state.pages) {
+        visit(page.fields);
     }
 
     return names;
@@ -781,6 +791,94 @@ export function setChoices(name, choices) {
         return;
     }
     found.field.choices = Array.isArray(choices) ? choices : [];
+    markDirty();
+}
+
+/**
+ * Locate a panel_dynamic's template question by the parent panel field's name
+ * plus the template question's own name.
+ *
+ * @param {string} panelName
+ * @param {string} subName
+ * @returns {{panelField: object, list: object[], index: number, field: object}|null}
+ */
+function findTemplateField(panelName, subName) {
+    const found = findField(panelName);
+    if (!found || found.field.type !== 'panel_dynamic') {
+        return null;
+    }
+    const list = found.field.typeProps.templateElements ?? [];
+    const index = list.findIndex((f) => f.name === subName);
+
+    return index === -1 ? null : { panelField: found.field, list, index, field: list[index] };
+}
+
+/**
+ * Append a new template question of `typeId` to a panel_dynamic field's panel
+ * template. Returns the new (sub-)field, or null for an unknown/wrong-type field.
+ *
+ * @param {string} panelName
+ * @param {string} typeId
+ * @returns {object|null}
+ */
+export function addTemplateField(panelName, typeId) {
+    const found = findField(panelName);
+    if (!found || found.field.type !== 'panel_dynamic') {
+        return null;
+    }
+    const field = makeField(typeId);
+    if (!Array.isArray(found.field.typeProps.templateElements)) {
+        found.field.typeProps.templateElements = [];
+    }
+    found.field.typeProps.templateElements.push(field);
+    markDirty();
+
+    return field;
+}
+
+/** Remove a template question from a panel_dynamic field's panel template. */
+export function removeTemplateField(panelName, subName) {
+    const found = findTemplateField(panelName, subName);
+    if (!found) {
+        return;
+    }
+    found.list.splice(found.index, 1);
+    markDirty();
+}
+
+/** Patch arbitrary props on a panel_dynamic's template question. */
+export function updateTemplateField(panelName, subName, patch) {
+    const found = findTemplateField(panelName, subName);
+    if (!found) {
+        return;
+    }
+    Object.assign(found.field, patch);
+    markDirty();
+}
+
+/** Replace a template question's choices wholesale (see {@link setChoices}). */
+export function setTemplateFieldChoices(panelName, subName, choices) {
+    const found = findTemplateField(panelName, subName);
+    if (!found) {
+        return;
+    }
+    found.field.choices = Array.isArray(choices) ? choices : [];
+    markDirty();
+}
+
+/**
+ * Replace a panel_dynamic field's whole template question list (used after a
+ * drag-and-drop reorder of the panel template).
+ *
+ * @param {string} panelName
+ * @param {object[]} nextList
+ */
+export function reorderTemplateFields(panelName, nextList) {
+    const found = findField(panelName);
+    if (!found || found.field.type !== 'panel_dynamic') {
+        return;
+    }
+    found.field.typeProps.templateElements = Array.isArray(nextList) ? nextList : [];
     markDirty();
 }
 
