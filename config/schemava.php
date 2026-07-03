@@ -7,6 +7,7 @@ use AsimNet\Schemava\Support\DefaultSurveyAnswerValidator;
 use AsimNet\Schemava\Support\DefaultSurveySubmissionHandler;
 use AsimNet\Schemava\Support\DefaultSurveyUrlResolver;
 use AsimNet\Schemava\Support\NullAiAssistant;
+use AsimNet\Schemava\Support\OpenRouterAiAssistant;
 use AsimNet\Schemava\Support\OpenSurveyAccessResolver;
 
 return [
@@ -87,6 +88,28 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | AI assistant
+    |--------------------------------------------------------------------------
+    |
+    | The designer's AI building assistant. It only appears when BOTH are true:
+    | 'enabled' is on AND the bound adapter reports itself configured (for the
+    | default OpenRouter adapter: an api_key is set). No key or enabled=false
+    | -> the assistant button is hidden and the endpoint refuses queries.
+    | base_url accepts any OpenAI-compatible endpoint. To hard-disable
+    | regardless of adapter, set 'enabled' => false (or bind NullAiAssistant).
+    |
+    */
+
+    'ai' => [
+        'enabled' => env('SCHEMAVA_AI_ENABLED', true),
+        'api_key' => env('SCHEMAVA_AI_API_KEY'),
+        'model' => env('SCHEMAVA_AI_MODEL', 'anthropic/claude-sonnet-4.5'),
+        'base_url' => env('SCHEMAVA_AI_BASE_URL', 'https://openrouter.ai/api/v1'),
+        'timeout' => env('SCHEMAVA_AI_TIMEOUT', 90),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Contracts
     |--------------------------------------------------------------------------
     |
@@ -98,7 +121,7 @@ return [
     'contracts' => [
         'runtime_context' => DefaultRuntimeContextProvider::class,
         'access_resolver' => OpenSurveyAccessResolver::class,
-        'ai_assistant' => NullAiAssistant::class,
+        'ai_assistant' => OpenRouterAiAssistant::class,
         'url_resolver' => DefaultSurveyUrlResolver::class,
         'submission_handler' => DefaultSurveySubmissionHandler::class,
         'answer_validator' => DefaultSurveyAnswerValidator::class,

@@ -7,7 +7,7 @@ use AsimNet\Schemava\Models\SurveySchema;
 
 /**
  * Default AI assistant: reports itself as unconfigured and refuses queries.
- * Bind a working adapter (e.g. the bundled laravel/ai OpenRouter adapter) via
+ * Bind a working adapter (the bundled OpenRouterAiAssistant, or your own) via
  * config('schemava.contracts.ai_assistant') to enable AI building.
  */
 class NullAiAssistant implements AiAssistant

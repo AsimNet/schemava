@@ -90,7 +90,7 @@ function closeJson() {
             <PreviewPane ref="previewPane" v-show="activeTab === 'preview'" :active="activeTab === 'preview'" />
         </main>
 
-        <AiAssistant @open-json="(text) => openJson(text)" />
+        <AiAssistant v-if="props.boot?.aiEnabled" @open-json="(text) => openJson(text)" />
 
         <JsonPanel :open="jsonOpen" :initial-text="jsonInitialText" @close="closeJson" />
         <SurveySettings :open="settingsOpen" @close="settingsOpen = false" />

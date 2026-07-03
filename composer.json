@@ -36,7 +36,7 @@
         "phpunit/phpunit": "^11.0"
     },
     "suggest": {
-        "laravel/ai": "Required only for the bundled AI assistant adapter (LaravelAiOpenRouterAssistant). Install ^0.1.5 to enable AI-assisted form building."
+        "guzzlehttp/guzzle": "The bundled OpenRouterAiAssistant uses Laravel's HTTP client (Guzzle) — already present in every Laravel app. Enable AI building by setting SCHEMAVA_AI_API_KEY."
     },
     "autoload": {
         "psr-4": {
