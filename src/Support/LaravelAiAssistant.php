@@ -4,33 +4,32 @@ namespace AsimNet\Schemava\Support;
 
 use AsimNet\Schemava\Contracts\AiAssistant;
 use AsimNet\Schemava\Models\SurveySchema;
-use Illuminate\Support\Facades\Http;
+use Laravel\Ai\AnonymousAgent;
+use Laravel\Ai\Messages\AssistantMessage;
+use Laravel\Ai\Messages\UserMessage;
 use Throwable;
 
 /**
- * OpenRouter-backed AI assistant (OpenAI-compatible chat completions over
- * plain HTTP — no extra composer dependency). Configure via config('schemava.ai'):
+ * AI assistant built on Laravel's first-party AI SDK (laravel/ai ^0.8).
  *
- *   'ai' => [
- *       'enabled'  => true,
- *       'api_key'  => env('SCHEMAVA_AI_API_KEY'),
- *       'model'    => env('SCHEMAVA_AI_MODEL', 'anthropic/claude-sonnet-4.5'),
- *       'base_url' => env('SCHEMAVA_AI_BASE_URL', 'https://openrouter.ai/api/v1'),
- *   ]
+ * Provider credentials and endpoints live in the SDK's own config/ai.php
+ * (OPENAI_API_KEY, ANTHROPIC_API_KEY, …); Schemava only chooses WHICH provider
+ * and model to use via config('schemava.ai'). To route through OpenRouter,
+ * configure the SDK's openai provider with OPENAI_URL=https://openrouter.ai/api/v1.
  *
- * Any OpenAI-compatible endpoint works through base_url (OpenRouter, OpenAI,
- * a local gateway). Unconfigured (no key) or disabled, isConfigured() is false
- * and the designer hides the assistant entirely.
+ * laravel/ai is a suggested (not required) dependency — when it is not
+ * installed, isConfigured() is false, the designer hides the assistant, and
+ * the endpoint refuses queries.
  */
-class OpenRouterAiAssistant implements AiAssistant
+class LaravelAiAssistant implements AiAssistant
 {
     /**
-     * The assistant's system prompt. Kept in sync with the designer's ACTUAL
-     * capabilities — update it whenever the builder gains element types or
-     * schema-level features, or the model will author schemas the designer
-     * (or the renderer) cannot faithfully handle.
+     * The assistant's system prompt (the agent's instructions). Kept in sync
+     * with the designer's ACTUAL capabilities — update it whenever the builder
+     * gains element types or schema-level features, or the model will author
+     * schemas the designer (or the renderer) cannot faithfully handle.
      */
-    protected function systemPrompt(): string
+    protected function instructions(): string
     {
         return <<<'PROMPT'
 You are the built-in form-building assistant of Schemava, an Arabic-first visual
@@ -89,8 +88,24 @@ PROMPT;
 
     public function isConfigured(): bool
     {
-        return (bool) config('schemava.ai.enabled', true)
-            && trim((string) config('schemava.ai.api_key', '')) !== '';
+        if (! (bool) config('schemava.ai.enabled', true) || ! class_exists(AnonymousAgent::class)) {
+            return false;
+        }
+
+        $provider = (string) (config('schemava.ai.provider') ?: config('ai.default', 'openai'));
+        $providerConfig = config("ai.providers.{$provider}");
+
+        if (! is_array($providerConfig)) {
+            return false;
+        }
+
+        // Key-less drivers (local ollama, IAM-authenticated bedrock) count as
+        // configured; everything else needs its API key present.
+        if (in_array($providerConfig['driver'] ?? $provider, ['ollama', 'bedrock'], true)) {
+            return true;
+        }
+
+        return trim((string) ($providerConfig['key'] ?? '')) !== '';
     }
 
     public function query(SurveySchema $schema, ?string $text, array $messageHistory): array
@@ -103,39 +118,35 @@ PROMPT;
             ];
         }
 
-        $messages = [['role' => 'system', 'content' => $this->systemPrompt()]];
+        $messages = [];
         foreach ($messageHistory as $message) {
-            if (is_array($message) && in_array($message['role'] ?? '', ['user', 'assistant'], true)) {
-                $messages[] = [
-                    'role' => $message['role'],
-                    'content' => (string) ($message['content'] ?? ''),
-                ];
+            if (! is_array($message)) {
+                continue;
             }
-        }
-        if ($text !== null && trim($text) !== '') {
-            $messages[] = ['role' => 'user', 'content' => $text];
+            $content = (string) ($message['content'] ?? '');
+            match ($message['role'] ?? null) {
+                'user' => $messages[] = new UserMessage($content),
+                'assistant' => $messages[] = new AssistantMessage($content),
+                default => null,
+            };
         }
 
         try {
-            $response = Http::withToken((string) config('schemava.ai.api_key'))
-                ->timeout((int) config('schemava.ai.timeout', 90))
-                ->post(rtrim((string) config('schemava.ai.base_url', 'https://openrouter.ai/api/v1'), '/').'/chat/completions', [
-                    'model' => (string) config('schemava.ai.model', 'anthropic/claude-sonnet-4.5'),
-                    'messages' => $messages,
-                ]);
+            $response = (new AnonymousAgent($this->instructions(), $messages, []))->prompt(
+                trim((string) $text) !== '' ? (string) $text : 'تابع.',
+                provider: config('schemava.ai.provider') ?: null,
+                model: config('schemava.ai.model') ?: null,
+                timeout: (int) config('schemava.ai.timeout', 90),
+            );
         } catch (Throwable $exception) {
             report($exception);
 
             return ['ok' => false, 'error' => __('schemava::surveyjs.ai.request_failed'), 'status' => 502];
         }
 
-        if ($response->failed()) {
-            return ['ok' => false, 'error' => __('schemava::surveyjs.ai.request_failed'), 'status' => 502];
-        }
+        $content = trim((string) $response->text);
 
-        $content = $response->json('choices.0.message.content');
-
-        if (! is_string($content) || trim($content) === '') {
+        if ($content === '') {
             return ['ok' => false, 'error' => __('schemava::surveyjs.ai.request_failed'), 'status' => 502];
         }
 

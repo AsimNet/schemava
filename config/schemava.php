@@ -6,8 +6,8 @@ use AsimNet\Schemava\Support\DefaultRuntimeContextProvider;
 use AsimNet\Schemava\Support\DefaultSurveyAnswerValidator;
 use AsimNet\Schemava\Support\DefaultSurveySubmissionHandler;
 use AsimNet\Schemava\Support\DefaultSurveyUrlResolver;
+use AsimNet\Schemava\Support\LaravelAiAssistant;
 use AsimNet\Schemava\Support\NullAiAssistant;
-use AsimNet\Schemava\Support\OpenRouterAiAssistant;
 use AsimNet\Schemava\Support\OpenSurveyAccessResolver;
 
 return [
@@ -91,20 +91,24 @@ return [
     | AI assistant
     |--------------------------------------------------------------------------
     |
-    | The designer's AI building assistant. It only appears when BOTH are true:
-    | 'enabled' is on AND the bound adapter reports itself configured (for the
-    | default OpenRouter adapter: an api_key is set). No key or enabled=false
-    | -> the assistant button is hidden and the endpoint refuses queries.
-    | base_url accepts any OpenAI-compatible endpoint. To hard-disable
-    | regardless of adapter, set 'enabled' => false (or bind NullAiAssistant).
+    | The designer's AI building assistant, built on Laravel's first-party AI
+    | SDK (composer require laravel/ai). Provider credentials live in the
+    | SDK's own config/ai.php (OPENAI_API_KEY, ANTHROPIC_API_KEY, …) — here
+    | you only pick which provider/model Schemava uses. The assistant appears
+    | ONLY when 'enabled' is on AND laravel/ai is installed AND the chosen
+    | provider has credentials; otherwise the button is hidden and the
+    | endpoint refuses queries. Hard-off: 'enabled' => false (or bind
+    | NullAiAssistant). OpenRouter: use the SDK's openai provider with
+    | OPENAI_URL=https://openrouter.ai/api/v1.
     |
     */
 
     'ai' => [
         'enabled' => env('SCHEMAVA_AI_ENABLED', true),
-        'api_key' => env('SCHEMAVA_AI_API_KEY'),
-        'model' => env('SCHEMAVA_AI_MODEL', 'anthropic/claude-sonnet-4.5'),
-        'base_url' => env('SCHEMAVA_AI_BASE_URL', 'https://openrouter.ai/api/v1'),
+        // null = the laravel/ai default provider (config('ai.default')).
+        'provider' => env('SCHEMAVA_AI_PROVIDER'),
+        // null = the provider's default model.
+        'model' => env('SCHEMAVA_AI_MODEL'),
         'timeout' => env('SCHEMAVA_AI_TIMEOUT', 90),
     ],
 
@@ -121,7 +125,7 @@ return [
     'contracts' => [
         'runtime_context' => DefaultRuntimeContextProvider::class,
         'access_resolver' => OpenSurveyAccessResolver::class,
-        'ai_assistant' => OpenRouterAiAssistant::class,
+        'ai_assistant' => LaravelAiAssistant::class,
         'url_resolver' => DefaultSurveyUrlResolver::class,
         'submission_handler' => DefaultSurveySubmissionHandler::class,
         'answer_validator' => DefaultSurveyAnswerValidator::class,

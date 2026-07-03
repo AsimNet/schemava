@@ -6,7 +6,7 @@ use AsimNet\Schemava\Models\SurveySchema;
 
 /**
  * Answers the builder's AI assistant requests. The package ships a no-op
- * implementation; a working adapter (the bundled OpenRouterAiAssistant, or a
+ * implementation; a working adapter (the bundled LaravelAiAssistant, or a
  * host-provided provider) is bound via configuration.
  */
 interface AiAssistant
