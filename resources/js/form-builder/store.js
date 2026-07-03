@@ -1363,6 +1363,42 @@ export function setPageTitle(pageIndex, lstr) {
     markDirty();
 }
 
+/**
+ * Replace a page's show/hide logic block ({action:'show'|'hide', match, rules}
+ * | {advanced} | null). Serialized as the page's SurveyJS visibleIf.
+ */
+export function setPageLogic(pageIndex, logic) {
+    const page = store.state?.pages[pageIndex];
+    if (!page) {
+        return;
+    }
+    page.logic = logic ?? null;
+    markDirty();
+}
+
+/**
+ * Fields usable as targets for a page's visibility rules: every named field on
+ * EARLIER pages (a page can't depend on answers it hasn't collected yet).
+ *
+ * @param {number} pageIndex
+ * @returns {Array<{name: string, type: string, label: {ar: string, en: string|null}}>}
+ */
+export function priorFieldsForPage(pageIndex) {
+    if (!store.state) {
+        return [];
+    }
+    const out = [];
+    for (let p = 0; p < Math.min(pageIndex, store.state.pages.length); p += 1) {
+        for (const field of store.state.pages[p].fields) {
+            if (field.name) {
+                out.push({ name: field.name, type: field.type, label: field.label });
+            }
+        }
+    }
+
+    return out;
+}
+
 export function setPageDescription(pageIndex, lstr) {
     const page = store.state?.pages[pageIndex];
     if (!page) {

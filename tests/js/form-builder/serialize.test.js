@@ -765,3 +765,35 @@ describe('serialize — page descriptions', () => {
         expect(state.pages[0].description).toEqual({ ar: 'تعليمات', en: null });
     });
 });
+
+describe('serialize — page show/hide logic (visibleIf)', () => {
+    it('round-trips a page visibleIf losslessly', () => {
+        const json = {
+            pages: [
+                { name: 'p1', elements: [{ type: 'text', name: 'q1', title: 'العمر', inputType: 'number' }] },
+                { name: 'p2', visibleIf: '{q1} > 18', elements: [] },
+            ],
+        };
+        // The visual-logic compiler emits the canonical parenthesized form.
+        expect(roundTrip(json).pages[1].visibleIf).toBe('({q1} > 18)');
+    });
+
+    it('parses page visibleIf into an editable logic block', () => {
+        const state = fromSurveyJson({
+            pages: [
+                { name: 'p1', elements: [] },
+                { name: 'p2', visibleIf: "{q1} = 'نعم'", elements: [] },
+            ],
+        });
+        const logic = state.pages[1].logic;
+        expect(logic).toBeTruthy();
+        expect(logic.rules?.[0]?.field ?? logic.advanced).toBeTruthy();
+    });
+
+    it('emits visibleIf from an authored page logic block', () => {
+        const state = fromSurveyJson({ pages: [{ name: 'p1', elements: [] }, { name: 'p2', elements: [] }] });
+        state.pages[1].logic = { action: 'show', match: 'all', rules: [{ field: 'q1', op: '>', value: 18 }] };
+        const out = toSurveyJson(state, { runtimeContextKeys: [] });
+        expect(out.pages[1].visibleIf).toBe('({q1} > 18)');
+    });
+});

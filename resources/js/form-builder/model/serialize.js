@@ -536,11 +536,12 @@ export function fromSurveyJson(json) {
 
     const builtPages = sourcePages.map((page, index) => {
         const pageObject = page && typeof page === 'object' ? page : {};
-        const { name, title: pageTitle, description: pageDescription, elements, ...pageRest } = pageObject;
+        const { name, title: pageTitle, description: pageDescription, visibleIf, elements, ...pageRest } = pageObject;
         const elementList = Array.isArray(elements) ? elements : [];
 
         return {
             name: typeof name === 'string' && name !== '' ? name : `page${index + 1}`,
+            logic: typeof visibleIf === 'string' && visibleIf.trim() !== '' ? parseLogic(visibleIf) : null,
             title: pageTitle !== undefined && pageTitle !== null ? parseLStr(pageTitle) : null,
             titlePreserveRaw: hasUnsupportedLocales(pageTitle),
             description: pageDescription !== undefined && pageDescription !== null ? parseLStr(pageDescription) : null,
@@ -800,6 +801,12 @@ export function toSurveyJson(state, options = { runtimeContextKeys: [] }) {
             // Extra-locale page description round-tripped via rawPageProps already.
         } else if (page.description && !isEmptyLStr(page.description)) {
             assignLocalized(pageObject, 'description', page.description);
+        }
+
+        // Page show/hide logic -> visibleIf (pages have no enableIf concept).
+        const pageCondition = compileLogic(page.logic);
+        if (pageCondition) {
+            pageObject.visibleIf = pageCondition;
         }
 
         pageObject.elements = (page.fields ?? []).map(fieldToElement);
