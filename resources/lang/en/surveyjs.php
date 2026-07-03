@@ -45,6 +45,7 @@ return [
         'closed' => 'This survey is closed.',
         'not_open' => 'This survey is not open yet.',
         'default' => 'This survey is currently unavailable.',
+        'rate_limited' => 'Too many attempts. Please try again in a moment.',
     ],
 
     'validation' => [

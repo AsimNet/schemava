@@ -9,6 +9,11 @@ use Illuminate\Contracts\Auth\Authenticatable;
 /**
  * Default submission handler: stores submissions as SurveyResult rows and
  * counts a subject's prior submissions.
+ *
+ * Guest (unauthenticated) subjects are tracked via a {@see GuestSubject}
+ * IP-hash rather than being silently exempted from `submission_limit_per_user`
+ * — see {@see GuestSubject} for the caveats of that signal. Host apps needing
+ * a stronger per-guest guarantee should bind their own SurveySubmissionHandler.
  */
 class DefaultSurveySubmissionHandler implements SurveySubmissionHandler
 {
@@ -16,6 +21,7 @@ class DefaultSurveySubmissionHandler implements SurveySubmissionHandler
     {
         return $schema->results()->create([
             'user_id' => $this->subjectId($subject),
+            'submitter_fingerprint' => $this->guestFingerprint($subject),
             'data' => $data,
             'status' => 'submitted',
             'submitted_at' => now(),
@@ -26,6 +32,10 @@ class DefaultSurveySubmissionHandler implements SurveySubmissionHandler
 
     public function submissionCount(SurveySchema $schema, mixed $subject): int
     {
+        if ($fingerprint = $this->guestFingerprint($subject)) {
+            return $schema->results()->where('submitter_fingerprint', $fingerprint)->count();
+        }
+
         $subjectId = $this->subjectId($subject);
 
         if ($subjectId === null) {
@@ -41,6 +51,15 @@ class DefaultSurveySubmissionHandler implements SurveySubmissionHandler
             return $subject->getAuthIdentifier();
         }
 
+        if ($subject instanceof GuestSubject) {
+            return null;
+        }
+
         return $subject;
+    }
+
+    protected function guestFingerprint(mixed $subject): ?string
+    {
+        return $subject instanceof GuestSubject ? $subject->fingerprint : null;
     }
 }

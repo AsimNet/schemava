@@ -131,7 +131,9 @@ return [
         // Public, browser-rendered fill-and-submit form. WHO MAY SUBMIT IS YOUR
         // CALL: the default middleware allows guests — add 'auth' to require a
         // logged-in user, and/or bind a SurveyAccessResolver for finer rules.
-        // Set 'enabled' => false to not expose a public form at all.
+        // Set 'enabled' => false to not expose a public form at all. The submit
+        // route additionally always gets the `schemava-submit` rate limiter
+        // (see `rate_limiting` below), independent of what's listed here.
         'public' => [
             'enabled' => true,
             'name' => 'schemava.public.show',
@@ -142,10 +144,35 @@ return [
         // JSON API for mobile / external clients (list forms, fetch one, submit).
         // Same principle: the default middleware is open — add e.g. 'auth:sanctum'
         // or 'auth:api' to require a token. Set 'enabled' => false to turn it off.
+        // The submit route additionally always gets the `schemava-submit` rate
+        // limiter (see `rate_limiting` below), independent of what's listed here.
         'api' => [
             'enabled' => true,
             'prefix' => 'api/surveys',
             'middleware' => ['api'],
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Rate limiting
+    |--------------------------------------------------------------------------
+    |
+    | The public and API submit routes are unauthenticated and reachable by
+    | anyone who knows (or guesses) a form's hash, so the package throttles
+    | them itself via a named `schemava-submit` rate limiter, keyed by request
+    | IP — independent of, and in addition to, the `web`/`api` middleware
+    | groups' own limiters. Set `enabled` to false only if the host app already
+    | throttles these routes elsewhere (e.g. at a reverse proxy/CDN).
+    |
+    */
+
+    'rate_limiting' => [
+        'enabled' => true,
+
+        'submit' => [
+            'max_attempts' => 10,
+            'decay_seconds' => 60,
         ],
     ],
 

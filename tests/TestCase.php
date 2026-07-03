@@ -93,6 +93,7 @@ abstract class TestCase extends Orchestra
                 $table->text('description')->nullable();
                 $table->json('survey_json')->nullable();
                 $table->boolean('is_active')->default(true);
+                $table->unsignedInteger('submission_limit_per_user')->nullable();
                 $table->string('hash')->nullable();
                 $table->string('schemava_version')->nullable();
                 $table->nullableMorphs('surveyable');
@@ -105,6 +106,7 @@ abstract class TestCase extends Orchestra
                 $table->id();
                 $table->foreignId($foreignKey);
                 $table->unsignedBigInteger('user_id')->nullable();
+                $table->string('submitter_fingerprint', 64)->nullable();
                 $table->json('data')->nullable();
                 $table->string('status')->nullable();
                 $table->timestamp('submitted_at')->nullable();
