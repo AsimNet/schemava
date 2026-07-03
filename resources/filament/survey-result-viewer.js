@@ -105,6 +105,36 @@ document.addEventListener('alpine:init', () => {
             survey.showNavigationButtons = 'none';
             survey.showProgressBar = 'off';
 
+            // Grade-at-a-glance for scored questions (ADMIN-only view — the
+            // schema served here still carries correctAnswer; respondent
+            // payloads have it stripped). survey-core's isAnswerCorrect()
+            // compares the stored answer against the key; we badge each
+            // graded question's title with ✓/✗ and the earned points.
+            const badgeText = this.locale === 'ar'
+                ? { correct: 'إجابة صحيحة', incorrect: 'إجابة خاطئة', points: 'نقطة' }
+                : { correct: 'Correct', incorrect: 'Incorrect', points: 'pts' };
+            survey.onAfterRenderQuestion.add((sender, options) => {
+                const question = options.question;
+                if (!question || question.correctAnswer === undefined || question.correctAnswer === null) {
+                    return;
+                }
+                const header = options.htmlElement.querySelector('h5') || options.htmlElement;
+                if (header.querySelector('.schemava-grade-badge')) {
+                    return;
+                }
+                let correct = false;
+                try {
+                    correct = typeof question.isAnswerCorrect === 'function' && question.isAnswerCorrect();
+                } catch (e) {
+                    correct = false;
+                }
+                const points = Number(question.score ?? question.jsonObj?.score ?? 1) || 1;
+                const badge = document.createElement('span');
+                badge.className = 'schemava-grade-badge ' + (correct ? 'schemava-grade-badge--correct' : 'schemava-grade-badge--incorrect');
+                badge.textContent = (correct ? '✓ ' + badgeText.correct + ' +' + points + ' ' + badgeText.points : '✗ ' + badgeText.incorrect);
+                header.appendChild(badge);
+            });
+
             const mount = this.$refs.mount;
 
             if (!mount) {
