@@ -78,6 +78,16 @@ describe('serialize — base round-trip per builder type (ar-only)', () => {
                 { type: 'radiogroup', name: 'member_gender', title: 'الجنس', choices: ['ذكر', 'أنثى'] },
             ],
         },
+        panel: {
+            type: 'panel',
+            name: 'q1',
+            title: 'بيانات أساسية',
+            elements: [
+                { type: 'text', name: 'g_name', title: 'الاسم', inputType: 'text' },
+                { type: 'dropdown', name: 'g_city', title: 'المدينة', choices: ['الرياض', 'بريدة'] },
+            ],
+        },
+        slider: { type: 'slider', name: 'q1', title: 'نسبة الرضا', min: 0, max: 10, step: 1 },
         ranking: { type: 'ranking', name: 'q1', title: 'ترتيب', choices: ['أ', 'ب'] },
         tagbox: { type: 'tagbox', name: 'q1', title: 'وسوم', choices: ['أ', 'ب'] },
         imagepicker: { type: 'imagepicker', name: 'q1', title: 'صورة', choices: ['أ', 'ب'] },
@@ -692,5 +702,126 @@ describe('serialize — panel_dynamic (repeating panel)', () => {
         const sub = state.pages[0].fields[0].typeProps.templateElements[0];
         expect(sub.type).toBe('advanced');
         expect(sub.raw).toEqual({ type: 'customwidget', name: 'weird', config: 'x' });
+    });
+});
+
+describe('serialize — multipletext items', () => {
+    it('round-trips items losslessly (name, localized title, isRequired, extras)', () => {
+        const element = {
+            type: 'multipletext',
+            name: 'q1',
+            title: 'بيانات التواصل',
+            colCount: 2,
+            items: [
+                { name: 'first_name', title: 'الاسم الأول', isRequired: true },
+                { name: 'phone', title: { default: 'الجوال', en: 'Phone' }, inputType: 'tel' },
+                { name: 'bare' },
+            ],
+        };
+        expect(roundTripElement(element)).toEqual(element);
+    });
+
+    it('parses items into editable TextItems (LStr titles, raw leftovers)', () => {
+        const state = fromSurveyJson({
+            pages: [{
+                name: 'p1',
+                elements: [{
+                    type: 'multipletext',
+                    name: 'q1',
+                    items: [{ name: 'a', title: 'حقل', maxLength: 10 }],
+                }],
+            }],
+        });
+        const items = state.pages[0].fields[0].typeProps.items;
+        expect(items).toHaveLength(1);
+        expect(items[0].name).toBe('a');
+        expect(items[0].title.ar).toBe('حقل');
+        expect(items[0].raw).toEqual({ maxLength: 10 });
+    });
+
+    it('omits items only when the field never had any (legacy import without items)', () => {
+        const out = roundTripElement({ type: 'multipletext', name: 'q1' });
+        expect(out).toEqual({ type: 'multipletext', name: 'q1' });
+    });
+});
+
+describe('serialize — page descriptions', () => {
+    it('round-trips a page description (localized)', () => {
+        const json = {
+            pages: [{
+                name: 'p1',
+                title: 'الصفحة الأولى',
+                description: { default: 'وصف الصفحة', en: 'Page intro' },
+                elements: [],
+            }],
+        };
+        expect(roundTrip(json).pages[0]).toEqual(json.pages[0]);
+    });
+
+    it('parses a page description into an editable LStr', () => {
+        const state = fromSurveyJson({
+            pages: [{ name: 'p1', description: 'تعليمات', elements: [] }],
+        });
+        expect(state.pages[0].description).toEqual({ ar: 'تعليمات', en: null });
+    });
+});
+
+describe('serialize — page show/hide logic (visibleIf)', () => {
+    it('round-trips a page visibleIf losslessly', () => {
+        const json = {
+            pages: [
+                { name: 'p1', elements: [{ type: 'text', name: 'q1', title: 'العمر', inputType: 'number' }] },
+                { name: 'p2', visibleIf: '{q1} > 18', elements: [] },
+            ],
+        };
+        // The visual-logic compiler emits the canonical parenthesized form.
+        expect(roundTrip(json).pages[1].visibleIf).toBe('({q1} > 18)');
+    });
+
+    it('parses page visibleIf into an editable logic block', () => {
+        const state = fromSurveyJson({
+            pages: [
+                { name: 'p1', elements: [] },
+                { name: 'p2', visibleIf: "{q1} = 'نعم'", elements: [] },
+            ],
+        });
+        const logic = state.pages[1].logic;
+        expect(logic).toBeTruthy();
+        expect(logic.rules?.[0]?.field ?? logic.advanced).toBeTruthy();
+    });
+
+    it('emits visibleIf from an authored page logic block', () => {
+        const state = fromSurveyJson({ pages: [{ name: 'p1', elements: [] }, { name: 'p2', elements: [] }] });
+        state.pages[1].logic = { action: 'show', match: 'all', rules: [{ field: 'q1', op: '>', value: 18 }] };
+        const out = toSurveyJson(state, { runtimeContextKeys: [] });
+        expect(out.pages[1].visibleIf).toBe('({q1} > 18)');
+    });
+});
+
+describe('serialize — survey triggers (jump / finish)', () => {
+    it('round-trips skip and complete triggers losslessly', () => {
+        const json = {
+            pages: [{ name: 'p1', elements: [{ type: 'text', name: 'q1', title: 'س', inputType: 'text' }] }],
+            triggers: [
+                { type: 'skip', expression: "{q1} = 'نعم'", gotoName: 'q9' },
+                { type: 'complete', expression: '{q1} notempty' },
+                { type: 'setvalue', expression: '{q1} = 1', setToName: 'q2', setValue: 'x' },
+            ],
+        };
+        expect(roundTrip(json).triggers).toEqual(json.triggers);
+    });
+
+    it('drops triggers with an empty expression and omits the prop when none remain', () => {
+        const state = fromSurveyJson({ pages: [{ name: 'p1', elements: [] }] });
+        state.triggers = [{ type: 'skip', expression: '   ', gotoName: 'q1', raw: {} }];
+        const out = toSurveyJson(state, { runtimeContextKeys: [] });
+        expect(out.triggers).toBeUndefined();
+    });
+
+    it('drops a skip trigger without a jump target', () => {
+        const state = fromSurveyJson({ pages: [{ name: 'p1', elements: [] }] });
+        state.triggers = [{ type: 'skip', expression: '{q1} = 1', gotoName: '', raw: {} }];
+        const out = toSurveyJson(state, { runtimeContextKeys: [] });
+        expect(out.triggers).toBeUndefined();
     });
 });

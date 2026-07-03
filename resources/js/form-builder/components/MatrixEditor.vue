@@ -83,7 +83,7 @@ function removeColumn(index) {
 
 function addColumn() {
     const existingNames = columns.value.map((column) => column.name);
-    setColumns([...columns.value, makeMatrixColumn('', existingNames)]);
+    setColumns([...columns.value, makeMatrixColumn('', existingNames, contentLocale.value)]);
 }
 
 function cellTypeLabel(cellType) {

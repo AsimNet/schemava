@@ -160,7 +160,13 @@ class ResultsRelationManagerTest extends TestCase
         // …wires the data into the response-viewer Alpine component (which renders
         // read-only through SurveyJS — inline scripts don't run in Livewire modals)…
         $this->assertStringContainsString('schemavaSurveyResult(', $html);
-        // …and passes the configured renderer version for it to load.
-        $this->assertStringContainsString(config('schemava.renderer_version'), $html);
+        // …and passes the self-hosted renderer asset URLs for it to load
+        // (the renderer is bundled with the package — no CDN; see the
+        // surveyjs-* entries in SchemavaServiceProvider::registerAssets).
+        $this->assertStringContainsString('surveyjs-core.js', $html);
+        $this->assertStringContainsString('surveyjs-ui.js', $html);
+        // …and the answer key is still present for the ADMIN result viewer
+        // (only respondent-facing payloads strip correctAnswer/score).
+        $this->assertStringContainsString('correctAnswer', $html);
     }
 }

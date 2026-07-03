@@ -1,5 +1,7 @@
 # Schemava
 
+> **Author guide (Arabic):** [دليل منشئ النماذج المرئي](docs/ar/form-designer.md) — canvas authoring, containers, conditional logic, quizzes, and preview.
+
 > A visual, multilingual form builder built specifically for **FilamentPHP panels** — exports **SurveyJS-compatible JSON**.
 
 Schemava adds a drag-and-drop form **designer** to your FilamentPHP panel. You build forms visually, store the

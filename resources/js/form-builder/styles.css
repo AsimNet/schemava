@@ -92,3 +92,20 @@ body {
     background: var(--fb-border-strong);
     border-radius: 9999px;
 }
+
+/* ------------------------------------------------------------------------- */
+/* Authored statement HTML inside the SurveyJS preview: Tailwind's preflight  */
+/* (bundled with the builder page) resets list-style to none, which erased   */
+/* bullets from rendered <ul>/<ol>. Scoped to survey-core's html question    */
+/* wrapper so the renderer's own components are untouched.                   */
+.fb-preview .sd-html ul {
+    list-style: disc;
+    margin: 0.25rem 0;
+    padding-inline-start: 1.25rem;
+}
+
+.fb-preview .sd-html ol {
+    list-style: decimal;
+    margin: 0.25rem 0;
+    padding-inline-start: 1.25rem;
+}

@@ -232,6 +232,53 @@ function serializeMatrixProps(builderType, typeProps, element) {
 }
 
 /**
+ * SurveyJS multipletext item -> TextItem + leftover raw props. Mirrors
+ * {@see parseMatrixColumn}'s shape/uid handling (name + localizable title).
+ *
+ * @param {unknown} item
+ * @returns {{_uid: string, name: string, title: {ar: string, en: string|null}, isRequired: boolean, raw: object}}
+ */
+function parseTextItem(item) {
+    if (item === null || item === undefined) {
+        return { _uid: choiceUid(), name: '', title: emptyLStr(), isRequired: false, raw: {} };
+    }
+
+    if (typeof item !== 'object') {
+        return { _uid: choiceUid(), name: String(item), title: emptyLStr(), isRequired: false, raw: {} };
+    }
+
+    const { name, title, isRequired, ...rest } = /** @type {Record<string, unknown>} */ (item);
+
+    return {
+        _uid: choiceUid(),
+        name: typeof name === 'string' ? name : String(name ?? ''),
+        title: title !== undefined && title !== null ? parseLStr(title) : emptyLStr(),
+        isRequired: isRequired === true,
+        raw: rest,
+    };
+}
+
+/**
+ * TextItem -> SurveyJS multipletext item. Mirrors {@see serializeMatrixColumn}.
+ *
+ * @param {{name: string, title?: {ar: string, en: string|null}, isRequired?: boolean, raw?: object}} item
+ * @returns {unknown}
+ */
+function serializeTextItem(item) {
+    const out = { ...(item.raw ?? {}) };
+    out.name = item.name;
+
+    if (item.title && !isEmptyLStr(item.title)) {
+        assignLocalized(out, 'title', item.title);
+    }
+    if (item.isRequired) {
+        out.isRequired = true;
+    }
+
+    return out;
+}
+
+/**
  * SurveyJS `calculatedValues` entry -> CalculatedValue + leftover raw props
  * (e.g. a `title` used by result exports). Invalid (non-object) entries are
  * dropped by the caller.
@@ -392,12 +439,28 @@ function elementToField(element, usedNames) {
     // Matrix family: parse rows/columns into typeProps.
     parseMatrixProps(builderType, element, typeProps);
 
+    // multipletext: parse the textbox items into typeProps.
+    if (builderType === 'multipletext' && Array.isArray(element.items)) {
+        typeProps.items = element.items.map(parseTextItem);
+    }
+
     // panel_dynamic: recursively parse the panel template's sub-questions into
     // real Fields (sharing `usedNames` so template question names stay unique
     // across the whole survey, not just within the panel).
     if (builderType === 'panel_dynamic') {
         typeProps.templateElements = Array.isArray(element.templateElements)
             ? element.templateElements
+                .filter((sub) => sub && typeof sub === 'object')
+                .map((sub) => elementToField(sub, usedNames))
+            : [];
+    }
+
+    // panel (static group): children live in SurveyJS `elements`; internally
+    // they share panel_dynamic's templateElements slot so every nested-aware
+    // store/canvas path treats both containers identically.
+    if (builderType === 'panel') {
+        typeProps.templateElements = Array.isArray(element.elements)
+            ? element.elements
                 .filter((sub) => sub && typeof sub === 'object')
                 .map((sub) => elementToField(sub, usedNames))
             : [];
@@ -450,6 +513,7 @@ export function fromSurveyJson(json) {
         description,
         pages,
         calculatedValues,
+        triggers,
         ...rest
     } = source;
 
@@ -473,13 +537,16 @@ export function fromSurveyJson(json) {
 
     const builtPages = sourcePages.map((page, index) => {
         const pageObject = page && typeof page === 'object' ? page : {};
-        const { name, title: pageTitle, elements, ...pageRest } = pageObject;
+        const { name, title: pageTitle, description: pageDescription, visibleIf, elements, ...pageRest } = pageObject;
         const elementList = Array.isArray(elements) ? elements : [];
 
         return {
             name: typeof name === 'string' && name !== '' ? name : `page${index + 1}`,
+            logic: typeof visibleIf === 'string' && visibleIf.trim() !== '' ? parseLogic(visibleIf) : null,
             title: pageTitle !== undefined && pageTitle !== null ? parseLStr(pageTitle) : null,
             titlePreserveRaw: hasUnsupportedLocales(pageTitle),
+            description: pageDescription !== undefined && pageDescription !== null ? parseLStr(pageDescription) : null,
+            descriptionPreserveRaw: hasUnsupportedLocales(pageDescription),
             rawPageProps: pageRest,
             fields: elementList
                 .filter((element) => element && typeof element === 'object')
@@ -494,6 +561,22 @@ export function fromSurveyJson(json) {
         rawSurveyProps,
         calculatedValues: Array.isArray(calculatedValues)
             ? calculatedValues.map(parseCalculatedValue).filter(Boolean)
+            : [],
+        // Survey-level triggers (skip / complete are editable; anything else —
+        // setvalue, runexpression, copyvalue — is preserved verbatim in raw).
+        triggers: Array.isArray(triggers)
+            ? triggers
+                .filter((item) => item && typeof item === 'object')
+                .map((item) => {
+                    const { type, expression, gotoName, ...restTrigger } = /** @type {Record<string, unknown>} */ (item);
+
+                    return {
+                        type: typeof type === 'string' ? type : '',
+                        expression: typeof expression === 'string' ? expression : '',
+                        gotoName: typeof gotoName === 'string' ? gotoName : '',
+                        raw: restTrigger,
+                    };
+                })
             : [],
         contentLocale: 'ar',
     };
@@ -611,6 +694,11 @@ function fieldToElement(field) {
     // Matrix family: emit rows/columns from typeProps.
     serializeMatrixProps(field.type, field.typeProps, element);
 
+    // multipletext: re-emit the textbox items.
+    if (field.type === 'multipletext' && Array.isArray(field.typeProps?.items)) {
+        element.items = field.typeProps.items.map(serializeTextItem);
+    }
+
     // Choices.
     if (Array.isArray(field.choices)) {
         element.choices = field.choices.map(serializeChoice);
@@ -619,6 +707,13 @@ function fieldToElement(field) {
     // panel_dynamic: re-emit the panel template's sub-questions as real elements.
     if (field.type === 'panel_dynamic') {
         element.templateElements = Array.isArray(field.typeProps?.templateElements)
+            ? field.typeProps.templateElements.map(fieldToElement)
+            : [];
+    }
+
+    // panel (static group): re-emit children as SurveyJS `elements`.
+    if (field.type === 'panel') {
+        element.elements = Array.isArray(field.typeProps?.templateElements)
             ? field.typeProps.templateElements.map(fieldToElement)
             : [];
     }
@@ -719,6 +814,18 @@ export function toSurveyJson(state, options = { runtimeContextKeys: [] }) {
             assignLocalized(pageObject, 'title', page.title);
         }
 
+        if (page.descriptionPreserveRaw && pageObject.description === undefined) {
+            // Extra-locale page description round-tripped via rawPageProps already.
+        } else if (page.description && !isEmptyLStr(page.description)) {
+            assignLocalized(pageObject, 'description', page.description);
+        }
+
+        // Page show/hide logic -> visibleIf (pages have no enableIf concept).
+        const pageCondition = compileLogic(page.logic);
+        if (pageCondition) {
+            pageObject.visibleIf = pageCondition;
+        }
+
         pageObject.elements = (page.fields ?? []).map(fieldToElement);
 
         return pageObject;
@@ -739,6 +846,23 @@ export function toSurveyJson(state, options = { runtimeContextKeys: [] }) {
         if (result[key] === undefined) {
             result[key] = value;
         }
+    }
+
+    // Survey-level triggers (jump / finish rules + preserved passthrough).
+    const triggersOut = (Array.isArray(state.triggers) ? state.triggers : [])
+        .filter((trigger) => trigger && trigger.type && (trigger.expression ?? '').trim() !== ''
+            // a jump without a destination is meaningless — don't emit it
+            && (trigger.type !== 'skip' || (trigger.gotoName ?? '') !== ''))
+        .map((trigger) => {
+            const out = { ...(trigger.raw ?? {}), type: trigger.type, expression: trigger.expression.trim() };
+            if (trigger.type === 'skip' && trigger.gotoName) {
+                out.gotoName = trigger.gotoName;
+            }
+
+            return out;
+        });
+    if (triggersOut.length > 0) {
+        result.triggers = triggersOut;
     }
 
     // Author-defined calculatedValues + runtime injection for missing keys.

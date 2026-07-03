@@ -12,17 +12,36 @@
       - $surveyJson      array   The schema's SurveyJS definition.
       - $data            array   The submitted answers (SurveyResult->data).
       - $locale          string  Active locale (drives UI strings + RTL).
-      - $rendererVersion string  Pinned survey-core/survey-js-ui version.
+      - $rendererVersion string  Pinned survey-core/survey-js-ui version (informational).
 --}}
 @php($isRtl = $locale === 'ar')
 @php($storageDefaultLocale = 'ar')
+
+{{-- Filament panels ship Tailwind's preflight, which resets list-style to
+     none — restore markers inside authored statement HTML (sd-html) so
+     bulleted statements render as lists in the response viewer. --}}
+<style>
+    .schemava-result .sd-html ul { list-style: disc; margin: .25rem 0; padding-inline-start: 1.25rem; }
+    .schemava-result .sd-html ol { list-style: decimal; margin: .25rem 0; padding-inline-start: 1.25rem; }
+    /* per-question grading badge (scored quizzes, admin review only) */
+    .schemava-grade-badge { display: inline-block; margin-inline-start: .5rem; padding: .125rem .5rem;
+        border-radius: 999px; font-size: .6875rem; font-weight: 700; vertical-align: middle; }
+    .schemava-grade-badge--correct { background: #dcfce7; color: #15803d; }
+    .schemava-grade-badge--incorrect { background: #fee2e2; color: #b91c1c; }
+</style>
 
 <div
     class="schemava-result"
     dir="{{ $isRtl ? 'rtl' : 'ltr' }}"
     style="--sjs-font-family: 'IBM Plex Sans Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;"
     x-data="schemavaSurveyResult(@js([
-        'version' => $rendererVersion,
+        // Self-hosted renderer URLs — CDN tags break behind TLS-inspection proxies.
+        'urls' => [
+            'css' => \Filament\Support\Facades\FilamentAsset::getStyleHref('surveyjs-core', package: 'asimnet/schemava'),
+            'core' => \Filament\Support\Facades\FilamentAsset::getScriptSrc('surveyjs-core', package: 'asimnet/schemava'),
+            'i18n' => \Filament\Support\Facades\FilamentAsset::getScriptSrc('surveyjs-i18n', package: 'asimnet/schemava'),
+            'ui' => \Filament\Support\Facades\FilamentAsset::getScriptSrc('surveyjs-ui', package: 'asimnet/schemava'),
+        ],
         'surveyJson' => $surveyJson ?: (object) [],
         'data' => (object) ($data ?: []),
         'locale' => $locale ?: $storageDefaultLocale,

@@ -113,6 +113,13 @@ export const FIELD_TYPES = {
         icon: 'M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z',
         typeProps: { rateMax: 5, rateType: 'stars' },
     },
+    slider: {
+        surveyType: 'slider',
+        group: 'choices',
+        label: { ar: 'شريط تمرير', en: 'Slider' },
+        icon: 'M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75',
+        typeProps: { min: 0, max: 100, step: 1 },
+    },
     statement: {
         surveyType: 'html',
         group: 'content',
@@ -175,7 +182,7 @@ export const FIELD_TYPES = {
         label: { ar: 'حقول نصية متعددة', en: 'Multiple textboxes' },
         icon: 'M3.75 5.25h16.5M3.75 9.75h7.5m-7.5 4.5h16.5M3.75 18.75h7.5',
         hasItems: true,
-        typeProps: { colCount: 1 },
+        typeProps: { colCount: 1, items: [] },
     },
     expression: {
         surveyType: 'expression',
@@ -183,6 +190,16 @@ export const FIELD_TYPES = {
         label: { ar: 'قيمة محسوبة', en: 'Calculated value' },
         icon: 'M8.25 6h7.5v2.25h-7.5V6zM12 2.25c-1.892 0-3.758.11-5.593.322C5.307 2.7 4.5 3.65 4.5 4.757V19.5a2.25 2.25 0 002.25 2.25h10.5a2.25 2.25 0 002.25-2.25V4.757c0-1.108-.806-2.057-1.907-2.185A48.507 48.507 0 0012 2.25zM9.75 15.75h.008v.008H9.75v-.008zm0-2.25h.008v.008H9.75V13.5zm0-2.25h.008v.008H9.75v-.008zM12 15.75h.008v.008H12v-.008zm0-2.25h.008v.008H12V13.5zm0-2.25h.008v.008H12v-.008zm2.25 4.5h.008v.008h-.008v-.008zm0-2.25h.008v.008h-.008V13.5z',
         typeProps: { expression: '', displayStyle: 'none' },
+    },
+    panel: {
+        surveyType: 'panel',
+        group: 'advanced',
+        label: { ar: 'مجموعة أسئلة', en: 'Question group' },
+        icon: 'M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z',
+        // Children live in typeProps.templateElements — the SAME internal slot
+        // panel_dynamic uses — so every nested-aware store/canvas path applies
+        // to both containers; the serializer maps it to SurveyJS `elements`.
+        typeProps: { templateElements: [] },
     },
     panel_dynamic: {
         surveyType: 'paneldynamic',
@@ -256,7 +273,8 @@ export const TYPE_PROP_SPECS = {
     image: { props: ['imageLink'] },
     statement: { localized: ['html'] },
     hidden_value: {},
-    multipletext: { props: ['colCount'] },
+    // items need custom (LStr-title) parsing/emitting — see serialize.js.
+    multipletext: { props: ['colCount'], custom: ['items'] },
     // rows/columns need custom (non-passthrough) parsing/emitting — see
     // elementToField/fieldToElement in serialize.js — so they are declared here
     // via `custom` purely to keep them out of `field.raw` (see managedPropsFor).
@@ -264,6 +282,9 @@ export const TYPE_PROP_SPECS = {
     matrixdropdown: { custom: ['rows', 'columns'] },
     matrixdynamic: { props: ['rowCount'], custom: ['columns'] },
     expression: { props: ['expression', 'displayStyle'] },
+    slider: { props: ['min', 'max', 'step'] },
+    // children parse/emit as SurveyJS `elements` — see serialize.js.
+    panel: { custom: ['elements'] },
     panel_dynamic: {
         props: ['panelCount', 'minPanelCount', 'maxPanelCount', 'templateElements'],
         localized: ['panelAddText', 'panelRemoveText'],

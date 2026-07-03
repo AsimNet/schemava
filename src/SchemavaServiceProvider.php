@@ -118,6 +118,7 @@ class SchemavaServiceProvider extends PackageServiceProvider
     {
         $dist = __DIR__.'/../resources/dist';
         $filament = __DIR__.'/../resources/filament';
+        $renderer = __DIR__.'/../resources/renderer';
 
         FilamentAsset::register([
             Css::make('schemava-builder', "{$dist}/schemava-builder.css")->loadedOnRequest(),
@@ -128,6 +129,17 @@ class SchemavaServiceProvider extends PackageServiceProvider
             // Lives in resources/filament (a shipped dir) rather than resources/js,
             // which is export-ignored from the distributed package.
             Js::make('schemava-result-viewer', "{$filament}/survey-result-viewer.js"),
+            // Self-hosted SurveyJS renderer (survey-core + survey-js-ui, MIT) at
+            // the version pinned in config('schemava.renderer_version'). Served
+            // by the app instead of a CDN: corporate TLS-inspection proxies
+            // (e.g. Zscaler) silently break third-party <script> tags, which
+            // blanked the designer Preview tab and public forms on such networks.
+            // Lives in resources/renderer (NOT resources/dist — vite empties
+            // that dir on every build).
+            Css::make('surveyjs-core', "{$renderer}/surveyjs/survey-core.min.css")->loadedOnRequest(),
+            Js::make('surveyjs-core', "{$renderer}/surveyjs/survey.core.min.js")->loadedOnRequest(),
+            Js::make('surveyjs-i18n', "{$renderer}/surveyjs/survey.i18n.min.js")->loadedOnRequest(),
+            Js::make('surveyjs-ui', "{$renderer}/surveyjs/survey-js-ui.min.js")->loadedOnRequest(),
         ], package: 'asimnet/schemava');
     }
 

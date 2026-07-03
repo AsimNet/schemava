@@ -28,7 +28,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ $csrf }}">
     <title>{{ $pageTitle }}</title>
-    <link href="{{ 'https://unpkg.com/survey-core@'.$rendererVersion.'/survey-core.min.css' }}" rel="stylesheet"/>
+    {{-- Self-hosted SurveyJS renderer (see SchemavaServiceProvider::registerAssets):
+         CDN tags break behind TLS-inspection proxies (Zscaler et al.). --}}
+    <link href="{{ \Filament\Support\Facades\FilamentAsset::getStyleHref('surveyjs-core', package: 'asimnet/schemava') }}" rel="stylesheet"/>
     <style>
         body { margin: 0; background: #f3f4f6; color: #14161b;
             font-family: 'IBM Plex Sans Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
@@ -47,9 +49,9 @@
     </div>
 
     @unless ($unavailable)
-        <script src="{{ 'https://unpkg.com/survey-core@'.$rendererVersion.'/survey.core.min.js' }}"></script>
-        <script src="{{ 'https://unpkg.com/survey-core@'.$rendererVersion.'/survey.i18n.min.js' }}"></script>
-        <script src="{{ 'https://unpkg.com/survey-js-ui@'.$rendererVersion.'/survey-js-ui.min.js' }}"></script>
+        <script src="{{ \Filament\Support\Facades\FilamentAsset::getScriptSrc('surveyjs-core', package: 'asimnet/schemava') }}"></script>
+        <script src="{{ \Filament\Support\Facades\FilamentAsset::getScriptSrc('surveyjs-i18n', package: 'asimnet/schemava') }}"></script>
+        <script src="{{ \Filament\Support\Facades\FilamentAsset::getScriptSrc('surveyjs-ui', package: 'asimnet/schemava') }}"></script>
         @php
             $formBoot = [
                 'surveyJson' => $surveyJson,
