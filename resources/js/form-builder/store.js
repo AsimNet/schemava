@@ -269,11 +269,18 @@ function makeField(typeId) {
     const type = def ? typeId : ADVANCED_TYPE;
     const baseTypeProps = def ? clone(def.typeProps ?? {}) : {};
 
-    // yes_no ships with explicit Arabic true/false labels so the mobile renderer
-    // shows نعم/لا regardless of locale fallbacks (serialized verbatim).
+    // yes_no ships with explicit true/false labels (serialized verbatim) so the
+    // renderer never falls back to engine defaults. Seeded into the ACTIVE
+    // content locale's slot — like every other seed — so an English-authored
+    // form gets Yes/No, not Arabic text leaking into the EN view.
     if (type === 'yes_no') {
-        baseTypeProps.labelTrue = { ar: 'نعم', en: null };
-        baseTypeProps.labelFalse = { ar: 'لا', en: null };
+        if (store.state?.contentLocale === 'en') {
+            baseTypeProps.labelTrue = { ar: '', en: 'Yes' };
+            baseTypeProps.labelFalse = { ar: '', en: 'No' };
+        } else {
+            baseTypeProps.labelTrue = { ar: 'نعم', en: null };
+            baseTypeProps.labelFalse = { ar: 'لا', en: null };
+        }
     }
 
     // Matrix family: seed rows/columns (or rowCount for matrixdynamic) so a

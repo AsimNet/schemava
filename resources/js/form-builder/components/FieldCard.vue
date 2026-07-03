@@ -326,11 +326,15 @@ const yesNoPreview = computed(() => {
     if (props.field.type !== 'yes_no') {
         return [];
     }
-    const pick = (lstr) => (contentLocale.value === 'en' ? lstr?.en : lstr?.ar) ?? lstr?.ar ?? '';
+    // Active slot ONLY — editing surfaces never fall back across locales
+    // (an Arabic نعم leaking into the EN view reads as a bug, and typing
+    // would silently write the other slot's translation).
+    const en = contentLocale.value === 'en';
+    const pick = (lstr) => (en ? lstr?.en : lstr?.ar) ?? '';
 
     return [
-        { key: 'true', text: pick(props.field.typeProps?.labelTrue), placeholder: 'نعم' },
-        { key: 'false', text: pick(props.field.typeProps?.labelFalse), placeholder: 'لا' },
+        { key: 'true', text: pick(props.field.typeProps?.labelTrue), placeholder: en ? 'Yes' : 'نعم' },
+        { key: 'false', text: pick(props.field.typeProps?.labelFalse), placeholder: en ? 'No' : 'لا' },
     ];
 });
 

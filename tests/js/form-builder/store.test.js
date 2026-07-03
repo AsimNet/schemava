@@ -972,6 +972,18 @@ describe('store — EN content locale: seeds and edits stay in sync across local
         }
     });
 
+    it('yes_no seeds Yes/No into the EN slot (not Arabic leaking into the EN view)', () => {
+        const field = addField('yes_no');
+        expect(field.typeProps.labelTrue).toEqual({ ar: '', en: 'Yes' });
+        expect(field.typeProps.labelFalse).toEqual({ ar: '', en: 'No' });
+        // Serializes with a non-empty default so the Arabic runtime shows Yes/No
+        // rather than an empty label (serializeLStr backfills default from en).
+        const json = toSurveyJson(store.state, { runtimeContextKeys: [] });
+        const element = json.pages[0].elements.find((el) => el.name === field.name);
+        expect(element.labelTrue).toEqual({ default: 'Yes', en: 'Yes' });
+        expect(element.labelFalse).toEqual({ default: 'No', en: 'No' });
+    });
+
     it('matrix seeded rows/columns land in the EN slot', () => {
         const field = addField('matrix');
         expect(field.typeProps.rows[0].label.en).toBe('Row 1');
