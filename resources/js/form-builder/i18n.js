@@ -358,6 +358,13 @@ const MESSAGES = {
         richAlignCenter: 'توسيط',
         richAlignLeft: 'محاذاة لليسار',
         richDirection: 'اتجاه الفقرة (يمين ↔ يسار)',
+        logicChipShow: 'يظهر إذا',
+        logicChipHide: 'يختفي إذا',
+        logicChipDisable: 'يُعطَّل إذا',
+        logicChipHint: 'انقر لفتح إعدادات المنطق',
+        logicAnd: 'و',
+        logicOr: 'أو',
+        logicConnectorHint: 'بدّل بين «كل الشروط» و«أي شرط»',
 
         // Expression / calculated values
         expressionFormula: 'الصيغة الحسابية',
@@ -720,6 +727,13 @@ const MESSAGES = {
         richAlignCenter: 'Center',
         richAlignLeft: 'Align left',
         richDirection: 'Paragraph direction (RTL ↔ LTR)',
+        logicChipShow: 'Shows when',
+        logicChipHide: 'Hides when',
+        logicChipDisable: 'Disabled when',
+        logicChipHint: 'Click to open the logic settings',
+        logicAnd: 'and',
+        logicOr: 'or',
+        logicConnectorHint: 'Toggle between "all conditions" and "any condition"',
 
         // Expression / calculated values
         expressionFormula: 'Formula',
