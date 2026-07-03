@@ -37,6 +37,7 @@ import {
     duplicateField,
 } from '../../../resources/js/form-builder/store.js';
 import { toSurveyJson } from '../../../resources/js/form-builder/model/serialize.js';
+import { renameChoiceLabel as renameChoiceLabelHelper } from '../../../resources/js/form-builder/ui-helpers.js';
 
 /** Boot the store with an empty survey before each case. */
 beforeEach(() => {
@@ -953,5 +954,50 @@ describe('store — static panel (question group) container', () => {
         expect(element.type).toBe('panel');
         expect(Array.isArray(element.elements)).toBe(true);
         expect(element.elements).toHaveLength(1);
+    });
+});
+
+describe('store — EN content locale: seeds and edits stay in sync across locales', () => {
+    beforeEach(() => {
+        loadFromBoot({ surveyJson: {}, runtimeContextKeys: [] });
+        store.state.contentLocale = 'en';
+    });
+
+    it('seeds choice defaults into the EN slot with mirrored values', () => {
+        const field = addField('single_choice');
+        for (const choice of field.choices) {
+            expect(choice.label.ar).toBe('');
+            expect(choice.label.en).toMatch(/^Option /);
+            expect(choice.value).toBe(choice.label.en);
+        }
+    });
+
+    it('matrix seeded rows/columns land in the EN slot', () => {
+        const field = addField('matrix');
+        expect(field.typeProps.rows[0].label.en).toBe('Row 1');
+        expect(field.typeProps.rows[0].label.ar).toBe('');
+        expect(field.typeProps.columns[0].label.en).toBe('Column 1');
+    });
+
+    it('EN-authored choices serialize with a non-empty default (Arabic preview shows them)', () => {
+        const field = addField('single_choice');
+        const json = toSurveyJson(store.state, { runtimeContextKeys: [] });
+        const element = json.pages[0].elements.find((el) => el.name === field.name);
+        for (const item of element.choices) {
+            const text = typeof item === 'string' ? item : item.text;
+            const def = typeof text === 'string' ? text : text.default;
+            expect(def).toBeTruthy();
+            expect(def).not.toBe('');
+        }
+    });
+
+    it('renaming an EN-slot choice keeps the value mirrored while ar is empty', () => {
+        const field = addField('single_choice');
+        const renamed = [...field.choices];
+        renamed[0] = { ...renamed[0] };
+        // simulate the card's rename path
+        const next = renameChoiceLabelHelper(renamed[0], 'en', 'Strongly agree');
+        expect(next.value).toBe('Strongly agree');
+        expect(next.label.en).toBe('Strongly agree');
     });
 });

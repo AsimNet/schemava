@@ -285,7 +285,7 @@ function makeField(typeId) {
     if (type === 'matrix') {
         baseTypeProps.columns = defaultMatrixSimpleColumns();
     } else if (type === 'matrixdropdown' || type === 'matrixdynamic') {
-        baseTypeProps.columns = [makeMatrixColumn(defaultMatrixColumnLabel())];
+        baseTypeProps.columns = [makeMatrixColumn(defaultMatrixColumnLabel(), [], store.state?.contentLocale === 'en' ? 'en' : 'ar')];
     }
 
     // multipletext: seed two items so the question works (and previews) the
@@ -327,30 +327,27 @@ function defaultChoices(type) {
         return [];
     }
 
-    const labels = store.state?.contentLocale === 'en'
-        ? DEFAULT_CHOICE_LABELS_EN
-        : DEFAULT_CHOICE_LABELS;
+    const locale = store.state?.contentLocale === 'en' ? 'en' : 'ar';
+    const labels = locale === 'en' ? DEFAULT_CHOICE_LABELS_EN : DEFAULT_CHOICE_LABELS;
 
-    return labels.map((label) => makeChoice(label));
+    return labels.map((label) => makeChoice(label, locale));
 }
 
 /** Default rows for a freshly created matrix/matrixdropdown field. */
 function defaultMatrixRows() {
-    const labels = store.state?.contentLocale === 'en'
-        ? DEFAULT_MATRIX_ROW_LABELS_EN
-        : DEFAULT_MATRIX_ROW_LABELS;
+    const locale = store.state?.contentLocale === 'en' ? 'en' : 'ar';
+    const labels = locale === 'en' ? DEFAULT_MATRIX_ROW_LABELS_EN : DEFAULT_MATRIX_ROW_LABELS;
 
-    return labels.map((label) => makeChoice(label));
+    return labels.map((label) => makeChoice(label, locale));
 }
 
 /** Default items for a freshly created multipletext field. */
 function defaultTextItems() {
-    const labels = store.state?.contentLocale === 'en'
-        ? DEFAULT_TEXT_ITEM_LABELS_EN
-        : DEFAULT_TEXT_ITEM_LABELS;
+    const locale = store.state?.contentLocale === 'en' ? 'en' : 'ar';
+    const labels = locale === 'en' ? DEFAULT_TEXT_ITEM_LABELS_EN : DEFAULT_TEXT_ITEM_LABELS;
     const items = [];
     for (const label of labels) {
-        items.push(makeTextItem(label, items.map((item) => item.name)));
+        items.push(makeTextItem(label, items.map((item) => item.name), locale));
     }
 
     return items;
@@ -358,11 +355,10 @@ function defaultTextItems() {
 
 /** Default plain-choice columns for a freshly created `matrix` field. */
 function defaultMatrixSimpleColumns() {
-    const labels = store.state?.contentLocale === 'en'
-        ? DEFAULT_MATRIX_COLUMN_LABELS_EN
-        : DEFAULT_MATRIX_COLUMN_LABELS;
+    const locale = store.state?.contentLocale === 'en' ? 'en' : 'ar';
+    const labels = locale === 'en' ? DEFAULT_MATRIX_COLUMN_LABELS_EN : DEFAULT_MATRIX_COLUMN_LABELS;
 
-    return labels.map((label) => makeChoice(label));
+    return labels.map((label) => makeChoice(label, locale));
 }
 
 /** Default single-column title for a freshly created matrixdropdown/matrixdynamic field. */
