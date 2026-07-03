@@ -9,6 +9,13 @@ use AsimNet\Schemava\Models\SurveySchema;
  * Default access policy: anyone may submit while the schema is open and the
  * per-user submission cap is not exceeded. Host apps bind a richer resolver to
  * add role/gender/age/targeting rules.
+ *
+ * The `$submissionCount` passed in already accounts for guests: the default
+ * {@see DefaultSurveySubmissionHandler} tracks unauthenticated submitters by a
+ * {@see GuestSubject} IP-hash, so `submission_limit_per_user` is enforced for
+ * guests too (with the caveats documented on GuestSubject). Host apps needing
+ * a stronger per-guest guarantee should bind their own resolver and/or
+ * submission handler.
  */
 class OpenSurveyAccessResolver implements SurveyAccessResolver
 {

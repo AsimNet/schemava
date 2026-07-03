@@ -2,6 +2,7 @@
 
 namespace AsimNet\Schemava\Models;
 
+use AsimNet\Schemava\Support\GuestSubject;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -18,11 +19,20 @@ class SurveyResult extends Model
 
     protected $fillable = [
         'user_id',
+        'submitter_fingerprint',
         'data',
         'status',
         'submitted_at',
         'surveyable_id',
         'surveyable_type',
+    ];
+
+    /**
+     * The guest IP-hash (see {@see GuestSubject}) is an internal dedup signal,
+     * not respondent-facing data — never serialize it.
+     */
+    protected $hidden = [
+        'submitter_fingerprint',
     ];
 
     /**
