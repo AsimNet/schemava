@@ -1367,6 +1367,38 @@ export function setPageTitle(pageIndex, lstr) {
  * Replace a page's show/hide logic block ({action:'show'|'hide', match, rules}
  * | {advanced} | null). Serialized as the page's SurveyJS visibleIf.
  */
+/** Append a survey-level trigger ('skip' jump or 'complete' finish). */
+export function addTrigger(type = 'skip') {
+    if (!store.state) {
+        return null;
+    }
+    if (!Array.isArray(store.state.triggers)) {
+        store.state.triggers = [];
+    }
+    const trigger = { type: type === 'complete' ? 'complete' : 'skip', expression: '', gotoName: '', raw: {} };
+    store.state.triggers.push(trigger);
+    markDirty();
+
+    return trigger;
+}
+
+export function updateTrigger(index, patch) {
+    const trigger = store.state?.triggers?.[index];
+    if (!trigger) {
+        return;
+    }
+    Object.assign(trigger, patch);
+    markDirty();
+}
+
+export function removeTrigger(index) {
+    if (!Array.isArray(store.state?.triggers)) {
+        return;
+    }
+    store.state.triggers.splice(index, 1);
+    markDirty();
+}
+
 export function setPageLogic(pageIndex, logic) {
     const page = store.state?.pages[pageIndex];
     if (!page) {

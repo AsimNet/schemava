@@ -513,6 +513,7 @@ export function fromSurveyJson(json) {
         description,
         pages,
         calculatedValues,
+        triggers,
         ...rest
     } = source;
 
@@ -560,6 +561,22 @@ export function fromSurveyJson(json) {
         rawSurveyProps,
         calculatedValues: Array.isArray(calculatedValues)
             ? calculatedValues.map(parseCalculatedValue).filter(Boolean)
+            : [],
+        // Survey-level triggers (skip / complete are editable; anything else —
+        // setvalue, runexpression, copyvalue — is preserved verbatim in raw).
+        triggers: Array.isArray(triggers)
+            ? triggers
+                .filter((item) => item && typeof item === 'object')
+                .map((item) => {
+                    const { type, expression, gotoName, ...restTrigger } = /** @type {Record<string, unknown>} */ (item);
+
+                    return {
+                        type: typeof type === 'string' ? type : '',
+                        expression: typeof expression === 'string' ? expression : '',
+                        gotoName: typeof gotoName === 'string' ? gotoName : '',
+                        raw: restTrigger,
+                    };
+                })
             : [],
         contentLocale: 'ar',
     };
@@ -829,6 +846,23 @@ export function toSurveyJson(state, options = { runtimeContextKeys: [] }) {
         if (result[key] === undefined) {
             result[key] = value;
         }
+    }
+
+    // Survey-level triggers (jump / finish rules + preserved passthrough).
+    const triggersOut = (Array.isArray(state.triggers) ? state.triggers : [])
+        .filter((trigger) => trigger && trigger.type && (trigger.expression ?? '').trim() !== ''
+            // a jump without a destination is meaningless — don't emit it
+            && (trigger.type !== 'skip' || (trigger.gotoName ?? '') !== ''))
+        .map((trigger) => {
+            const out = { ...(trigger.raw ?? {}), type: trigger.type, expression: trigger.expression.trim() };
+            if (trigger.type === 'skip' && trigger.gotoName) {
+                out.gotoName = trigger.gotoName;
+            }
+
+            return out;
+        });
+    if (triggersOut.length > 0) {
+        result.triggers = triggersOut;
     }
 
     // Author-defined calculatedValues + runtime injection for missing keys.
