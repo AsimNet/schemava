@@ -4,6 +4,7 @@ import draggable from 'vuedraggable';
 import {
     store,
     selectField,
+    findField,
     setChoices,
     duplicateField,
     removeField,
@@ -17,7 +18,7 @@ import {
 } from '../store.js';
 import { t, i18n } from '../i18n.js';
 import { fadeInUp, collapseOut, stop } from '../motion.js';
-import { renameChoiceLabel, makeChoice, makeTextItem, sanitizeStatementHtml } from '../ui-helpers.js';
+import { renameChoiceLabel, makeChoice, makeTextItem, sanitizeStatementHtml, operatorLabel, normalizeLogicAction } from '../ui-helpers.js';
 import { FIELD_TYPES, ADVANCED_TYPE } from '../model/fieldTypes.js';
 import { ratingPreviewItems } from '../ui-helpers.js';
 import AddQuestionMenu from './AddQuestionMenu.vue';
@@ -131,8 +132,73 @@ watch(() => store.focusFieldName, focusLabelIfRequested);
 
 onBeforeUnmount(() => stop(cardEl.value));
 
-const hasLogic = computed(() => Boolean(props.field.logic));
 const hasQuiz = computed(() => Boolean(props.field.quiz));
+
+/* ------------------------------------------- readable logic summary chip */
+
+/** Display text for a rule's value (choice labels resolved, booleans worded). */
+function ruleValueText(rule) {
+    const target = rule.field ? findField(rule.field) : null;
+    const resolveChoice = (value) => {
+        const choice = target?.field?.choices?.find((c) => c.value === value);
+        const lstr = choice?.label;
+
+        return ((contentLocale.value === 'en' ? lstr?.en : lstr?.ar) ?? lstr?.ar) || String(value);
+    };
+    if (Array.isArray(rule.value)) {
+        return rule.value.map(resolveChoice).join(' / ');
+    }
+    if (typeof rule.value === 'boolean') {
+        return rule.value
+            ? (contentLocale.value === 'en' ? 'Yes' : 'نعم')
+            : (contentLocale.value === 'en' ? 'No' : 'لا');
+    }
+    if (rule.value === undefined || rule.value === null || rule.value === '') {
+        return '';
+    }
+
+    return resolveChoice(rule.value);
+}
+
+/** "العمر أكبر من 18" — one rule as a sentence fragment. */
+function ruleSentence(rule) {
+    const target = rule.field ? findField(rule.field) : null;
+    const lstr = target?.field?.label;
+    const name = ((contentLocale.value === 'en' ? lstr?.en : lstr?.ar) ?? lstr?.ar) || rule.field;
+    const op = operatorLabel(rule.op, uiLocale.value);
+    const value = ['empty', 'notempty'].includes(rule.op) ? '' : ruleValueText(rule);
+
+    return [name, op, value].filter(Boolean).join(' ');
+}
+
+/**
+ * The card's logic chip: action word + first rule as a readable sentence +
+ * "+N" for the rest — logic is VISIBLE on the canvas, not a mystery gear.
+ */
+const logicChip = computed(() => {
+    const logic = props.field.logic;
+    if (!logic) {
+        return null;
+    }
+    if (typeof logic.advanced === 'string' && logic.advanced.trim() !== '') {
+        const action = logic.target === 'enable' ? 'disable' : 'show';
+
+        return { action, text: logic.advanced.trim(), extra: 0, mono: true };
+    }
+    const rules = Array.isArray(logic.rules) ? logic.rules.filter((rule) => rule && rule.field) : [];
+    if (rules.length === 0) {
+        return null;
+    }
+
+    return {
+        action: normalizeLogicAction(logic.action),
+        text: ruleSentence(rules[0]),
+        extra: rules.length - 1,
+        mono: false,
+    };
+});
+
+const LOGIC_CHIP_KEYS = { show: 'logicChipShow', hide: 'logicChipHide', disable: 'logicChipDisable' };
 
 /** Whether this field's choices are editable inline on the card. imagepicker
  * stays read-only here — its choices carry image links that need the drawer. */
@@ -540,12 +606,6 @@ function cancelDelete() {
                 <span v-if="field.hidden" class="fb-hidden-pill">{{ t('hiddenToggle') }}</span>
 
                 <span class="fb-card-flags">
-                    <span v-if="hasLogic" class="fb-flag fb-flag--logic" :title="t('sectionLogic')" :aria-label="t('sectionLogic')">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                    </span>
                     <span v-if="hasQuiz" class="fb-flag fb-flag--quiz" :title="t('sectionQuiz')" :aria-label="t('sectionQuiz')">
                         Σ{{ Number(field.quiz.score ?? 1) }}
                     </span>
@@ -571,6 +631,24 @@ function cancelDelete() {
             </template>
 
             <template v-else>
+                <!-- Logic, readable at a glance (Tally-style): clicking opens
+                     the field's Logic section in the drawer. -->
+                <button
+                    v-if="logicChip"
+                    type="button"
+                    class="fb-card-logic fb-focus"
+                    :title="t('logicChipHint')"
+                    @click.stop="onSelect"
+                >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span class="fb-card-logic-action">{{ t(LOGIC_CHIP_KEYS[logicChip.action] ?? 'logicChipShow') }}</span>
+                    <span class="fb-card-logic-text" :class="{ 'fb-mono-inline': logicChip.mono }" :dir="logicChip.mono ? 'ltr' : undefined">{{ logicChip.text }}</span>
+                    <span v-if="logicChip.extra > 0" class="fb-card-logic-more">+{{ logicChip.extra }}</span>
+                </button>
+
                 <input
                     v-if="!isStatement"
                     ref="labelInput"
@@ -1466,6 +1544,58 @@ function cancelDelete() {
 .fb-action--danger:hover {
     background: #fef2f2;
     color: #dc2626;
+}
+
+/* readable logic chip (replaces the old gear flag) */
+.fb-card-logic {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3125rem;
+    max-width: 100%;
+    align-self: flex-start;
+    border: 1px solid #e0e7ff;
+    background: #eef2ff;
+    color: #4338ca;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    padding: 0.1875rem 0.5rem;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: border-color 0.15s, background-color 0.15s;
+}
+
+.fb-card-logic:hover {
+    border-color: #a5b4fc;
+}
+
+.fb-card-logic svg {
+    flex: 0 0 auto;
+    width: 0.75rem;
+    height: 0.75rem;
+}
+
+.fb-card-logic-action {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+.fb-card-logic-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 500;
+    color: #3730a3;
+}
+
+.fb-mono-inline {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.65625rem;
+}
+
+.fb-card-logic-more {
+    flex: 0 0 auto;
+    font-weight: 700;
 }
 
 .fb-card-flags {
