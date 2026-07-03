@@ -5,6 +5,7 @@ namespace AsimNet\Schemava;
 use AsimNet\Schemava\Contracts\AiAssistant;
 use AsimNet\Schemava\Contracts\RuntimeContextProvider;
 use AsimNet\Schemava\Contracts\SurveyAccessResolver;
+use AsimNet\Schemava\Contracts\SurveyAnswerValidator;
 use AsimNet\Schemava\Contracts\SurveySubmissionHandler;
 use AsimNet\Schemava\Contracts\SurveyUrlResolver;
 use AsimNet\Schemava\Http\Controllers\ApiFormController;
@@ -72,6 +73,7 @@ class SchemavaServiceProvider extends PackageServiceProvider
             AiAssistant::class => 'ai_assistant',
             SurveyUrlResolver::class => 'url_resolver',
             SurveySubmissionHandler::class => 'submission_handler',
+            SurveyAnswerValidator::class => 'answer_validator',
         ];
 
         foreach ($bindings as $contract => $configKey) {

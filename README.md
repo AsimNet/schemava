@@ -142,6 +142,11 @@ Submissions are persisted as `SurveyResult` records through the `SurveySubmissio
 store or route them however your domain needs. Quiz-style scoring is available via the bundled
 `SurveyScoreCalculator`.
 
+Before persisting, the public form and JSON API run submitted answers through the `SurveyAnswerValidator`
+contract, which rejects (422) unknown keys, missing unconditionally-required answers, out-of-list `choices`
+values, and oversized/deeply-nested payloads — see `answer_validation` in `config/schemava.php` for the size
+caps and **Extending Schemava** below to swap in your own validator.
+
 > **Renderer lockstep:** set `renderer_version` to the exact `survey-core` version *every* client renders with
 > (web, mobile, …) so the builder always validates against the engine that ultimately renders the form.
 
@@ -185,7 +190,7 @@ Nothing is exposed by accident — you control it in `config/schemava.php`:
 
 ## Extending Schemava (contracts)
 
-Schemava resolves five contracts you can replace to integrate it with your domain. Each ships a sensible
+Schemava resolves six contracts you can replace to integrate it with your domain. Each ships a sensible
 default, so you override only what you need — bind your class in `config('schemava.contracts.*')`:
 
 | Contract | Override to… | Default |
@@ -193,6 +198,7 @@ default, so you override only what you need — bind your class in `config('sche
 | `RuntimeContextProvider` | feed dynamic values (signed-in user, locale, custom variables) into form *piping* | `DefaultRuntimeContextProvider` |
 | `SurveyAccessResolver` | decide who may view/submit a form (roles, age, gender, targeting) | `OpenSurveyAccessResolver` |
 | `SurveySubmissionHandler` | change how a submission is stored or routed | `DefaultSurveySubmissionHandler` (creates a `SurveyResult`) |
+| `SurveyAnswerValidator` | change how submitted answers are checked against the schema before storage | `DefaultSurveyAnswerValidator` |
 | `SurveyUrlResolver` | build the public/admin URLs for a form | `DefaultSurveyUrlResolver` |
 | `AiAssistant` | answer builder AI queries | `NullAiAssistant` (AI disabled) |
 
@@ -202,6 +208,7 @@ default, so you override only what you need — bind your class in `config('sche
     'runtime_context'    => \App\Surveys\MyRuntimeContext::class,
     'access_resolver'    => \App\Surveys\MyAccessResolver::class,
     'submission_handler' => \AsimNet\Schemava\Support\DefaultSurveySubmissionHandler::class,
+    'answer_validator'   => \AsimNet\Schemava\Support\DefaultSurveyAnswerValidator::class,
     'url_resolver'       => \AsimNet\Schemava\Support\DefaultSurveyUrlResolver::class,
     'ai_assistant'       => \App\Surveys\MyAiAssistant::class,
 ],

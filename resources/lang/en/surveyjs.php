@@ -47,4 +47,12 @@ return [
         'default' => 'This survey is currently unavailable.',
     ],
 
+    'validation' => [
+        'unknown_key' => 'The field ":key" is not part of this form.',
+        'required' => 'The field ":field" is required.',
+        'invalid_choice' => 'The field ":field" contains a value that is not one of the allowed choices.',
+        'payload_too_large' => 'The submission is too large (max :max bytes).',
+        'payload_too_deep' => 'The submission is nested too deeply (max :max levels).',
+    ],
+
 ];
