@@ -7,15 +7,16 @@
  * processed by Alpine whenever the modal DOM appears — is the reliable way to run
  * JS there.
  *
- * It lazily loads the pinned survey-core + survey-js-ui from the CDN (only when a
- * response is actually opened), then renders the stored answers through SurveyJS
+ * It lazily loads the SELF-HOSTED survey-core + survey-js-ui bundles (published
+ * package assets — CDN tags break behind TLS-inspection proxies) only when a
+ * response is actually opened, then renders the stored answers through SurveyJS
  * in display (read-only) mode. The model setup mirrors
  * resources/js/form-builder/survey-runtime.js `createDisplayModel()`
  * (unit-tested in tests/js/form-builder/survey-display.test.js).
  */
 document.addEventListener('alpine:init', () => {
     window.Alpine.data('schemavaSurveyResult', (config = {}) => ({
-        version: config.version,
+        urls: config.urls || {},
         surveyJson: config.surveyJson || {},
         responseData: config.data || {},
         locale: config.locale || config.defaultLocale || 'ar',
@@ -67,18 +68,15 @@ document.addEventListener('alpine:init', () => {
         },
 
         async ensureRenderer() {
-            const base = 'https://unpkg.com/survey-core@' + this.version;
-            const ui = 'https://unpkg.com/survey-js-ui@' + this.version + '/survey-js-ui.min.js';
-
-            this.loadStyle(base + '/survey-core.min.css');
+            this.loadStyle(this.urls.css);
 
             // survey-core first; survey.i18n + survey-js-ui augment the global it sets.
             if (!window.Survey || typeof window.Survey.Model !== 'function') {
-                await this.loadScript(base + '/survey.core.min.js');
+                await this.loadScript(this.urls.core);
             }
-            await this.loadScript(base + '/survey.i18n.min.js');
+            await this.loadScript(this.urls.i18n);
             if (!window.SurveyUI || typeof window.SurveyUI.renderSurvey !== 'function') {
-                await this.loadScript(ui);
+                await this.loadScript(this.urls.ui);
             }
         },
 

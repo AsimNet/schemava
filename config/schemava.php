@@ -61,10 +61,12 @@ return [
     |--------------------------------------------------------------------------
     |
     | The survey-core engine the builder validates and previews against, and the
-    | engine that renders saved schemas in production. Keep this in lockstep
-    | with every client that renders the saved JSON (e.g. a mobile app using
-    | survey-angular-ui) so the builder never validates on a different engine
-    | than the one that ultimately renders the result.
+    | engine that renders saved schemas in production. The renderer is BUNDLED
+    | with the package (resources/dist/vendor/surveyjs, served as published
+    | assets — no CDN, so previews work behind TLS-inspection proxies); this
+    | value records that bundled version. Keep it in lockstep with every client
+    | that renders the saved JSON (e.g. a mobile app using survey-angular-ui),
+    | and replace the bundled files when bumping it.
     |
     */
 

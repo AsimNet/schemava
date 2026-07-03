@@ -621,11 +621,13 @@ function cancelDelete() {
 
                     <div class="fb-panel-foot" @click.stop>
                         <AddQuestionMenu :exclude-types="['panel_dynamic']" :hint="t('addQuestionHintPanel')" @select="onAddTemplateQuestion" />
-                        <span class="fb-panel-addpreview" :title="t('panelAddPreviewTitle')" aria-hidden="true">
+                        <!-- Not a builder control: explains that respondents add
+                             entries at fill time (tooltip shows their button text). -->
+                        <span class="fb-panel-addpreview" :title="`${t('panelAddPreviewTitle')}: ${panelAddLabel}`" aria-hidden="true">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.5v15m7.5-7.5h-15" />
                             </svg>
-                            <span>{{ panelAddLabel }}</span>
+                            <span>{{ t('panelRespondentsAdd') }}</span>
                             <span v-if="panelMaxCount" class="fb-panel-addpreview-max">×{{ panelMaxCount }}</span>
                         </span>
                     </div>
