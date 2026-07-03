@@ -56,6 +56,7 @@ class SurveyDesignerController
             'variableMeta' => $runtime->variableMeta(),
             'locale' => $locale,
             'uiLocale' => config('schemava.designer_ui_locale', 'ar'),
+            'aiEnabled' => config('schemava.ai.enabled', true) && app(AiAssistant::class)->isConfigured(),
         ];
 
         return view('schemava::survey-designer', [
@@ -154,6 +155,11 @@ class SurveyDesignerController
     {
         if (Gate::getPolicyFor($surveySchema)) {
             $this->authorize('update', $surveySchema);
+        }
+
+        // Hidden in the UI when unconfigured — refuse direct calls too.
+        if (! config('schemava.ai.enabled', true) || ! app(AiAssistant::class)->isConfigured()) {
+            return response()->json(['error' => __('schemava::surveyjs.ai.not_configured')], 503);
         }
 
         $validated = $request->validated();
