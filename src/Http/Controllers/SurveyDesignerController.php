@@ -55,6 +55,7 @@ class SurveyDesignerController
             'runtimeContextKeys' => $runtime->keys(),
             'variableMeta' => $runtime->variableMeta(),
             'locale' => $locale,
+            'uiLocale' => config('schemava.designer_ui_locale', 'ar'),
         ];
 
         return view('schemava::survey-designer', [
