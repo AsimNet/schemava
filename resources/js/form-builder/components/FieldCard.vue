@@ -1087,9 +1087,18 @@ function cancelDelete() {
     margin: 0.25rem 0;
 }
 
-.fb-card-statement-html :deep(ul) {
+.fb-card-statement-html :deep(ul),
+.fb-card-statement-html :deep(ol) {
     margin: 0.25rem 0;
     padding-inline-start: 1.25rem;
+}
+
+.fb-card-statement-html :deep(ul) {
+    list-style: disc;
+}
+
+.fb-card-statement-html :deep(ol) {
+    list-style: decimal;
 }
 
 .fb-card-statement-html :deep(p) {

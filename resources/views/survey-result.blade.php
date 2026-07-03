@@ -17,6 +17,14 @@
 @php($isRtl = $locale === 'ar')
 @php($storageDefaultLocale = 'ar')
 
+{{-- Filament panels ship Tailwind's preflight, which resets list-style to
+     none — restore markers inside authored statement HTML (sd-html) so
+     bulleted statements render as lists in the response viewer. --}}
+<style>
+    .schemava-result .sd-html ul { list-style: disc; margin: .25rem 0; padding-inline-start: 1.25rem; }
+    .schemava-result .sd-html ol { list-style: decimal; margin: .25rem 0; padding-inline-start: 1.25rem; }
+</style>
+
 <div
     class="schemava-result"
     dir="{{ $isRtl ? 'rtl' : 'ltr' }}"
