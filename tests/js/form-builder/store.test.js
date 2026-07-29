@@ -33,6 +33,8 @@ import {
     addFieldSmart,
     updateField,
     setChoices,
+    setChoiceImageLink,
+    selectField,
     removeField,
     duplicateField,
 } from '../../../resources/js/form-builder/store.js';
@@ -1011,5 +1013,129 @@ describe('store — EN content locale: seeds and edits stay in sync across local
         const next = renameChoiceLabelHelper(renamed[0], 'en', 'Strongly agree');
         expect(next.value).toBe('Strongly agree');
         expect(next.label.en).toBe('Strongly agree');
+    });
+});
+
+describe('store — imagepicker choice images resolve by identity', () => {
+    // imagepicker is not in SEEDED_CHOICE_TYPES, so a fresh one has no choices.
+    const seed = (name, uids) => setChoices(name, uids.map((uid) => ({
+        _uid: uid, value: uid, label: { ar: uid, en: null }, raw: {},
+    })));
+
+    it('routes an upload to the originating field even when another is selected', () => {
+        const picker = addField('imagepicker');
+        const other = addField('imagepicker');
+        seed(picker.name, ['a1', 'a2']);
+        seed(other.name, ['b1', 'b2']);
+
+        // The author selects a different field while the upload is in flight.
+        selectField(other.name);
+        expect(setChoiceImageLink(picker, 'a1', 'https://x/a.png')).toBe(true);
+
+        expect(picker.choices[0].raw.imageLink).toBe('https://x/a.png');
+        // The selected field must be untouched — this is the wrong-field write.
+        for (const choice of other.choices) {
+            expect(choice.raw.imageLink).toBeUndefined();
+        }
+    });
+
+    // renameField mutates `name` in place, so any name captured when the upload
+    // STARTED is dead by the time it lands — which silently lost the image the
+    // server had already stored. Taking the field object avoids holding a name at
+    // all. The dead-name assertion is the point of this test: it pins that the
+    // write no longer depends on the identifier a caller might have snapshotted.
+    it('survives the field being renamed mid-upload', () => {
+        const picker = addField('imagepicker');
+        seed(picker.name, ['a1']);
+        const nameAtUploadStart = picker.name;
+
+        expect(renameField(picker.name, 'renamed_picker')).toBeNull();
+        expect(findField(nameAtUploadStart)).toBeNull();
+
+        expect(setChoiceImageLink(picker, 'a1', 'https://x/a.png')).toBe(true);
+        expect(picker.name).toBe('renamed_picker');
+        expect(picker.choices[0].raw.imageLink).toBe('https://x/a.png');
+    });
+
+    // structuredClone copies choice _uids, so a duplicate shares them — the
+    // write must land on the field the upload started from, not its copy.
+    it('does not leak into a duplicate that shares the choice uid', () => {
+        const picker = addField('imagepicker');
+        seed(picker.name, ['a1']);
+        const copy = duplicateField(picker.name);
+
+        expect(copy.choices[0]._uid).toBe('a1');
+        expect(setChoiceImageLink(picker, 'a1', 'https://x/a.png')).toBe(true);
+
+        expect(picker.choices[0].raw.imageLink).toBe('https://x/a.png');
+        expect(copy.choices[0].raw.imageLink).toBeUndefined();
+    });
+
+    // The precondition behind ChoicesEditor scoping its in-flight upload state to
+    // (owner field, uid) rather than uid alone: duplicating shares the uids AND
+    // switches the drawer to the copy, so a uid-only pending flag would strand the
+    // duplicate's upload button behind the original's request.
+    it('duplicating shares choice uids and selects the copy', () => {
+        const picker = addField('imagepicker');
+        seed(picker.name, ['a1', 'a2']);
+        const copy = duplicateField(picker.name);
+
+        expect(copy).not.toBe(picker);
+        expect(copy.name).not.toBe(picker.name);
+        expect(copy.choices.map((c) => c._uid)).toEqual(['a1', 'a2']);
+        expect(store.selectedFieldName).toBe(copy.name);
+    });
+
+    it('follows the choice after a reorder rather than writing by position', () => {
+        const picker = addField('imagepicker');
+        seed(picker.name, ['a1', 'a2', 'a3']);
+
+        setChoices(picker.name, [...picker.choices].reverse());
+        expect(setChoiceImageLink(picker, 'a1', 'https://x/a.png')).toBe(true);
+
+        expect(picker.choices.find((c) => c._uid === 'a1').raw.imageLink).toBe('https://x/a.png');
+        expect(picker.choices.filter((c) => c.raw?.imageLink).length).toBe(1);
+    });
+
+    it('discards the result when the choice was deleted mid-upload', () => {
+        const picker = addField('imagepicker');
+        seed(picker.name, ['a1', 'a2']);
+
+        setChoices(picker.name, picker.choices.filter((c) => c._uid !== 'a1'));
+        expect(setChoiceImageLink(picker, 'a1', 'https://x/a.png')).toBe(false);
+
+        expect(picker.choices).toHaveLength(1);
+        for (const choice of picker.choices) {
+            expect(choice.raw.imageLink).toBeUndefined();
+        }
+    });
+
+    it('discards the result when the whole field was deleted mid-upload', () => {
+        const picker = addField('imagepicker');
+        seed(picker.name, ['a1']);
+
+        removeField(picker.name);
+        expect(setChoiceImageLink(picker, 'a1', 'https://x/a.png')).toBe(false);
+    });
+
+    it('reaches an imagepicker nested in a panel_dynamic template', () => {
+        const panel = addField('panel_dynamic');
+        const sub = addTemplateField(panel.name, 'imagepicker');
+        seed(sub.name, ['a1']);
+
+        expect(setChoiceImageLink(sub, 'a1', 'https://x/a.png')).toBe(true);
+        expect(sub.choices[0].raw.imageLink).toBe('https://x/a.png');
+    });
+
+    it('clears the image with a null link, leaving other raw props intact', () => {
+        const picker = addField('imagepicker');
+        setChoices(picker.name, [
+            { _uid: 'a1', value: 'a1', label: { ar: 'a1', en: null }, raw: { visibleIf: '{q1} = 1' } },
+        ]);
+
+        setChoiceImageLink(picker, 'a1', 'https://x/a.png');
+        expect(setChoiceImageLink(picker, 'a1', null)).toBe(true);
+
+        expect(picker.choices[0].raw).toEqual({ visibleIf: '{q1} = 1' });
     });
 });
