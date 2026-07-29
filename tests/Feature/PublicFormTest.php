@@ -151,4 +151,39 @@ class PublicFormTest extends TestCase
 
         $this->assertSame(0, SurveyResult::query()->count());
     }
+
+    #[Test]
+    public function it_rate_limits_repeated_submissions_from_the_same_ip(): void
+    {
+        $schema = $this->form();
+        $maxAttempts = (int) config('schemava.rate_limiting.submit.max_attempts', 10);
+
+        for ($i = 0; $i < $maxAttempts; $i++) {
+            $this->postJson(route('schemava.public.submit', ['hash' => $schema->hash]), [
+                'data' => ['full_name' => "Sara {$i}", 'color' => 'red'],
+            ])->assertOk();
+        }
+
+        $this->postJson(route('schemava.public.submit', ['hash' => $schema->hash]), [
+            'data' => ['full_name' => 'One too many', 'color' => 'red'],
+        ])->assertStatus(429);
+
+        $this->assertSame($maxAttempts, SurveyResult::query()->count());
+    }
+
+    #[Test]
+    public function it_caps_repeat_anonymous_submissions_via_submission_limit_per_user(): void
+    {
+        $schema = $this->form(['submission_limit_per_user' => 1]);
+
+        $this->postJson(route('schemava.public.submit', ['hash' => $schema->hash]), [
+            'data' => ['full_name' => 'Sara', 'color' => 'red'],
+        ])->assertOk()->assertJson(['success' => true]);
+
+        $this->postJson(route('schemava.public.submit', ['hash' => $schema->hash]), [
+            'data' => ['full_name' => 'Sara again', 'color' => 'red'],
+        ])->assertStatus(422);
+
+        $this->assertSame(1, SurveyResult::query()->count());
+    }
 }

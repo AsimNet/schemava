@@ -15,8 +15,11 @@ use AsimNet\Schemava\Models\SurveySchema;
 use Filament\Support\Assets\Css;
 use Filament\Support\Assets\Js;
 use Filament\Support\Facades\FilamentAsset;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Spatie\LaravelPackageTools\Commands\InstallCommand;
 use Spatie\LaravelPackageTools\Package;
@@ -38,6 +41,7 @@ class SchemavaServiceProvider extends PackageServiceProvider
             ->hasMigrations([
                 'create_schemava_schemas_table',
                 'create_schemava_results_table',
+                'add_submitter_fingerprint_to_schemava_results_table',
             ])
             ->hasInstallCommand(function (InstallCommand $command): void {
                 $command
@@ -56,6 +60,7 @@ class SchemavaServiceProvider extends PackageServiceProvider
     {
         $this->registerRouteModelBinding();
         $this->registerAssets();
+        $this->registerRateLimiting();
         $this->registerDesignerRoutes();
         $this->registerPublicRoutes();
         $this->registerApiRoutes();
@@ -144,6 +149,41 @@ class SchemavaServiceProvider extends PackageServiceProvider
     }
 
     /**
+     * Register the `schemava-submit` named rate limiter used by the public and
+     * API submit routes. These are unauthenticated, guessable-hash-reachable
+     * endpoints, so the package throttles them itself rather than relying on
+     * whatever the host's `web`/`api` middleware groups happen to configure.
+     * Keyed by request IP; tunable (or disabled) via `schemava.rate_limiting`.
+     */
+    protected function registerRateLimiting(): void
+    {
+        RateLimiter::for('schemava-submit', function (Request $request) {
+            $config = config('schemava.rate_limiting.submit', []);
+
+            return (new Limit(
+                $request->ip(),
+                (int) ($config['max_attempts'] ?? 10),
+                (int) ($config['decay_seconds'] ?? 60),
+            ))->response(fn () => response()->json([
+                'message' => __('schemava::surveyjs.unavailable.rate_limited'),
+            ], 429));
+        });
+    }
+
+    /**
+     * Middleware applied to the public/API submit routes on top of whatever
+     * `routes.public.middleware` / `routes.api.middleware` already declare.
+     * Set `schemava.rate_limiting.enabled` to false to opt out (e.g. when the
+     * host app throttles these routes itself at a proxy).
+     *
+     * @return array<int, string>
+     */
+    protected function submitRateLimitMiddleware(): array
+    {
+        return config('schemava.rate_limiting.enabled', true) ? ['throttle:schemava-submit'] : [];
+    }
+
+    /**
      * Register the visual designer routes from config. Host apps that register
      * their own designer routes (multi-tenant apps do) set `routes.enabled` to
      * false so the package does not also register — and clash with — them.
@@ -187,6 +227,7 @@ class SchemavaServiceProvider extends PackageServiceProvider
                 Route::get('/{hash}', [PublicFormController::class, 'show'])
                     ->name($public['name'] ?? 'schemava.public.show');
                 Route::post('/{hash}', [PublicFormController::class, 'submit'])
+                    ->middleware($this->submitRateLimitMiddleware())
                     ->name('schemava.public.submit');
             });
     }
@@ -211,7 +252,9 @@ class SchemavaServiceProvider extends PackageServiceProvider
             ->group(function (): void {
                 Route::get('/', [ApiFormController::class, 'index'])->name('index');
                 Route::get('/{hash}', [ApiFormController::class, 'show'])->name('show');
-                Route::post('/{hash}/responses', [ApiFormController::class, 'submit'])->name('submit');
+                Route::post('/{hash}/responses', [ApiFormController::class, 'submit'])
+                    ->middleware($this->submitRateLimitMiddleware())
+                    ->name('submit');
             });
     }
 
