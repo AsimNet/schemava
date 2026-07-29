@@ -592,6 +592,43 @@ export function choiceValueDiverged(choice) {
     return choice.value !== ar && choice.value !== '' && choice.value !== undefined && choice.value !== null;
 }
 
+/**
+ * Set or clear a choice's `raw.imageLink` (imagepicker), addressing the choice by
+ * its stable `_uid` rather than by list position.
+ *
+ * Image uploads are async, and the author stays free to reorder or delete choices
+ * while one is in flight, so the index captured when the upload started may point
+ * at a different choice — or past the end of the list — by the time it finishes.
+ * Returns `null` when no choice carries `uid`, so callers can drop a result whose
+ * target is gone instead of writing it somewhere wrong.
+ *
+ * @param {Array<{_uid: string, raw?: object}>} choices
+ * @param {string} uid
+ * @param {string|null} imageLink Link to set, or null to remove the image.
+ * @returns {Array<object>|null} A new list, or null if `uid` is not present.
+ */
+export function withChoiceImageLink(choices, uid, imageLink) {
+    const list = Array.isArray(choices) ? choices : [];
+    const at = list.findIndex((choice) => choice?._uid === uid);
+
+    if (at === -1) {
+        return null;
+    }
+
+    const raw = { ...(list[at].raw ?? {}) };
+
+    if (imageLink === null) {
+        delete raw.imageLink;
+    } else {
+        raw.imageLink = imageLink;
+    }
+
+    const next = [...list];
+    next[at] = { ...next[at], raw };
+
+    return next;
+}
+
 /* --------------------------------------------------------- rating preview */
 
 /** Default + bounds for the rating `rateMax` prop (mirrors the catalog). */

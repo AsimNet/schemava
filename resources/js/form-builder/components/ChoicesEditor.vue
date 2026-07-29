@@ -8,6 +8,7 @@ import {
     renameChoiceLabel,
     splitBulkLines,
     choiceValueDiverged,
+    withChoiceImageLink,
 } from '../ui-helpers.js';
 
 const props = defineProps({
@@ -56,12 +57,22 @@ function applyChoices(next) {
 
 /* ------------------------------------------------ per-choice image upload */
 
-const imageInputs = ref([]);
-const uploadingIndex = reactive({});
+/**
+ * Everything here is keyed by the choice's stable `_uid`, never by list index.
+ * An upload is async and the author stays free to reorder, delete, or select a
+ * different field while it is in flight — and SettingsPanel does not `:key` this
+ * component per field, so the instance (and the pending request) survives a
+ * field switch. Keyed by index, a late response would attach the image to
+ * whichever choice now sits at that index, or to another field entirely.
+ */
+const imageInputs = new Map();
+const uploadingUids = reactive({});
 
-function setImageInputRef(el, index) {
+function setImageInputRef(el, uid) {
     if (el) {
-        imageInputs.value[index] = el;
+        imageInputs.set(uid, el);
+    } else {
+        imageInputs.delete(uid);
     }
 }
 
@@ -69,16 +80,18 @@ function choiceImageLink(choice) {
     return choice.raw?.imageLink ?? null;
 }
 
-function triggerImageUpload(index) {
-    imageInputs.value[index]?.click();
+function triggerImageUpload(uid) {
+    imageInputs.get(uid)?.click();
 }
 
-async function onImageSelected(event, index) {
+async function onImageSelected(event, uid) {
     const file = event.target?.files?.[0];
     if (! file) {
         return;
     }
-    uploadingIndex[index] = true;
+    // Identity of the list this upload belongs to, captured before awaiting.
+    const ownerName = props.field?.name ?? null;
+    uploadingUids[uid] = true;
 
     const csrf = store.boot?.csrf ?? '';
     const url = store.boot?.routes?.uploadImage ?? '';
@@ -102,9 +115,16 @@ async function onImageSelected(event, index) {
         // failure (incl. the server's empty-path guard) toast and leave the
         // existing link untouched — mirrors the `image` field type's upload.
         if (response.ok && data.status === 'success' && typeof data.url === 'string' && data.url.trim() !== '') {
-            const next = [...choices.value];
-            next[index] = { ...next[index], raw: { ...(next[index].raw ?? {}), imageLink: data.url } };
-            applyChoices(next);
+            // Re-resolve the target by identity. If the author switched fields or
+            // deleted this choice mid-flight, the upload has no home any more —
+            // drop it rather than writing to whatever now occupies that slot.
+            if ((props.field?.name ?? null) !== ownerName) {
+                return;
+            }
+            const next = withChoiceImageLink(choices.value, uid, data.url);
+            if (next !== null) {
+                applyChoices(next);
+            }
         } else {
             throw new Error(data.message || `HTTP ${response.status}`);
         }
@@ -112,19 +132,18 @@ async function onImageSelected(event, index) {
         console.error('[form-builder] choice image upload failed', error);
         pushToast(t('imageUploadFailed'), 'error');
     } finally {
-        uploadingIndex[index] = false;
+        delete uploadingUids[uid];
         if (event.target) {
             event.target.value = '';
         }
     }
 }
 
-function removeChoiceImage(index) {
-    const next = [...choices.value];
-    const raw = { ...(next[index].raw ?? {}) };
-    delete raw.imageLink;
-    next[index] = { ...next[index], raw };
-    applyChoices(next);
+function removeChoiceImage(uid) {
+    const next = withChoiceImageLink(choices.value, uid, null);
+    if (next !== null) {
+        applyChoices(next);
+    }
 }
 
 function labelText(choice) {
@@ -225,34 +244,34 @@ function diverged(choice) {
                         <button
                             type="button"
                             class="fb-choice-image-btn fb-focus"
-                            :disabled="uploadingIndex[index]"
+                            :disabled="uploadingUids[element._uid]"
                             :title="choiceImageLink(element) ? t('imageReplace') : t('imageUploadButton')"
                             :aria-label="choiceImageLink(element) ? t('imageReplace') : t('imageUploadButton')"
-                            @click="triggerImageUpload(index)"
+                            @click="triggerImageUpload(element._uid)"
                         >
-                            <span v-if="uploadingIndex[index]" class="fb-spinner-sm" aria-hidden="true"></span>
+                            <span v-if="uploadingUids[element._uid]" class="fb-spinner-sm" aria-hidden="true"></span>
                             <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
                             </svg>
                         </button>
                         <button
-                            v-if="choiceImageLink(element) && !uploadingIndex[index]"
+                            v-if="choiceImageLink(element) && !uploadingUids[element._uid]"
                             type="button"
                             class="fb-choice-image-remove fb-focus"
                             :title="t('imageRemove')"
                             :aria-label="t('imageRemove')"
-                            @click="removeChoiceImage(index)"
+                            @click="removeChoiceImage(element._uid)"
                         >
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                             </svg>
                         </button>
                         <input
-                            :ref="(el) => setImageInputRef(el, index)"
+                            :ref="(el) => setImageInputRef(el, element._uid)"
                             type="file"
                             accept="image/*"
                             class="fb-hidden-file"
-                            @change="onImageSelected($event, index)"
+                            @change="onImageSelected($event, element._uid)"
                         />
                     </div>
 
