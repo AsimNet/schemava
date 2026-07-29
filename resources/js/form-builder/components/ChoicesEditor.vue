@@ -2,7 +2,7 @@
 import { computed, reactive, ref } from 'vue';
 import draggable from 'vuedraggable';
 import { t } from '../i18n.js';
-import { store, setChoices, pushToast } from '../store.js';
+import { store, setChoices, setChoiceImageLink, pushToast } from '../store.js';
 import {
     makeChoice,
     renameChoiceLabel,
@@ -89,8 +89,12 @@ async function onImageSelected(event, uid) {
     if (! file) {
         return;
     }
-    // Identity of the list this upload belongs to, captured before awaiting.
+    // Identity of the list this upload belongs to, captured before awaiting. In
+    // plain field mode the field name is enough to find it again in the store
+    // even if the author has since selected something else; the alias/items modes
+    // have no store identity of their own, so those fall back to the live list.
     const ownerName = props.field?.name ?? null;
+    const viaStore = ownerName !== null && ! props.items && ! props.onUpdate && ! props.onChange;
     uploadingUids[uid] = true;
 
     const csrf = store.boot?.csrf ?? '';
@@ -115,12 +119,17 @@ async function onImageSelected(event, uid) {
         // failure (incl. the server's empty-path guard) toast and leave the
         // existing link untouched — mirrors the `image` field type's upload.
         if (response.ok && data.status === 'success' && typeof data.url === 'string' && data.url.trim() !== '') {
-            // Re-resolve the target by identity. If the author switched fields or
-            // deleted this choice mid-flight, the upload has no home any more —
-            // drop it rather than writing to whatever now occupies that slot.
-            if ((props.field?.name ?? null) !== ownerName) {
+            // Re-resolve the ORIGINATING field and choice by identity, not the
+            // current selection: the server already stored the image, so a field
+            // switch mid-upload must still route the link home rather than write
+            // it to whoever is selected now (wrong field) or drop it (lost image).
+            // Only a genuine removal — of the field or the choice — discards it.
+            if (viaStore) {
+                setChoiceImageLink(ownerName, uid, data.url);
+
                 return;
             }
+
             const next = withChoiceImageLink(choices.value, uid, data.url);
             if (next !== null) {
                 applyChoices(next);
