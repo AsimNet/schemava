@@ -214,6 +214,20 @@ describe('serialize — choices localization', () => {
         };
         expect(roundTripElement(element)).toEqual(element);
     });
+
+    // The contract ChoicesEditor's per-choice image upload writes to: it stores
+    // the uploaded URL as `choice.raw.imageLink`, so imagepicker choices must
+    // survive a round-trip with their images (and without them, when unset).
+    it('preserves imagepicker choice images', () => {
+        const element = {
+            type: 'imagepicker', name: 'q1', title: 'س',
+            choices: [
+                { value: 'a', text: 'أ', imageLink: 'https://x/a.png' },
+                { value: 'b', text: 'ب' },
+            ],
+        };
+        expect(roundTripElement(element)).toEqual(element);
+    });
 });
 
 describe('serialize — choice uids (fix 6)', () => {

@@ -1,13 +1,15 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, toRaw } from 'vue';
 import draggable from 'vuedraggable';
 import { t } from '../i18n.js';
-import { store, setChoices } from '../store.js';
+import { pendingUploads } from '../pending-uploads.js';
+import { store, setChoices, setChoiceImageLink, pushToast } from '../store.js';
 import {
     makeChoice,
     renameChoiceLabel,
     splitBulkLines,
     choiceValueDiverged,
+    withChoiceImageLink,
 } from '../ui-helpers.js';
 
 const props = defineProps({
@@ -27,6 +29,13 @@ const props = defineProps({
     onChange: { type: Function, default: null },
     /** Overrides the section label (defaults to the generic "Choices" label). */
     label: { type: String, default: null },
+    /**
+     * Per-choice image upload, for `imagepicker`: adds a thumbnail + upload
+     * control to each row, reusing the same endpoint as the `image` field type.
+     * The link is stored as `choice.raw.imageLink`, which the serializer already
+     * round-trips verbatim as an unknown choice-item prop (see serialize.js).
+     */
+    withImages: { type: Boolean, default: false },
 });
 
 const contentLocale = computed(() => store.state?.contentLocale ?? 'ar');
@@ -44,6 +53,119 @@ function applyChoices(next) {
         props.onChange(next);
     } else if (props.field) {
         setChoices(props.field.name, next);
+    }
+}
+
+/* ------------------------------------------------ per-choice image upload */
+
+/**
+ * Everything here is keyed by the choice's stable `_uid`, never by list index.
+ * An upload is async and the author stays free to reorder, delete, or select a
+ * different field while it is in flight — and SettingsPanel does not `:key` this
+ * component per field, so the instance (and the pending request) survives a
+ * field switch. Keyed by index, a late response would attach the image to
+ * whichever choice now sits at that index, or to another field entirely.
+ */
+const imageInputs = new Map();
+
+// In-flight uploads, tracked per (owner field, choice uid) in MODULE state — see
+// pending-uploads.js for why the owner is part of the key, why identity needs
+// normalising, and why this must outlive a Preview-tab remount.
+
+/** Raw identity of the field currently being edited, for owner comparisons. */
+function currentOwner() {
+    return props.field ? toRaw(props.field) : null;
+}
+
+function isUploading(uid) {
+    return pendingUploads.has(currentOwner(), uid);
+}
+
+function setImageInputRef(el, uid) {
+    if (el) {
+        imageInputs.set(uid, el);
+    } else {
+        imageInputs.delete(uid);
+    }
+}
+
+function choiceImageLink(choice) {
+    return choice.raw?.imageLink ?? null;
+}
+
+function triggerImageUpload(uid) {
+    imageInputs.get(uid)?.click();
+}
+
+async function onImageSelected(event, uid) {
+    const file = event.target?.files?.[0];
+    if (! file) {
+        return;
+    }
+    // Identity of the list this upload belongs to, captured before awaiting. The
+    // field OBJECT, not its name: renameField mutates the name in place, so a
+    // rename mid-upload would strand a name-based lookup. The alias/items modes
+    // have no store identity of their own, so those fall back to the live list.
+    const ownerField = props.field ?? null;
+    const viaStore = ownerField !== null && ! props.items && ! props.onUpdate && ! props.onChange;
+    const owner = ownerField ? toRaw(ownerField) : null;
+    pendingUploads.add(owner, uid);
+
+    const csrf = store.boot?.csrf ?? '';
+    const url = store.boot?.routes?.uploadImage ?? '';
+
+    const form = new FormData();
+    form.append('files[]', file);
+    form.append('_token', csrf);
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': csrf,
+                Accept: 'application/json',
+            },
+            credentials: 'same-origin',
+            body: form,
+        });
+        const data = await response.json().catch(() => ({}));
+        // Only write imageLink on a genuine success with a non-empty url; on any
+        // failure (incl. the server's empty-path guard) toast and leave the
+        // existing link untouched — mirrors the `image` field type's upload.
+        if (response.ok && data.status === 'success' && typeof data.url === 'string' && data.url.trim() !== '') {
+            // Re-resolve the ORIGINATING field and choice by identity, not the
+            // current selection: the server already stored the image, so a field
+            // switch mid-upload must still route the link home rather than write
+            // it to whoever is selected now (wrong field) or drop it (lost image).
+            // Only a genuine removal — of the field or the choice — discards it.
+            if (viaStore) {
+                setChoiceImageLink(ownerField, uid, data.url);
+
+                return;
+            }
+
+            const next = withChoiceImageLink(choices.value, uid, data.url);
+            if (next !== null) {
+                applyChoices(next);
+            }
+        } else {
+            throw new Error(data.message || `HTTP ${response.status}`);
+        }
+    } catch (error) {
+        console.error('[form-builder] choice image upload failed', error);
+        pushToast(t('imageUploadFailed'), 'error');
+    } finally {
+        pendingUploads.remove(owner, uid);
+        if (event.target) {
+            event.target.value = '';
+        }
+    }
+}
+
+function removeChoiceImage(uid) {
+    const next = withChoiceImageLink(choices.value, uid, null);
+    if (next !== null) {
+        applyChoices(next);
     }
 }
 
@@ -139,6 +261,42 @@ function diverged(choice) {
                             <circle cx="15" cy="18" r="1.6" />
                         </svg>
                     </button>
+
+                    <div v-if="withImages" class="fb-choice-image">
+                        <img v-if="choiceImageLink(element)" :src="choiceImageLink(element)" :alt="t('imagePreviewAlt')" />
+                        <button
+                            type="button"
+                            class="fb-choice-image-btn fb-focus"
+                            :disabled="isUploading(element._uid)"
+                            :title="choiceImageLink(element) ? t('imageReplace') : t('imageUploadButton')"
+                            :aria-label="choiceImageLink(element) ? t('imageReplace') : t('imageUploadButton')"
+                            @click="triggerImageUpload(element._uid)"
+                        >
+                            <span v-if="isUploading(element._uid)" class="fb-spinner-sm" aria-hidden="true"></span>
+                            <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                            </svg>
+                        </button>
+                        <button
+                            v-if="choiceImageLink(element) && !isUploading(element._uid)"
+                            type="button"
+                            class="fb-choice-image-remove fb-focus"
+                            :title="t('imageRemove')"
+                            :aria-label="t('imageRemove')"
+                            @click="removeChoiceImage(element._uid)"
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                        <input
+                            :ref="(el) => setImageInputRef(el, element._uid)"
+                            type="file"
+                            accept="image/*"
+                            class="fb-hidden-file"
+                            @change="onImageSelected($event, element._uid)"
+                        />
+                    </div>
 
                     <div class="fb-choice-main">
                         <input
@@ -349,5 +507,92 @@ function diverged(choice) {
     color: var(--fb-text-muted);
     margin: 0;
     line-height: 1.4;
+}
+
+/* ------------------------------------------------ per-choice image upload */
+
+.fb-choice-image {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.fb-choice-image img {
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 0.375rem;
+    object-fit: cover;
+    border: 1px solid var(--fb-border);
+}
+
+.fb-choice-image-btn {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 1px dashed var(--fb-border-strong);
+    background: var(--fb-surface);
+    color: var(--fb-text-muted);
+    border-radius: 0.375rem;
+    cursor: pointer;
+    padding: 0;
+    transition: border-color 0.15s, color 0.15s;
+}
+
+.fb-choice-image-btn:hover:not(:disabled) {
+    border-color: var(--fb-brand);
+    color: var(--fb-brand-600);
+}
+
+.fb-choice-image-btn svg {
+    width: 0.9375rem;
+    height: 0.9375rem;
+}
+
+.fb-choice-image-remove {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.375rem;
+    height: 1.375rem;
+    border: none;
+    background: transparent;
+    color: var(--fb-text-muted);
+    border-radius: 0.375rem;
+    cursor: pointer;
+}
+
+.fb-choice-image-remove:hover {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.fb-choice-image-remove svg {
+    width: 0.75rem;
+    height: 0.75rem;
+}
+
+.fb-hidden-file {
+    display: none;
+}
+
+.fb-spinner-sm {
+    width: 0.875rem;
+    height: 0.875rem;
+    border: 2px solid var(--fb-border-strong);
+    border-top-color: var(--fb-brand);
+    border-radius: 9999px;
+    animation: fb-spin 0.6s linear infinite;
+}
+
+/* Scoped styles rename keyframes, so this cannot reuse the one in SettingsPanel. */
+@keyframes fb-spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 </style>

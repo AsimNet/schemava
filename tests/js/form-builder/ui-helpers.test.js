@@ -13,6 +13,7 @@ import {
     makeChoice,
     splitBulkLines,
     choiceValueDiverged,
+    withChoiceImageLink,
     variableMetaFor,
     variableInputKind,
     NULLARY_OPERATORS,
@@ -223,6 +224,52 @@ describe('choices', () => {
         expect(choiceValueDiverged({ value: 'yes', label: { ar: 'نعم', en: null } })).toBe(true);
         expect(choiceValueDiverged({ value: 'نعم', label: { ar: 'نعم', en: null } })).toBe(false);
         expect(choiceValueDiverged({ value: '', label: { ar: '', en: null } })).toBe(false);
+    });
+});
+
+describe('imagepicker choice images', () => {
+    const list = () => [
+        { _uid: 'u1', value: 'a', label: { ar: 'أ', en: null }, raw: {} },
+        { _uid: 'u2', value: 'b', label: { ar: 'ب', en: null }, raw: { visibleIf: '{q1} = 1' } },
+    ];
+
+    it('sets the image link on the choice carrying the uid', () => {
+        const next = withChoiceImageLink(list(), 'u1', 'https://x/a.png');
+        expect(next[0].raw.imageLink).toBe('https://x/a.png');
+        expect(next[1].raw.imageLink).toBeUndefined();
+    });
+
+    it('preserves other raw props when setting an image', () => {
+        const next = withChoiceImageLink(list(), 'u2', 'https://x/b.png');
+        expect(next[1].raw).toEqual({ visibleIf: '{q1} = 1', imageLink: 'https://x/b.png' });
+    });
+
+    it('removes the image link when passed null, leaving other raw props', () => {
+        const withImage = withChoiceImageLink(list(), 'u2', 'https://x/b.png');
+        const cleared = withChoiceImageLink(withImage, 'u2', null);
+        expect(cleared[1].raw).toEqual({ visibleIf: '{q1} = 1' });
+    });
+
+    it('does not mutate the input list', () => {
+        const original = list();
+        withChoiceImageLink(original, 'u1', 'https://x/a.png');
+        expect(original[0].raw).toEqual({});
+    });
+
+    // The race the uid addressing exists for: an upload that lands after its
+    // choice was deleted must be dropped, not written to whoever took its slot.
+    it('returns null when no choice carries the uid', () => {
+        expect(withChoiceImageLink(list(), 'gone', 'https://x/a.png')).toBeNull();
+        expect(withChoiceImageLink([], 'u1', 'https://x/a.png')).toBeNull();
+    });
+
+    it('targets by identity, not position, after a reorder', () => {
+        const reordered = list().reverse();
+        const next = withChoiceImageLink(reordered, 'u1', 'https://x/a.png');
+        // u1 moved to index 1 — the link must follow it, not stay at index 0.
+        expect(next[1]._uid).toBe('u1');
+        expect(next[1].raw.imageLink).toBe('https://x/a.png');
+        expect(next[0].raw.imageLink).toBeUndefined();
     });
 });
 
