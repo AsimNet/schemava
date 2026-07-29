@@ -64,3 +64,21 @@ export function createPendingUploads() {
         },
     };
 }
+
+/**
+ * The registry ChoicesEditor uses, deliberately module-level rather than
+ * instance-local.
+ *
+ * App.vue gates the whole build pane behind `v-if="activeTab === 'build'"`, so
+ * switching to Preview unmounts SettingsPanel and with it every ChoicesEditor. A
+ * per-instance registry was therefore wiped by a Preview round-trip: the remounted
+ * editor showed a still-uploading choice as idle and let a second upload start,
+ * and since both closures still hold the originating field, whichever response
+ * landed last silently won. Module state survives the remount, and the `finally`
+ * cleanup runs off the request's own closure, so entries are still removed even if
+ * the component that started them is long gone.
+ *
+ * Entries are keyed by (owner field, uid), so sharing one registry across the
+ * several ChoicesEditor instances a matrix renders is safe.
+ */
+export const pendingUploads = createPendingUploads();
