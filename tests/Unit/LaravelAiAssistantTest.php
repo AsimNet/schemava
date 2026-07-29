@@ -18,6 +18,14 @@ class LaravelAiAssistantTest extends TestCase
         ]);
     }
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // The assistant is opt-in since #5 — these tests exercise it enabled.
+        config()->set('schemava.ai.enabled', true);
+    }
+
     private function schema(): SurveySchema
     {
         return new SurveySchema(['title' => 'اختبار']);

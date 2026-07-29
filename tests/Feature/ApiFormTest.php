@@ -5,10 +5,24 @@ namespace AsimNet\Schemava\Tests\Feature;
 use AsimNet\Schemava\Models\SurveyResult;
 use AsimNet\Schemava\Models\SurveySchema;
 use AsimNet\Schemava\Tests\TestCase;
+use Illuminate\Foundation\Application;
 use PHPUnit\Framework\Attributes\Test;
 
 class ApiFormTest extends TestCase
 {
+    /**
+     * The JSON API is opt-in since #5 — enable it before the provider boots
+     * so its routes register for this suite.
+     *
+     * @param  Application  $app
+     */
+    protected function defineEnvironment($app): void
+    {
+        parent::defineEnvironment($app);
+
+        $app['config']->set('schemava.routes.api.enabled', true);
+    }
+
     private function form(array $attributes = []): SurveySchema
     {
         return SurveySchema::query()->create(array_merge([
