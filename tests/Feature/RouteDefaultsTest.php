@@ -2,6 +2,8 @@
 
 namespace AsimNet\Schemava\Tests\Feature;
 
+use AsimNet\Schemava\Contracts\SurveyUrlResolver;
+use AsimNet\Schemava\Models\SurveySchema;
 use AsimNet\Schemava\Tests\TestCase;
 use Illuminate\Support\Facades\Route;
 use PHPUnit\Framework\Attributes\Test;
@@ -39,5 +41,17 @@ class RouteDefaultsTest extends TestCase
     public function the_ai_assistant_is_disabled_by_default(): void
     {
         $this->assertFalse((bool) config('schemava.ai.enabled'));
+    }
+
+    #[Test]
+    public function no_public_url_is_fabricated_while_the_public_form_is_disabled(): void
+    {
+        $schema = SurveySchema::query()->create([
+            'title' => 'Contact',
+            'is_active' => true,
+            'survey_json' => ['pages' => []],
+        ]);
+
+        $this->assertSame('', app(SurveyUrlResolver::class)->publicUrl($schema));
     }
 }

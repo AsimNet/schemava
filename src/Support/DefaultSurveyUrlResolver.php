@@ -24,6 +24,14 @@ class DefaultSurveyUrlResolver implements SurveyUrlResolver
             return route($routeName, ['hash' => $schema->hash]);
         }
 
+        // The prefix guess only makes sense when the host opted into a public
+        // form but registers the routes itself (routes.enabled => false). With
+        // the public form disabled there is no URL to share — return '' so the
+        // share/copy-link affordances hide instead of handing out a 404.
+        if (! config('schemava.routes.public.enabled', false)) {
+            return '';
+        }
+
         $prefix = trim((string) config('schemava.routes.public.prefix', 'surveys'), '/');
 
         return url($prefix.'/'.$schema->hash);

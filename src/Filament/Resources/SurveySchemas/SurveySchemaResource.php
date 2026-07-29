@@ -15,6 +15,7 @@ use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -123,7 +124,8 @@ class SurveySchemaResource extends Resource
             TextEntry::make('public_url')
                 ->label('Public form URL')
                 ->state(fn ($record): string => app(SurveyUrlResolver::class)->publicUrl($record))
-                ->visible(fn (): bool => Route::has(config('schemava.routes.public.name', 'schemava.public.show')))
+                // The resolver returns '' when the host exposes no public form.
+                ->visible(fn ($record): bool => app(SurveyUrlResolver::class)->publicUrl($record) !== '')
                 ->url(fn ($record): string => app(SurveyUrlResolver::class)->publicUrl($record), shouldOpenInNewTab: true)
                 ->copyable(),
             TextEntry::make('api_url')
@@ -172,7 +174,13 @@ class SurveySchemaResource extends Resource
                     ->label('Design')
                     ->icon(Heroicon::OutlinedPencilSquare)
                     ->color('primary')
-                    ->url(fn ($record): string => route('survey-designer.show', ['surveySchema' => $record->getKey()])),
+                    // The `panel` parameter tells the (panel-agnostic) designer
+                    // which panel it was opened from, so plugin options and the
+                    // back URL resolve against this panel, not the default one.
+                    ->url(fn ($record): string => route('survey-designer.show', [
+                        'surveySchema' => $record->getKey(),
+                        'panel' => Filament::getCurrentPanel()?->getId(),
+                    ])),
                 EditAction::make(),
             ])
             ->toolbarActions([
