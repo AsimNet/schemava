@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, ref, toRaw } from 'vue';
 import draggable from 'vuedraggable';
 import { t } from '../i18n.js';
 import { store, setChoices, setChoiceImageLink, pushToast } from '../store.js';
@@ -66,7 +66,27 @@ function applyChoices(next) {
  * whichever choice now sits at that index, or to another field entirely.
  */
 const imageInputs = new Map();
-const uploadingUids = reactive({});
+
+/**
+ * In-flight uploads as `{ owner, uid }` pairs, where `owner` is the raw field the
+ * upload started from (null in the alias/items modes, which have no field of
+ * their own). Scoped to the owner, not the uid alone: `duplicateField`
+ * structuredClones choice `_uid`s and then selects the copy, so a uid-only flag
+ * would show the original's spinner on the duplicate's choice and disable its
+ * upload button until the unrelated request finished — indefinitely, if it stalls.
+ */
+const pendingUploads = reactive([]);
+
+/** Raw identity of the field currently being edited, for owner comparisons. */
+function currentOwner() {
+    return props.field ? toRaw(props.field) : null;
+}
+
+function isUploading(uid) {
+    const owner = currentOwner();
+
+    return pendingUploads.some((pending) => pending.uid === uid && pending.owner === owner);
+}
 
 function setImageInputRef(el, uid) {
     if (el) {
@@ -95,7 +115,8 @@ async function onImageSelected(event, uid) {
     // have no store identity of their own, so those fall back to the live list.
     const ownerField = props.field ?? null;
     const viaStore = ownerField !== null && ! props.items && ! props.onUpdate && ! props.onChange;
-    uploadingUids[uid] = true;
+    const owner = ownerField ? toRaw(ownerField) : null;
+    pendingUploads.push({ owner, uid });
 
     const csrf = store.boot?.csrf ?? '';
     const url = store.boot?.routes?.uploadImage ?? '';
@@ -141,7 +162,10 @@ async function onImageSelected(event, uid) {
         console.error('[form-builder] choice image upload failed', error);
         pushToast(t('imageUploadFailed'), 'error');
     } finally {
-        delete uploadingUids[uid];
+        const at = pendingUploads.findIndex((pending) => pending.uid === uid && pending.owner === owner);
+        if (at !== -1) {
+            pendingUploads.splice(at, 1);
+        }
         if (event.target) {
             event.target.value = '';
         }
@@ -253,18 +277,18 @@ function diverged(choice) {
                         <button
                             type="button"
                             class="fb-choice-image-btn fb-focus"
-                            :disabled="uploadingUids[element._uid]"
+                            :disabled="isUploading(element._uid)"
                             :title="choiceImageLink(element) ? t('imageReplace') : t('imageUploadButton')"
                             :aria-label="choiceImageLink(element) ? t('imageReplace') : t('imageUploadButton')"
                             @click="triggerImageUpload(element._uid)"
                         >
-                            <span v-if="uploadingUids[element._uid]" class="fb-spinner-sm" aria-hidden="true"></span>
+                            <span v-if="isUploading(element._uid)" class="fb-spinner-sm" aria-hidden="true"></span>
                             <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
                             </svg>
                         </button>
                         <button
-                            v-if="choiceImageLink(element) && !uploadingUids[element._uid]"
+                            v-if="choiceImageLink(element) && !isUploading(element._uid)"
                             type="button"
                             class="fb-choice-image-remove fb-focus"
                             :title="t('imageRemove')"
