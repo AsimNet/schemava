@@ -1,7 +1,8 @@
 <script setup>
-import { computed, reactive, ref, toRaw } from 'vue';
+import { computed, ref, toRaw } from 'vue';
 import draggable from 'vuedraggable';
 import { t } from '../i18n.js';
+import { createPendingUploads } from '../pending-uploads.js';
 import { store, setChoices, setChoiceImageLink, pushToast } from '../store.js';
 import {
     makeChoice,
@@ -68,14 +69,10 @@ function applyChoices(next) {
 const imageInputs = new Map();
 
 /**
- * In-flight uploads as `{ owner, uid }` pairs, where `owner` is the raw field the
- * upload started from (null in the alias/items modes, which have no field of
- * their own). Scoped to the owner, not the uid alone: `duplicateField`
- * structuredClones choice `_uid`s and then selects the copy, so a uid-only flag
- * would show the original's spinner on the duplicate's choice and disable its
- * upload button until the unrelated request finished — indefinitely, if it stalls.
+ * In-flight uploads, tracked per (owner field, choice uid) — see pending-uploads.js
+ * for why the owner has to be part of the key and why identity needs normalising.
  */
-const pendingUploads = reactive([]);
+const pendingUploads = createPendingUploads();
 
 /** Raw identity of the field currently being edited, for owner comparisons. */
 function currentOwner() {
@@ -83,9 +80,7 @@ function currentOwner() {
 }
 
 function isUploading(uid) {
-    const owner = currentOwner();
-
-    return pendingUploads.some((pending) => pending.uid === uid && pending.owner === owner);
+    return pendingUploads.has(currentOwner(), uid);
 }
 
 function setImageInputRef(el, uid) {
@@ -116,7 +111,7 @@ async function onImageSelected(event, uid) {
     const ownerField = props.field ?? null;
     const viaStore = ownerField !== null && ! props.items && ! props.onUpdate && ! props.onChange;
     const owner = ownerField ? toRaw(ownerField) : null;
-    pendingUploads.push({ owner, uid });
+    pendingUploads.add(owner, uid);
 
     const csrf = store.boot?.csrf ?? '';
     const url = store.boot?.routes?.uploadImage ?? '';
@@ -162,10 +157,7 @@ async function onImageSelected(event, uid) {
         console.error('[form-builder] choice image upload failed', error);
         pushToast(t('imageUploadFailed'), 'error');
     } finally {
-        const at = pendingUploads.findIndex((pending) => pending.uid === uid && pending.owner === owner);
-        if (at !== -1) {
-            pendingUploads.splice(at, 1);
-        }
+        pendingUploads.remove(owner, uid);
         if (event.target) {
             event.target.value = '';
         }
