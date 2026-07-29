@@ -41,6 +41,21 @@ const publicUrl = computed(() => {
 });
 const hasPublicUrl = computed(() => publicUrl.value !== '');
 
+/** The admin/return URL for the back control (empty when the host set none). */
+const backUrl = computed(() => {
+    const url = props.boot?.routes?.backUrl;
+
+    return typeof url === 'string' ? url.trim() : '';
+});
+
+// Without a URL, fall back to history navigation — but only when this tab has
+// somewhere to go back to; a dead control is worse than none (issue #8).
+const canGoBack = window.history.length > 1;
+
+function goBack() {
+    window.history.back();
+}
+
 /** Copy the public survey link to the clipboard and toast on success/failure. */
 async function copyLink() {
     if (!hasPublicUrl.value) {
@@ -261,7 +276,7 @@ onBeforeUnmount(() => {
 <template>
     <header class="fb-header">
         <div class="fb-header-start">
-            <a class="fb-back" :href="props.boot?.routes?.backUrl" :title="t('back')" :aria-label="t('back')">
+            <a v-if="backUrl" class="fb-back" :href="backUrl" :title="t('back')" :aria-label="t('back')">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true" class="fb-back-icon">
                     <path
                         stroke-linecap="round"
@@ -271,6 +286,23 @@ onBeforeUnmount(() => {
                     />
                 </svg>
             </a>
+            <button
+                v-else-if="canGoBack"
+                type="button"
+                class="fb-back"
+                :title="t('back')"
+                :aria-label="t('back')"
+                @click="goBack"
+            >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true" class="fb-back-icon">
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"
+                    />
+                </svg>
+            </button>
 
             <div class="fb-titles">
                 <input
@@ -435,6 +467,10 @@ onBeforeUnmount(() => {
 }
 
 .fb-back {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;

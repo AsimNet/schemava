@@ -5,16 +5,43 @@ namespace AsimNet\Schemava\Models;
 use AsimNet\Schemava\Contracts\SurveyAccessResolver;
 use AsimNet\Schemava\Schemava;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 /**
  * Generic SurveyJS schema. Identity-, access-, and domain-specific behavior
  * (roles, gender/age gating, activity targeting, help-form handling) lives in
  * the host application via subclasses and the package's contracts — not here.
+ *
+ * @property int $id
+ * @property string $title
+ * @property string|null $description
+ * @property array<string, mixed>|null $survey_json
+ * @property bool $is_active
+ * @property Carbon|null $start_date
+ * @property Carbon|null $end_date
+ * @property Carbon|null $open_at
+ * @property Carbon|null $close_at
+ * @property string|null $close_message
+ * @property string|null $unavailable_message
+ * @property int|null $max_responses
+ * @property int|null $max_submissions_per_user
+ * @property int|null $submission_limit_per_user
+ * @property array<int, string>|null $role_access
+ * @property array<int, string>|null $gender_access
+ * @property array<string, mixed>|null $age_range
+ * @property int|string|null $surveyable_id
+ * @property string|null $surveyable_type
+ * @property array<int, string>|null $tags
+ * @property string $hash
+ * @property string|null $schemava_version
+ * @property-read Model|null $surveyable
+ * @property-read Collection<int, SurveyResult> $results
  */
 class SurveySchema extends Model
 {
@@ -238,6 +265,8 @@ class SurveySchema extends Model
     /**
      * Base query used for route-model binding. Overridable by host apps (e.g.
      * to bypass a "hide help forms" global scope).
+     *
+     * @return Builder<static>
      */
     protected function routeBindingQuery(): Builder
     {

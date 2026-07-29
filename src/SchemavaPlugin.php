@@ -4,10 +4,13 @@ namespace AsimNet\Schemava;
 
 use AsimNet\Schemava\Filament\Resources\SurveyResults\SurveyResultResource;
 use AsimNet\Schemava\Filament\Resources\SurveySchemas\SurveySchemaResource;
+use AsimNet\Schemava\Models\SurveySchema;
 use Closure;
 use Filament\Contracts\Plugin;
+use Filament\Facades\Filament;
 use Filament\Panel;
 use Filament\Support\Concerns\EvaluatesClosures;
+use LogicException;
 
 class SchemavaPlugin implements Plugin
 {
@@ -25,6 +28,8 @@ class SchemavaPlugin implements Plugin
 
     protected Closure|bool $authorizeCallback = true;
 
+    protected string|Closure|null $backUrl = null;
+
     public static function make(): static
     {
         return app(static::class);
@@ -32,10 +37,42 @@ class SchemavaPlugin implements Plugin
 
     public static function get(): static
     {
-        /** @var static $plugin */
-        $plugin = filament(app(static::class)->getId());
+        $plugin = static::getOrNull();
+
+        if ($plugin === null) {
+            throw new LogicException('SchemavaPlugin is not registered on any Filament panel.');
+        }
 
         return $plugin;
+    }
+
+    /**
+     * Resolve the plugin without assuming the current panel carries it. Filament
+     * calls resource statics (navigation, access, relations) while registering
+     * EVERY panel — at that point the "current" panel is the default one, so
+     * resolving through it fatals any multi-panel app that registers the plugin
+     * elsewhere. Prefer the current panel, fall back to scanning all panels,
+     * and return null when the plugin is registered nowhere.
+     */
+    public static function getOrNull(): ?static
+    {
+        $id = app(static::class)->getId();
+
+        $current = Filament::getCurrentOrDefaultPanel();
+
+        if ($current?->hasPlugin($id)) {
+            /** @var static */
+            return $current->getPlugin($id);
+        }
+
+        foreach (Filament::getPanels() as $panel) {
+            if ($panel->hasPlugin($id)) {
+                /** @var static */
+                return $panel->getPlugin($id);
+            }
+        }
+
+        return null;
     }
 
     public function getId(): string
@@ -158,5 +195,32 @@ class SchemavaPlugin implements Plugin
     public function isAuthorized(): bool
     {
         return (bool) $this->evaluate($this->authorizeCallback);
+    }
+
+    /**
+     * Where the designer's "back" control returns to. Pass a URL, or a closure
+     * receiving the schema (as $schema) and returning one. When unset, the
+     * default URL resolver falls back to `schemava.routes.designer.back_url`
+     * and then to the bundled resource's view page.
+     */
+    public function backUrl(string|Closure|null $url): static
+    {
+        $this->backUrl = $url;
+
+        return $this;
+    }
+
+    public function getBackUrl(SurveySchema $schema): ?string
+    {
+        $url = $this->evaluate($this->backUrl, [
+            'schema' => $schema,
+            'surveySchema' => $schema,
+            'record' => $schema,
+        ], [
+            SurveySchema::class => $schema,
+            $schema::class => $schema,
+        ]);
+
+        return is_string($url) && $url !== '' ? $url : null;
     }
 }

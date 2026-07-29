@@ -5,14 +5,14 @@ import { ADVANCED_TYPE } from '../../../resources/js/form-builder/model/fieldTyp
 /**
  * Defense-in-depth: the system prompt steers the AI toward our supported subset,
  * but the real validity guarantee is downstream. If a model IGNORES the type
- * whitelist and returns an unsupported SurveyJS type (here `matrixdynamic`), the
+ * whitelist and returns an unsupported SurveyJS type (here `customwidget`), the
  * serializer must NOT corrupt or silently drop it — it lands in an `advanced`
  * passthrough field and round-trips back out verbatim. Together with the JSON
  * validation + JSON-panel fallback in AiAssistant.vue, this is what actually
  * keeps invalid/unexpected JSON from quietly mangling the saved survey.
  *
  * This mirrors a realistic AI reply: a full survey object mixing supported
- * questions with one unsupported `matrixdynamic` (the thing the prompt forbids).
+ * questions with one unsupported `customwidget` (the thing the prompt forbids).
  */
 const AI_SURVEY_WITH_UNSUPPORTED_TYPE = {
     title: 'استبiان من الذكاء الاصطناعي',
@@ -29,20 +29,10 @@ const AI_SURVEY_WITH_UNSUPPORTED_TYPE = {
                 },
                 {
                     // UNSUPPORTED type the whitelist forbids — must survive verbatim.
-                    type: 'matrixdynamic',
+                    type: 'customwidget',
                     name: 'q_family',
                     title: 'أفراد الأسرة',
-                    columns: [
-                        { name: 'member_name', title: 'الاسم', cellType: 'text' },
-                        {
-                            name: 'relation',
-                            title: 'صلة القرابة',
-                            cellType: 'dropdown',
-                            choices: ['أب', 'أم', 'ابن', 'ابنة'],
-                        },
-                    ],
-                    rowCount: 2,
-                    minRowCount: 1,
+                    widgetConfig: { mode: 'family', maxItems: 5 },
                     addRowText: 'إضافة فرد',
                 },
                 {
@@ -80,9 +70,9 @@ describe('AI defense-in-depth — unsupported types cannot corrupt data', () => 
         const emitted = out.pages[0].elements.find((element) => element.name === 'q_family');
         // No drop, no mutation, no coercion: identical to what the model sent.
         expect(emitted).toEqual(AI_SURVEY_WITH_UNSUPPORTED_TYPE.pages[0].elements[1]);
-        // Crucially it is still a matrixdynamic, not silently downgraded.
-        expect(emitted.type).toBe('matrixdynamic');
-        expect(emitted.columns).toHaveLength(2);
+        // Crucially it is still a customwidget, not silently downgraded.
+        expect(emitted.type).toBe('customwidget');
+        expect(emitted.widgetConfig).toEqual({ mode: 'family', maxItems: 5 });
     });
 
     it('round-trips the whole AI survey losslessly (modulo the documented serializer mutations)', () => {

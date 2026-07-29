@@ -64,6 +64,38 @@ describe('serialize — base round-trip per builder type (ar-only)', () => {
         image: { type: 'image', name: 'q1', imageLink: 'https://x/y.png' },
         statement: { type: 'html', name: 'q1', html: '<p>نص</p>' },
         hidden_value: { type: 'text', name: 'q1', visible: false, defaultValueExpression: '{full_name}' },
+        panel_dynamic: {
+            type: 'paneldynamic',
+            name: 'q1',
+            title: 'أفراد الأسرة',
+            panelCount: 2,
+            minPanelCount: 1,
+            maxPanelCount: 5,
+            panelAddText: 'إضافة فرد',
+            panelRemoveText: 'حذف',
+            templateElements: [
+                { type: 'text', name: 'member_name', title: 'الاسم', inputType: 'text' },
+                { type: 'radiogroup', name: 'member_gender', title: 'الجنس', choices: ['ذكر', 'أنثى'] },
+            ],
+        },
+        panel: {
+            type: 'panel',
+            name: 'q1',
+            title: 'بيانات أساسية',
+            elements: [
+                { type: 'text', name: 'g_name', title: 'الاسم', inputType: 'text' },
+                { type: 'dropdown', name: 'g_city', title: 'المدينة', choices: ['الرياض', 'بريدة'] },
+            ],
+        },
+        slider: { type: 'slider', name: 'q1', title: 'نسبة الرضا', min: 0, max: 10, step: 1 },
+        ranking: { type: 'ranking', name: 'q1', title: 'ترتيب', choices: ['أ', 'ب'] },
+        tagbox: { type: 'tagbox', name: 'q1', title: 'وسوم', choices: ['أ', 'ب'] },
+        imagepicker: { type: 'imagepicker', name: 'q1', title: 'صورة', choices: ['أ', 'ب'] },
+        multipletext: { type: 'multipletext', name: 'q1', title: 'متعدد', colCount: 2 },
+        expression: { type: 'expression', name: 'q1', title: 'محسوب', expression: '{q2} + 1', displayStyle: 'decimal' },
+        matrix: { type: 'matrix', name: 'q1', title: 'مصفوفة', rows: [{ value: 'r1', text: 'صف1' }], columns: [{ value: 'c1', text: 'عمود1' }] },
+        matrixdropdown: { type: 'matrixdropdown', name: 'q1', title: 'مصفوفة2', rows: [{ value: 'r1', text: 'صف1' }], columns: [{ name: 'c1', title: 'عمود1', cellType: 'text' }] },
+        matrixdynamic: { type: 'matrixdynamic', name: 'q1', title: 'مصفوفة3', rowCount: 3, columns: [{ name: 'c1', title: 'عمود1', cellType: 'text' }] },
     };
 
     for (const [builderType, element] of Object.entries(samples)) {
@@ -231,8 +263,8 @@ describe('serialize — logic (visibleIf)', () => {
 describe('serialize — advanced passthrough', () => {
     it('keeps unknown element types verbatim', () => {
         const element = {
-            type: 'matrix', name: 'm1', title: 'مصفوفة',
-            columns: ['a', 'b'], rows: ['x', 'y'], custom: { nested: true },
+            type: 'customwidget', name: 'm1', title: 'ودجت',
+            widgetConfig: { nested: true },
         };
         expect(roundTripElement(element)).toEqual(element);
     });
@@ -587,5 +619,209 @@ describe('serialize — both visibleIf AND enableIf present (lossless)', () => {
             enableIf: "({g} <> 'MALE')",
         };
         expect(roundTripElement(element)).toEqual(element);
+    });
+});
+
+describe('serialize — panel_dynamic (repeating panel)', () => {
+    const survey = {
+        pages: [{
+            name: 'p1',
+            elements: [{
+                type: 'paneldynamic',
+                name: 'family',
+                title: 'أفراد الأسرة',
+                panelCount: 2,
+                minPanelCount: 1,
+                maxPanelCount: 5,
+                panelAddText: 'إضافة فرد',
+                panelRemoveText: 'حذف',
+                templateElements: [
+                    { type: 'text', name: 'member_name', title: 'الاسم', inputType: 'text' },
+                    { type: 'radiogroup', name: 'member_gender', title: 'الجنس', choices: ['ذكر', 'أنثى'] },
+                ],
+            }],
+        }],
+    };
+
+    it('parses templateElements into real, editable sub-Fields (not raw)', () => {
+        const state = fromSurveyJson(survey);
+        const field = state.pages[0].fields[0];
+
+        expect(field.type).toBe('panel_dynamic');
+        expect(field.raw).toEqual({});
+        expect(field.typeProps.panelCount).toBe(2);
+        expect(field.typeProps.minPanelCount).toBe(1);
+        expect(field.typeProps.maxPanelCount).toBe(5);
+        expect(field.typeProps.panelAddText).toEqual({ ar: 'إضافة فرد', en: null });
+        expect(field.typeProps.panelRemoveText).toEqual({ ar: 'حذف', en: null });
+
+        const sub = field.typeProps.templateElements;
+        expect(sub).toHaveLength(2);
+        expect(sub[0]).toMatchObject({ name: 'member_name', type: 'short_text' });
+        expect(sub[1]).toMatchObject({ name: 'member_gender', type: 'single_choice' });
+        expect(sub[1].choices.map((c) => c.value)).toEqual(['ذكر', 'أنثى']);
+    });
+
+    it('round-trips losslessly, including the nested template questions', () => {
+        expect(stripDefaults(roundTrip(survey))).toEqual(survey);
+    });
+
+    it('keeps template question names unique against top-level field names', () => {
+        const state = fromSurveyJson(survey);
+        // A same-named top-level field would collide; nextFieldName is exercised
+        // via the store in store.test.js — here we only assert the parsed names
+        // survived distinctly.
+        const names = new Set();
+        for (const page of state.pages) {
+            for (const field of page.fields) {
+                names.add(field.name);
+                for (const sub of field.typeProps?.templateElements ?? []) {
+                    names.add(sub.name);
+                }
+            }
+        }
+        expect(names.size).toBe(3); // family, member_name, member_gender
+    });
+
+    it('omits maxPanelCount/panelAddText/panelRemoveText when unset, defaults templateElements to []', () => {
+        const out = roundTripElement({ type: 'paneldynamic', name: 'q1', title: 'لوحة' });
+        expect(out).toEqual({ type: 'paneldynamic', name: 'q1', title: 'لوحة', templateElements: [] });
+    });
+
+    it('falls back to the advanced passthrough for an unrecognized element inside templateElements', () => {
+        const state = fromSurveyJson({
+            pages: [{
+                name: 'p1',
+                elements: [{
+                    type: 'paneldynamic',
+                    name: 'q1',
+                    templateElements: [{ type: 'customwidget', name: 'weird', config: 'x' }],
+                }],
+            }],
+        });
+        const sub = state.pages[0].fields[0].typeProps.templateElements[0];
+        expect(sub.type).toBe('advanced');
+        expect(sub.raw).toEqual({ type: 'customwidget', name: 'weird', config: 'x' });
+    });
+});
+
+describe('serialize — multipletext items', () => {
+    it('round-trips items losslessly (name, localized title, isRequired, extras)', () => {
+        const element = {
+            type: 'multipletext',
+            name: 'q1',
+            title: 'بيانات التواصل',
+            colCount: 2,
+            items: [
+                { name: 'first_name', title: 'الاسم الأول', isRequired: true },
+                { name: 'phone', title: { default: 'الجوال', en: 'Phone' }, inputType: 'tel' },
+                { name: 'bare' },
+            ],
+        };
+        expect(roundTripElement(element)).toEqual(element);
+    });
+
+    it('parses items into editable TextItems (LStr titles, raw leftovers)', () => {
+        const state = fromSurveyJson({
+            pages: [{
+                name: 'p1',
+                elements: [{
+                    type: 'multipletext',
+                    name: 'q1',
+                    items: [{ name: 'a', title: 'حقل', maxLength: 10 }],
+                }],
+            }],
+        });
+        const items = state.pages[0].fields[0].typeProps.items;
+        expect(items).toHaveLength(1);
+        expect(items[0].name).toBe('a');
+        expect(items[0].title.ar).toBe('حقل');
+        expect(items[0].raw).toEqual({ maxLength: 10 });
+    });
+
+    it('omits items only when the field never had any (legacy import without items)', () => {
+        const out = roundTripElement({ type: 'multipletext', name: 'q1' });
+        expect(out).toEqual({ type: 'multipletext', name: 'q1' });
+    });
+});
+
+describe('serialize — page descriptions', () => {
+    it('round-trips a page description (localized)', () => {
+        const json = {
+            pages: [{
+                name: 'p1',
+                title: 'الصفحة الأولى',
+                description: { default: 'وصف الصفحة', en: 'Page intro' },
+                elements: [],
+            }],
+        };
+        expect(roundTrip(json).pages[0]).toEqual(json.pages[0]);
+    });
+
+    it('parses a page description into an editable LStr', () => {
+        const state = fromSurveyJson({
+            pages: [{ name: 'p1', description: 'تعليمات', elements: [] }],
+        });
+        expect(state.pages[0].description).toEqual({ ar: 'تعليمات', en: null });
+    });
+});
+
+describe('serialize — page show/hide logic (visibleIf)', () => {
+    it('round-trips a page visibleIf losslessly', () => {
+        const json = {
+            pages: [
+                { name: 'p1', elements: [{ type: 'text', name: 'q1', title: 'العمر', inputType: 'number' }] },
+                { name: 'p2', visibleIf: '{q1} > 18', elements: [] },
+            ],
+        };
+        // The visual-logic compiler emits the canonical parenthesized form.
+        expect(roundTrip(json).pages[1].visibleIf).toBe('({q1} > 18)');
+    });
+
+    it('parses page visibleIf into an editable logic block', () => {
+        const state = fromSurveyJson({
+            pages: [
+                { name: 'p1', elements: [] },
+                { name: 'p2', visibleIf: "{q1} = 'نعم'", elements: [] },
+            ],
+        });
+        const logic = state.pages[1].logic;
+        expect(logic).toBeTruthy();
+        expect(logic.rules?.[0]?.field ?? logic.advanced).toBeTruthy();
+    });
+
+    it('emits visibleIf from an authored page logic block', () => {
+        const state = fromSurveyJson({ pages: [{ name: 'p1', elements: [] }, { name: 'p2', elements: [] }] });
+        state.pages[1].logic = { action: 'show', match: 'all', rules: [{ field: 'q1', op: '>', value: 18 }] };
+        const out = toSurveyJson(state, { runtimeContextKeys: [] });
+        expect(out.pages[1].visibleIf).toBe('({q1} > 18)');
+    });
+});
+
+describe('serialize — survey triggers (jump / finish)', () => {
+    it('round-trips skip and complete triggers losslessly', () => {
+        const json = {
+            pages: [{ name: 'p1', elements: [{ type: 'text', name: 'q1', title: 'س', inputType: 'text' }] }],
+            triggers: [
+                { type: 'skip', expression: "{q1} = 'نعم'", gotoName: 'q9' },
+                { type: 'complete', expression: '{q1} notempty' },
+                { type: 'setvalue', expression: '{q1} = 1', setToName: 'q2', setValue: 'x' },
+            ],
+        };
+        expect(roundTrip(json).triggers).toEqual(json.triggers);
+    });
+
+    it('drops triggers with an empty expression and omits the prop when none remain', () => {
+        const state = fromSurveyJson({ pages: [{ name: 'p1', elements: [] }] });
+        state.triggers = [{ type: 'skip', expression: '   ', gotoName: 'q1', raw: {} }];
+        const out = toSurveyJson(state, { runtimeContextKeys: [] });
+        expect(out.triggers).toBeUndefined();
+    });
+
+    it('drops a skip trigger without a jump target', () => {
+        const state = fromSurveyJson({ pages: [{ name: 'p1', elements: [] }] });
+        state.triggers = [{ type: 'skip', expression: '{q1} = 1', gotoName: '', raw: {} }];
+        const out = toSurveyJson(state, { runtimeContextKeys: [] });
+        expect(out.triggers).toBeUndefined();
     });
 });

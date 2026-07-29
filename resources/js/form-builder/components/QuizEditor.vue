@@ -127,6 +127,13 @@ const hasChoices = computed(() => Array.isArray(props.field.choices) && props.fi
             <input v-model="enabled" type="checkbox" class="fb-checkbox" />
             <span>{{ t('quizToggle') }}</span>
         </label>
+        <span
+            class="fb-quiz-info"
+            role="img"
+            tabindex="0"
+            :title="t('quizExplainer')"
+            :aria-label="t('quizExplainer')"
+        >؟</span>
         <p class="fb-hint">{{ t('quizToggleHint') }}</p>
 
         <template v-if="enabled">
@@ -293,5 +300,27 @@ const hasChoices = computed(() => Array.isArray(props.field.choices) && props.fi
     color: var(--fb-text-muted);
     margin: 0;
     line-height: 1.4;
+}
+.fb-quiz-info {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1rem;
+    height: 1rem;
+    margin-inline-start: 0.25rem;
+    border-radius: 999px;
+    border: 1px solid var(--fb-border-strong);
+    color: var(--fb-text-muted);
+    font-size: 0.625rem;
+    font-weight: 700;
+    cursor: help;
+    user-select: none;
+    vertical-align: middle;
+}
+
+.fb-quiz-info:hover {
+    color: var(--fb-brand-600);
+    border-color: var(--fb-brand);
+    background: var(--fb-brand-50);
 }
 </style>

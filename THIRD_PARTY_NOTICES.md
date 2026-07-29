@@ -5,11 +5,15 @@ Schemava is an independent product. It uses the following third‑party open‑s
 other commercial SurveyJS product. All third‑party product names and trademarks are the property of their
 respective owners.
 
-## Runtime renderer (not bundled — loaded from a CDN)
+## Runtime renderer (bundled, unmodified)
 
 ### SurveyJS Form Library — `survey-core` / `survey-js-ui`
-Used to preview and render forms from SurveyJS‑compatible JSON. Loaded at runtime from a CDN (pinned via
-`config('schemava.renderer_version')`); it is **not** redistributed inside this package.
+Used to preview and render forms from SurveyJS‑compatible JSON. The unmodified minified distribution files
+(`survey-core.min.css`, `survey.core.min.js`, `survey.i18n.min.js`, `survey-js-ui.min.js`) are redistributed
+inside this package under `resources/dist/vendor/surveyjs/` — at the version recorded in
+`config('schemava.renderer_version')` — and served as published assets by the host application. Self‑hosting
+(rather than a CDN) keeps previews and public forms working behind corporate TLS‑inspection proxies. The
+upstream license notices embedded in the minified bundles are preserved verbatim.
 
 - License: MIT
 - Copyright © Devsoft Baltic OÜ

@@ -2,13 +2,28 @@
 
 namespace AsimNet\Schemava\Tests\Feature;
 
+use AsimNet\Schemava\Contracts\SurveyUrlResolver;
 use AsimNet\Schemava\Models\SurveyResult;
 use AsimNet\Schemava\Models\SurveySchema;
 use AsimNet\Schemava\Tests\TestCase;
+use Illuminate\Foundation\Application;
 use PHPUnit\Framework\Attributes\Test;
 
 class PublicFormTest extends TestCase
 {
+    /**
+     * The public form is opt-in since #5 — enable it before the provider
+     * boots so its routes register for this suite.
+     *
+     * @param  Application  $app
+     */
+    protected function defineEnvironment($app): void
+    {
+        parent::defineEnvironment($app);
+
+        $app['config']->set('schemava.routes.public.enabled', true);
+    }
+
     private function form(array $attributes = []): SurveySchema
     {
         return SurveySchema::query()->create(array_merge([
@@ -19,6 +34,17 @@ class PublicFormTest extends TestCase
                 ['type' => 'radiogroup', 'name' => 'color', 'title' => 'Favorite color', 'choices' => ['red', 'green', 'blue']],
             ]]]],
         ], $attributes));
+    }
+
+    #[Test]
+    public function the_public_url_points_at_the_registered_route_when_enabled(): void
+    {
+        $schema = $this->form();
+
+        $this->assertSame(
+            route('schemava.public.show', ['hash' => $schema->hash]),
+            app(SurveyUrlResolver::class)->publicUrl($schema),
+        );
     }
 
     #[Test]

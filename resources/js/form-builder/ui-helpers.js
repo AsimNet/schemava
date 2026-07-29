@@ -66,6 +66,38 @@ export function variableOptions(keys, locale = 'ar') {
     }));
 }
 
+/**
+ * Build the question-reference option list for an expression-formula's
+ * VariableMenu, from field entries as returned by `priorFields`/`allFieldEntries`.
+ *
+ * @param {Array<{name: string, label: {ar: string, en: string|null}}>|undefined|null} fields
+ * @param {'ar'|'en'} locale
+ * @returns {Array<{key: string, label: string}>}
+ */
+export function fieldReferenceOptions(fields, locale = 'ar') {
+    return (Array.isArray(fields) ? fields : []).map((entry) => {
+        const lstr = entry.label;
+        const text = (locale === 'en' ? lstr?.en : lstr?.ar) ?? lstr?.ar ?? '';
+
+        return { key: entry.name, label: text || entry.name };
+    });
+}
+
+/**
+ * Build the calculated-value-reference option list for an expression-formula's
+ * VariableMenu. Calculated values have no separate label — the name doubles as
+ * the display label. Entries without a name (not yet committed by the author)
+ * are skipped.
+ *
+ * @param {Array<{name: string}>|undefined|null} calculatedValues
+ * @returns {Array<{key: string, label: string}>}
+ */
+export function calculatedValueOptions(calculatedValues) {
+    return (Array.isArray(calculatedValues) ? calculatedValues : [])
+        .filter((entry) => entry && typeof entry.name === 'string' && entry.name !== '')
+        .map((entry) => ({ key: entry.name, label: entry.name }));
+}
+
 /* ---------------------------------------------------------------- piping */
 
 /** Matches a `{token}` reference (the SurveyJS piping syntax). */
@@ -398,9 +430,15 @@ export function renameChoiceLabel(choice, locale, nextValue) {
     const mirrors = choice.value === prevAr;
 
     if (locale === 'en') {
+        const prevEn = label.en ?? '';
+        // With no Arabic text, English IS the primary content: keep the value
+        // mirroring it (otherwise en-authored choices freeze on their seeded
+        // value or end up with empty values in the SurveyJS JSON).
+        const mirrorsEn = prevAr === ''
+            && (choice.value === prevEn || choice.value === '' || choice.value === null || choice.value === undefined);
         label.en = nextValue === '' ? null : nextValue;
 
-        return { ...choice, label };
+        return mirrorsEn ? { ...choice, label, value: nextValue } : { ...choice, label };
     }
 
     label.ar = nextValue;
@@ -432,11 +470,101 @@ export function choiceUid() {
  * @param {string} arText
  * @returns {{_uid: string, value: string, label: {ar: string, en: string|null}, raw: object}}
  */
-export function makeChoice(arText) {
-    const ar = (arText ?? '').trim();
+export function makeChoice(labelText, locale = 'ar') {
+    const text = (labelText ?? '').trim();
 
-    return { _uid: choiceUid(), value: ar, label: { ar, en: null }, raw: {} };
+    // The seeded text belongs to the ACTIVE content locale — writing English
+    // seed text into the Arabic slot made the Arabic preview show stale
+    // defaults the author never saw in Build. The value mirrors the text
+    // either way (SurveyJS choice values must not be empty).
+    if (locale === 'en' && text !== '') {
+        return { _uid: choiceUid(), value: text, label: { ar: '', en: text }, raw: {} };
+    }
+
+    return { _uid: choiceUid(), value: text, label: { ar: text, en: null }, raw: {} };
 }
+
+/**
+ * Build a fresh matrixdropdown/matrixdynamic column (cell) definition with an
+ * auto-generated unique `name` (`col_1`, `col_2`, …) and a plain-text cell type.
+ * Carries a stable `_uid` for keyed list rendering, mirroring {@see makeChoice}.
+ *
+ * @param {string} labelText  the column title (active content locale)
+ * @param {string[]} [existingNames]  column names already used on this field
+ * @returns {{_uid: string, name: string, title: {ar: string, en: string|null}, cellType: string, isRequired: boolean, choices: null, raw: object}}
+ */
+export function makeMatrixColumn(labelText, existingNames = [], locale = 'ar') {
+    const taken = new Set(existingNames);
+    let n = 1;
+    let name = `col_${n}`;
+    while (taken.has(name)) {
+        n += 1;
+        name = `col_${n}`;
+    }
+    const text = (labelText ?? '').trim();
+
+    return {
+        _uid: choiceUid(),
+        name,
+        title: locale === 'en' && text !== '' ? { ar: '', en: text } : { ar: text, en: null },
+        cellType: 'text',
+        isRequired: false,
+        choices: null,
+        raw: {},
+    };
+}
+
+/**
+ * Build a fresh multipletext item with an auto-generated unique `name`
+ * (`item_1`, `item_2`, …). Mirrors {@see makeMatrixColumn}'s shape/uid handling.
+ *
+ * @param {string} labelText  the item title (active content locale)
+ * @param {string[]} [existingNames]  item names already used on this field
+ * @returns {{_uid: string, name: string, title: {ar: string, en: string|null}, isRequired: boolean, raw: object}}
+ */
+export function makeTextItem(labelText, existingNames = [], locale = 'ar') {
+    const taken = new Set(existingNames);
+    let n = 1;
+    let name = `item_${n}`;
+    while (taken.has(name)) {
+        n += 1;
+        name = `item_${n}`;
+    }
+
+    const text = (labelText ?? '').trim();
+
+    return {
+        _uid: choiceUid(),
+        name,
+        title: locale === 'en' && text !== '' ? { ar: '', en: text } : { ar: text, en: null },
+        isRequired: false,
+        raw: {},
+    };
+}
+
+/** Default Arabic item titles seeded onto a freshly added multipletext field. */
+export const DEFAULT_TEXT_ITEM_LABELS = ['الحقل الأول', 'الحقل الثاني'];
+
+/** English equivalents, used when the builder's active content locale is English. */
+export const DEFAULT_TEXT_ITEM_LABELS_EN = ['Field 1', 'Field 2'];
+
+/** Matrix-family cellType values choosable from the columns editor (matrixdropdown/matrixdynamic). */
+export const MATRIX_CELL_TYPES = ['text', 'comment', 'checkbox', 'radiogroup', 'dropdown', 'boolean', 'rating'];
+
+/** cellType values that carry their own `choices` list. */
+export const MATRIX_CHOICE_CELL_TYPES = ['checkbox', 'radiogroup', 'dropdown'];
+
+/** Default Arabic row labels seeded onto a freshly added matrix/matrixdropdown field. */
+export const DEFAULT_MATRIX_ROW_LABELS = ['الصف الأول', 'الصف الثاني'];
+
+/** English equivalents, used when the builder's active content locale is English. */
+export const DEFAULT_MATRIX_ROW_LABELS_EN = ['Row 1', 'Row 2'];
+
+/** Default Arabic column labels seeded onto a freshly added matrix field. */
+export const DEFAULT_MATRIX_COLUMN_LABELS = ['العمود الأول', 'العمود الثاني'];
+
+/** English equivalents, used when the builder's active content locale is English. */
+export const DEFAULT_MATRIX_COLUMN_LABELS_EN = ['Column 1', 'Column 2'];
 
 /**
  * Split bulk-pasted multiline text into one trimmed line per non-empty row.

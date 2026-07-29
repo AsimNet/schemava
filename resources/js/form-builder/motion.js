@@ -140,7 +140,14 @@ export function fadeInUp(el, opts = {}) {
         duration,
         delay,
         ease: easing,
-        onComplete,
+        onComplete: () => {
+            // Drop the leftover inline transform: a stale `translate*(0)` keeps
+            // the element a stacking context forever, trapping its popovers
+            // (e.g. a card's add-question menu) below later positioned siblings.
+            el.style.transform = '';
+            el.style.opacity = '';
+            onComplete?.();
+        },
     });
 }
 
@@ -234,7 +241,15 @@ export function staggerIn(els, opts = {}) {
         duration,
         delay: animeStagger(step, { start: baseDelay }),
         ease: easing,
-        onComplete,
+        onComplete: () => {
+            // Same stale-transform cleanup as fadeInUp: drawer sections host
+            // their own popovers (variable menus), which must not be trapped.
+            for (const el of list) {
+                el.style.transform = '';
+                el.style.opacity = '';
+            }
+            onComplete?.();
+        },
     });
 }
 

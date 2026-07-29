@@ -10,6 +10,11 @@ use AsimNet\Schemava\Models\SurveySchema;
  */
 interface SurveyUrlResolver
 {
+    /**
+     * The public, shareable URL where respondents fill out the survey, or an
+     * empty string when the host exposes no public form — consumers hide their
+     * share/open affordances for an empty URL.
+     */
     public function publicUrl(SurveySchema $schema): string;
 
     /**

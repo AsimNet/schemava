@@ -4,8 +4,10 @@ namespace AsimNet\Schemava\Filament\Resources\SurveySchemas\Pages;
 
 use AsimNet\Schemava\Contracts\SurveyUrlResolver;
 use AsimNet\Schemava\Filament\Resources\SurveySchemas\SurveySchemaResource;
+use AsimNet\Schemava\Models\SurveySchema;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
+use Filament\Facades\Filament;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Support\Icons\Heroicon;
 
@@ -25,14 +27,30 @@ class ViewSurveySchema extends ViewRecord
                 ->label('Open visual builder')
                 ->icon(Heroicon::OutlinedPencilSquare)
                 ->color('primary')
-                ->url(fn (): string => route('survey-designer.show', ['surveySchema' => $this->record->getKey()])),
+                // `panel` carries the originating panel into the panel-agnostic
+                // designer route — see SurveyDesignerController.
+                ->url(fn (): string => route('survey-designer.show', [
+                    'surveySchema' => $this->record->getKey(),
+                    'panel' => Filament::getCurrentPanel()?->getId(),
+                ])),
             Action::make('publicForm')
                 ->label('Open public form')
                 ->icon(Heroicon::OutlinedLink)
                 ->color('gray')
-                ->url(fn (): ?string => app(SurveyUrlResolver::class)->publicUrl($this->record))
+                ->url(fn (): ?string => $this->publicUrl() ?: null)
+                // No public form exposed (the resolver returned '') → no action.
+                ->visible(fn (): bool => $this->publicUrl() !== '')
                 ->openUrlInNewTab(),
             EditAction::make(),
         ];
+    }
+
+    protected function publicUrl(): string
+    {
+        $record = $this->record;
+
+        return $record instanceof SurveySchema
+            ? app(SurveyUrlResolver::class)->publicUrl($record)
+            : '';
     }
 }

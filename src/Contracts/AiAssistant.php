@@ -6,8 +6,8 @@ use AsimNet\Schemava\Models\SurveySchema;
 
 /**
  * Answers the builder's AI assistant requests. The package ships a no-op
- * implementation; a working adapter (e.g. the bundled laravel/ai OpenRouter
- * adapter, or a host-provided provider) is bound via configuration.
+ * implementation; a working adapter (the bundled LaravelAiAssistant, or a
+ * host-provided provider) is bound via configuration.
  */
 interface AiAssistant
 {
@@ -19,7 +19,9 @@ interface AiAssistant
     /**
      * Answer a builder AI request for the given schema.
      *
-     * @param  array<int, array{role: string, content: string}>  $messageHistory
+     * @param  array<int, mixed>  $messageHistory  Chat turns, each ideally
+     *                                             {role, content} — implementations
+     *                                             must skip malformed entries.
      * @return array<string, mixed> Structured response — typically a reply
      *                              message plus an optional updated survey JSON.
      */

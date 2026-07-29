@@ -11,14 +11,41 @@ import {
 } from '../ui-helpers.js';
 
 const props = defineProps({
-    field: { type: Object, required: true },
+    field: { type: Object, default: null },
+    /** When set, the editor operates on this array instead of `field.choices`
+     * (e.g. a matrix field's `typeProps.rows`/`typeProps.columns`) — paired
+     * with `onUpdate` to persist changes. */
+    items: { type: Array, default: null },
+    /** Persist the next `items` array; required alongside `items`. */
+    onUpdate: { type: Function, default: null },
+    /**
+     * Optional override for persisting a new choices array when the default
+     * store write isn't wanted. Ignored when `onUpdate` is set. Defaults to
+     * the store's `setChoices(field.name, ...)`, which resolves panel_dynamic
+     * template sub-questions too (findField is nested-aware).
+     */
+    onChange: { type: Function, default: null },
+    /** Overrides the section label (defaults to the generic "Choices" label). */
+    label: { type: String, default: null },
 });
 
 const contentLocale = computed(() => store.state?.contentLocale ?? 'ar');
 
-const choices = computed(() => props.field.choices ?? []);
+const choices = computed(() => props.items ?? props.field?.choices ?? []);
 
 const draftInput = ref('');
+
+/** Persist the next list via `onUpdate` (items mode), `onChange` (field-alias
+ * mode), or the store (plain field mode). */
+function applyChoices(next) {
+    if (props.onUpdate) {
+        props.onUpdate(next);
+    } else if (props.onChange) {
+        props.onChange(next);
+    } else if (props.field) {
+        setChoices(props.field.name, next);
+    }
+}
 
 function labelText(choice) {
     const lstr = choice.label ?? { ar: '', en: null };
@@ -35,12 +62,12 @@ function isMissingTranslation(choice) {
 function onLabelInput(index, value) {
     const next = [...choices.value];
     next[index] = renameChoiceLabel(next[index], contentLocale.value, value);
-    setChoices(props.field.name, next);
+    applyChoices(next);
 }
 
 function removeChoice(index) {
     const next = choices.value.filter((_, i) => i !== index);
-    setChoices(props.field.name, next);
+    applyChoices(next);
 }
 
 function addFromDraft() {
@@ -48,8 +75,8 @@ function addFromDraft() {
     if (lines.length === 0) {
         return;
     }
-    const next = [...choices.value, ...lines.map((line) => makeChoice(line))];
-    setChoices(props.field.name, next);
+    const next = [...choices.value, ...lines.map((line) => makeChoice(line, contentLocale.value))];
+    applyChoices(next);
     draftInput.value = '';
 }
 
@@ -63,15 +90,15 @@ function onDraftPaste(event) {
     if (lines.length === 0) {
         return;
     }
-    const next = [...choices.value, ...lines.map((line) => makeChoice(line))];
-    setChoices(props.field.name, next);
+    const next = [...choices.value, ...lines.map((line) => makeChoice(line, contentLocale.value))];
+    applyChoices(next);
     draftInput.value = '';
 }
 
 function onReorder() {
     // vuedraggable mutates field.choices in place; persist via setChoices to
     // keep the dirty flag honest.
-    setChoices(props.field.name, [...choices.value]);
+    applyChoices([...choices.value]);
 }
 
 function diverged(choice) {
@@ -81,13 +108,13 @@ function diverged(choice) {
 
 <template>
     <div class="fb-choices">
-        <span class="fb-field-label">{{ t('choicesLabel') }}</span>
+        <span class="fb-field-label">{{ label ?? t('choicesLabel') }}</span>
 
         <p v-if="choices.length === 0" class="fb-choices-empty">{{ t('emptyChoices') }}</p>
 
         <draggable
             v-else
-            :list="props.field.choices"
+            :list="choices"
             item-key="_uid"
             handle=".fb-choice-handle"
             class="fb-choice-list"
