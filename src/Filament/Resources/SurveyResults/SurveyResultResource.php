@@ -54,24 +54,30 @@ class SurveyResultResource extends Resource
         return __('schemava::surveyjs.all_responses.plural_model_label');
     }
 
+    // Plugin lookups use getOrNull() with a config/deny fallback: Filament calls
+    // these statics while registering panels that may not carry the plugin, and
+    // a throwing lookup there takes the whole app down (#4).
+
     public static function getNavigationGroup(): ?string
     {
-        return SchemavaPlugin::get()->getNavigationGroup();
+        return SchemavaPlugin::getOrNull()?->getNavigationGroup()
+            ?? config('schemava.navigation.group');
     }
 
     public static function getNavigationSort(): ?int
     {
-        return SchemavaPlugin::get()->getNavigationSort() + 1;
+        return (SchemavaPlugin::getOrNull()?->getNavigationSort()
+            ?? (int) config('schemava.navigation.sort', 100)) + 1;
     }
 
     public static function canAccess(): bool
     {
-        return SchemavaPlugin::get()->isAuthorized();
+        return SchemavaPlugin::getOrNull()?->isAuthorized() ?? false;
     }
 
     public static function shouldRegisterNavigation(): bool
     {
-        return SchemavaPlugin::get()->isAuthorized();
+        return SchemavaPlugin::getOrNull()?->isAuthorized() ?? false;
     }
 
     // Read-only: responses are collected via the public form, not created here.

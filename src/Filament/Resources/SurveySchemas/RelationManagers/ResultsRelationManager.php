@@ -47,9 +47,9 @@ class ResultsRelationManager extends RelationManager
      */
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {
-        $plugin = SchemavaPlugin::get();
+        $plugin = SchemavaPlugin::getOrNull();
 
-        return $plugin->hasResponsesRelationManager() && $plugin->isAuthorized();
+        return $plugin !== null && $plugin->hasResponsesRelationManager() && $plugin->isAuthorized();
     }
 
     public function table(Table $table): Table
