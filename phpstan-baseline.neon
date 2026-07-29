@@ -3,12 +3,12 @@ parameters:
 		-
 			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
 			identifier: larastan.noEnvCallsOutsideOfConfig
-			count: 1
+			count: 7
 			path: config/schemava.php
 
 		-
-			message: '#^Parameter \#1 \$view of function view expects view\-string\|null, string given\.$#'
-			identifier: argument.type
+			message: '#^Using nullsafe property access "\?\-\>survey_json" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
 			count: 1
 			path: src/Filament/Resources/SurveyResults/SurveyResultResource.php
 
@@ -16,29 +16,4 @@ parameters:
 			message: '#^Using nullsafe property access "\?\-\>survey_json" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
-			path: src/Filament/Resources/SurveyResults/SurveyResultResource.php
-
-		-
-			message: '#^Parameter \#1 \$view of function view expects view\-string\|null, string given\.$#'
-			identifier: argument.type
-			count: 1
 			path: src/Filament/Resources/SurveySchemas/RelationManagers/ResultsRelationManager.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>survey_json" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: src/Filament/Resources/SurveySchemas/RelationManagers/ResultsRelationManager.php
-
-		-
-			message: '#^Parameter \#1 \$view of function view expects view\-string\|null, string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Http/Controllers/PublicFormController.php
-
-		-
-			message: '#^Parameter \#1 \$view of function view expects view\-string\|null, string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Http/Controllers/SurveyDesignerController.php
-

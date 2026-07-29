@@ -88,7 +88,7 @@ PROMPT;
 
     public function isConfigured(): bool
     {
-        if (! (bool) config('schemava.ai.enabled', true) || ! class_exists(AnonymousAgent::class)) {
+        if (! (bool) config('schemava.ai.enabled', false) || ! class_exists(AnonymousAgent::class)) {
             return false;
         }
 

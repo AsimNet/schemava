@@ -169,14 +169,15 @@ class SchemavaServiceProvider extends PackageServiceProvider
 
     /**
      * Register the public, unauthenticated form routes (fill + submit) from
-     * config. Gated by the same `routes.enabled` flag host apps use when they
-     * take over route registration themselves.
+     * config. OPT-IN (`routes.public.enabled`, off by default — the routes are
+     * guest-open), and gated by the same `routes.enabled` flag host apps use
+     * when they take over route registration themselves.
      */
     protected function registerPublicRoutes(): void
     {
         $public = config('schemava.routes.public', []);
 
-        if (! config('schemava.routes.enabled', true) || ($public['enabled'] ?? true) === false) {
+        if (! config('schemava.routes.enabled', true) || ($public['enabled'] ?? false) !== true) {
             return;
         }
 
@@ -192,14 +193,15 @@ class SchemavaServiceProvider extends PackageServiceProvider
 
     /**
      * Register the JSON API routes (list / fetch / submit) for mobile and
-     * external clients. Authentication is the host app's decision via
-     * `routes.api.middleware`; disable entirely with `routes.api.enabled`.
+     * external clients. OPT-IN (`routes.api.enabled`, off by default — the
+     * routes are guest-open); authentication is the host app's decision via
+     * `routes.api.middleware`.
      */
     protected function registerApiRoutes(): void
     {
         $api = config('schemava.routes.api', []);
 
-        if (! config('schemava.routes.enabled', true) || ($api['enabled'] ?? true) === false) {
+        if (! config('schemava.routes.enabled', true) || ($api['enabled'] ?? false) !== true) {
             return;
         }
 

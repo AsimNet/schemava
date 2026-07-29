@@ -19,7 +19,9 @@ interface AiAssistant
     /**
      * Answer a builder AI request for the given schema.
      *
-     * @param  array<int, array{role: string, content: string}>  $messageHistory
+     * @param  array<int, mixed>  $messageHistory  Chat turns, each ideally
+     *                                             {role, content} — implementations
+     *                                             must skip malformed entries.
      * @return array<string, mixed> Structured response — typically a reply
      *                              message plus an optional updated survey JSON.
      */
