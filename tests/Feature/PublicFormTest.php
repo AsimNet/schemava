@@ -2,6 +2,7 @@
 
 namespace AsimNet\Schemava\Tests\Feature;
 
+use AsimNet\Schemava\Contracts\SurveyUrlResolver;
 use AsimNet\Schemava\Models\SurveyResult;
 use AsimNet\Schemava\Models\SurveySchema;
 use AsimNet\Schemava\Tests\TestCase;
@@ -33,6 +34,17 @@ class PublicFormTest extends TestCase
                 ['type' => 'radiogroup', 'name' => 'color', 'title' => 'Favorite color', 'choices' => ['red', 'green', 'blue']],
             ]]]],
         ], $attributes));
+    }
+
+    #[Test]
+    public function the_public_url_points_at_the_registered_route_when_enabled(): void
+    {
+        $schema = $this->form();
+
+        $this->assertSame(
+            route('schemava.public.show', ['hash' => $schema->hash]),
+            app(SurveyUrlResolver::class)->publicUrl($schema),
+        );
     }
 
     #[Test]

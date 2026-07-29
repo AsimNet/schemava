@@ -7,6 +7,8 @@ use AsimNet\Schemava\Contracts\RuntimeContextProvider;
 use AsimNet\Schemava\Contracts\SurveyUrlResolver;
 use AsimNet\Schemava\Http\Requests\SurveyDesignerAiQueryRequest;
 use AsimNet\Schemava\Models\SurveySchema;
+use AsimNet\Schemava\SchemavaPlugin;
+use Filament\Facades\Filament;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
@@ -26,11 +28,13 @@ class SurveyDesignerController
 {
     use AuthorizesRequests;
 
-    public function show(SurveySchema $surveySchema): View
+    public function show(Request $request, SurveySchema $surveySchema): View
     {
         if (Gate::getPolicyFor($surveySchema)) {
             $this->authorize('update', $surveySchema);
         }
+
+        $this->rememberOriginatingPanel($request);
 
         $locale = app()->getLocale();
         $runtime = app(RuntimeContextProvider::class);
@@ -65,6 +69,29 @@ class SurveyDesignerController
             'locale' => $locale,
             'rendererVersion' => config('schemava.renderer_version'),
         ]);
+    }
+
+    /**
+     * The designer route is panel-agnostic, so on this request Filament's
+     * "current" panel is the default one — wrong for a designer opened from a
+     * secondary panel (its plugin options and back URL would be ignored). The
+     * bundled resources link here with a `panel` query parameter naming the
+     * originating panel; honor it when it names a real panel that carries the
+     * plugin, so panel-aware resolution (plugin options, back URL) uses it.
+     */
+    protected function rememberOriginatingPanel(Request $request): void
+    {
+        $panelId = $request->query('panel');
+
+        if (! is_string($panelId) || $panelId === '') {
+            return;
+        }
+
+        $panel = Filament::getPanels()[$panelId] ?? null;
+
+        if ($panel?->hasPlugin(app(SchemavaPlugin::class)->getId())) {
+            Filament::setCurrentPanel($panel);
+        }
     }
 
     public function save(Request $request, SurveySchema $surveySchema): JsonResponse
