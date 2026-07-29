@@ -26,6 +26,7 @@ import {
     makeTextItem,
     DEFAULT_TEXT_ITEM_LABELS,
     DEFAULT_TEXT_ITEM_LABELS_EN,
+    withChoiceImageLink,
 } from './ui-helpers.js';
 import { t } from './i18n.js';
 
@@ -932,6 +933,38 @@ export function setChoices(name, choices) {
     }
     found.field.choices = Array.isArray(choices) ? choices : [];
     markDirty();
+}
+
+/**
+ * Set or clear an imagepicker choice's image, addressing BOTH ends by identity:
+ * the field by name, the choice by its stable `_uid`.
+ *
+ * Image uploads are async, and the author stays free to reorder choices, delete
+ * one, or select an entirely different field before the response lands. Resolving
+ * through the store by captured identity means a late result still reaches the
+ * choice that started it — the server has already stored the image, so silently
+ * dropping it because the selection moved would lose it — while a result whose
+ * field or choice was genuinely removed is discarded.
+ *
+ * @param {string} name Field the upload was started from.
+ * @param {string} uid `_uid` of the choice the upload was started from.
+ * @param {string|null} imageLink Link to set, or null to remove the image.
+ * @returns {boolean} True when the link was written.
+ */
+export function setChoiceImageLink(name, uid, imageLink) {
+    const found = findField(name);
+    if (!found) {
+        return false;
+    }
+
+    const next = withChoiceImageLink(found.field.choices ?? [], uid, imageLink);
+    if (next === null) {
+        return false;
+    }
+
+    setChoices(name, next);
+
+    return true;
 }
 
 /**
