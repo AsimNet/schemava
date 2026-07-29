@@ -647,8 +647,10 @@ function close() {
                         <input type="number" min="1" class="fb-input fb-focus" :value="numberProp('rows')" @input="setNumberProp('rows', $event.target.value)" />
                     </label>
 
-                    <!-- single_choice / multi_choice / dropdown: choices -->
-                    <ChoicesEditor v-if="hasChoices" :field="field" />
+                    <!-- single_choice / multi_choice / dropdown: choices. imagepicker
+                         additionally gets the per-choice image upload, which is why
+                         FieldCard sends its choices here instead of editing inline. -->
+                    <ChoicesEditor v-if="hasChoices" :field="field" :with-images="field.type === 'imagepicker'" />
 
                     <!-- single_choice: showOtherItem -->
                     <label v-if="field.type === 'single_choice' || field.type === 'multi_choice'" class="fb-toggle">
