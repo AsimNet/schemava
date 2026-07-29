@@ -89,12 +89,12 @@ async function onImageSelected(event, uid) {
     if (! file) {
         return;
     }
-    // Identity of the list this upload belongs to, captured before awaiting. In
-    // plain field mode the field name is enough to find it again in the store
-    // even if the author has since selected something else; the alias/items modes
+    // Identity of the list this upload belongs to, captured before awaiting. The
+    // field OBJECT, not its name: renameField mutates the name in place, so a
+    // rename mid-upload would strand a name-based lookup. The alias/items modes
     // have no store identity of their own, so those fall back to the live list.
-    const ownerName = props.field?.name ?? null;
-    const viaStore = ownerName !== null && ! props.items && ! props.onUpdate && ! props.onChange;
+    const ownerField = props.field ?? null;
+    const viaStore = ownerField !== null && ! props.items && ! props.onUpdate && ! props.onChange;
     uploadingUids[uid] = true;
 
     const csrf = store.boot?.csrf ?? '';
@@ -125,7 +125,7 @@ async function onImageSelected(event, uid) {
             // it to whoever is selected now (wrong field) or drop it (lost image).
             // Only a genuine removal — of the field or the choice — discards it.
             if (viaStore) {
-                setChoiceImageLink(ownerName, uid, data.url);
+                setChoiceImageLink(ownerField, uid, data.url);
 
                 return;
             }
