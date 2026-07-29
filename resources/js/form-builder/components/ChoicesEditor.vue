@@ -2,7 +2,7 @@
 import { computed, ref, toRaw } from 'vue';
 import draggable from 'vuedraggable';
 import { t } from '../i18n.js';
-import { createPendingUploads } from '../pending-uploads.js';
+import { pendingUploads } from '../pending-uploads.js';
 import { store, setChoices, setChoiceImageLink, pushToast } from '../store.js';
 import {
     makeChoice,
@@ -68,11 +68,9 @@ function applyChoices(next) {
  */
 const imageInputs = new Map();
 
-/**
- * In-flight uploads, tracked per (owner field, choice uid) — see pending-uploads.js
- * for why the owner has to be part of the key and why identity needs normalising.
- */
-const pendingUploads = createPendingUploads();
+// In-flight uploads, tracked per (owner field, choice uid) in MODULE state — see
+// pending-uploads.js for why the owner is part of the key, why identity needs
+// normalising, and why this must outlive a Preview-tab remount.
 
 /** Raw identity of the field currently being edited, for owner comparisons. */
 function currentOwner() {

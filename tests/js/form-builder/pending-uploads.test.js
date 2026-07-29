@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { reactive } from 'vue';
-import { createPendingUploads } from '../../../resources/js/form-builder/pending-uploads.js';
+import { createPendingUploads, pendingUploads } from '../../../resources/js/form-builder/pending-uploads.js';
 
 describe('pending uploads — (owner, uid) tracking', () => {
     it('reports an upload as pending for its own owner only', () => {
@@ -100,5 +100,32 @@ describe('pending uploads — (owner, uid) tracking', () => {
         expect(pending.has({ name: 'q1' }, 'a1')).toBe(false);
         pending.remove(null, 'a1');
         expect(pending.entries).toHaveLength(0);
+    });
+});
+
+describe('pending uploads — shared module registry', () => {
+    // App.vue gates the build pane with v-if, so a Preview round-trip unmounts
+    // ChoicesEditor. The registry it uses must therefore be module state, not
+    // instance state, or a pending upload reads as idle after the remount and a
+    // second one can race it.
+    it('exposes a module-level registry, so it is not lost on remount', () => {
+        const picker = { name: 'q1' };
+
+        pendingUploads.add(picker, 'remount_uid');
+        // A remount re-imports this same binding rather than building a new one.
+        expect(pendingUploads.has(picker, 'remount_uid')).toBe(true);
+
+        pendingUploads.remove(picker, 'remount_uid');
+        expect(pendingUploads.has(picker, 'remount_uid')).toBe(false);
+    });
+
+    it('the shared registry is independent of factory-made ones', () => {
+        const picker = { name: 'q1' };
+        const isolated = createPendingUploads();
+
+        isolated.add(picker, 'a1');
+
+        expect(isolated.has(picker, 'a1')).toBe(true);
+        expect(pendingUploads.has(picker, 'a1')).toBe(false);
     });
 });
