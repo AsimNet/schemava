@@ -1,13 +1,30 @@
 <script setup>
 import { computed } from 'vue';
 import { t } from '../i18n.js';
-import { store, setSurveyText } from '../store.js';
+import { store, setSurveyText, addTrigger, updateTrigger, removeTrigger, allFieldEntries } from '../store.js';
+import CalculatedValuesEditor from './CalculatedValuesEditor.vue';
 
 const props = defineProps({
     open: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['close']);
+
+/* --------------------------------------------------- jump / finish triggers */
+
+const triggers = computed(() => (Array.isArray(store.state?.triggers) ? store.state.triggers : []));
+
+/** Editable trigger kinds; anything else is preserved verbatim (read-only). */
+const EDITABLE_TRIGGERS = ['skip', 'complete'];
+
+const questionOptions = computed(() => allFieldEntries().map((entry) => ({
+    name: entry.name,
+    label: (((contentLocale.value === 'en' ? entry.label?.en : entry.label?.ar) ?? entry.label?.ar) || entry.name),
+})));
+
+function isEditableTrigger(trigger) {
+    return EDITABLE_TRIGGERS.includes(trigger.type);
+}
 
 const contentLocale = computed(() => store.state?.contentLocale ?? 'ar');
 
@@ -107,6 +124,67 @@ function close() {
                         @input="update(field.key, $event.target.value)"
                     />
                 </div>
+
+                <h3 class="fb-settings-section-title">{{ t('surveySettingsCalculatedValues') }}</h3>
+                <CalculatedValuesEditor />
+
+                <h3 class="fb-settings-section-title">{{ t('surveySettingsTriggers') }}</h3>
+                <p class="fb-settings-hint">{{ t('triggersHint') }}</p>
+
+                <div v-for="(trigger, index) in triggers" :key="index" class="fb-trigger">
+                    <template v-if="isEditableTrigger(trigger)">
+                        <div class="fb-trigger-row">
+                            <select
+                                class="fb-settings-input fb-trigger-type fb-focus"
+                                :value="trigger.type"
+                                @change="updateTrigger(index, { type: $event.target.value })"
+                            >
+                                <option value="skip">{{ t('triggerJump') }}</option>
+                                <option value="complete">{{ t('triggerFinish') }}</option>
+                            </select>
+                            <select
+                                v-if="trigger.type === 'skip'"
+                                class="fb-settings-input fb-focus"
+                                :value="trigger.gotoName"
+                                @change="updateTrigger(index, { gotoName: $event.target.value })"
+                            >
+                                <option value="" disabled>{{ t('triggerJumpTarget') }}</option>
+                                <option v-for="opt in questionOptions" :key="opt.name" :value="opt.name">{{ opt.label }}</option>
+                            </select>
+                            <button
+                                type="button"
+                                class="fb-trigger-remove fb-focus"
+                                :title="t('triggerRemove')"
+                                :aria-label="t('triggerRemove')"
+                                @click="removeTrigger(index)"
+                            >
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <label class="fb-trigger-expr">
+                            <span>{{ t('triggerWhen') }}</span>
+                            <input
+                                type="text"
+                                class="fb-settings-input fb-mono fb-focus"
+                                dir="ltr"
+                                spellcheck="false"
+                                placeholder="{q1} > 18"
+                                :value="trigger.expression"
+                                @input="updateTrigger(index, { expression: $event.target.value })"
+                            />
+                        </label>
+                    </template>
+                    <p v-else class="fb-trigger-passthrough" dir="ltr">{{ trigger.type }}: {{ trigger.expression }}</p>
+                </div>
+
+                <button type="button" class="fb-trigger-add fb-focus" @click="addTrigger('skip')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    <span>{{ t('triggerAdd') }}</span>
+                </button>
             </div>
         </div>
     </div>
@@ -232,5 +310,91 @@ function close() {
     resize: vertical;
     min-height: 2.75rem;
     line-height: 1.5;
+}
+.fb-trigger {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    border: 1px solid var(--fb-border);
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+    background: var(--fb-canvas);
+}
+
+.fb-trigger-row {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.fb-trigger-type {
+    flex: 0 0 auto;
+    width: auto;
+}
+
+.fb-trigger-expr {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--fb-text-muted);
+}
+
+.fb-trigger-passthrough {
+    margin: 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.71875rem;
+    color: var(--fb-text-muted);
+}
+
+.fb-trigger-remove {
+    margin-inline-start: auto;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.625rem;
+    height: 1.625rem;
+    border: none;
+    background: transparent;
+    color: var(--fb-text-muted);
+    border-radius: 0.4375rem;
+    cursor: pointer;
+}
+
+.fb-trigger-remove:hover {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.fb-trigger-remove svg {
+    width: 0.8125rem;
+    height: 0.8125rem;
+}
+
+.fb-trigger-add {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3125rem;
+    align-self: flex-start;
+    border: 1px dashed var(--fb-border-strong);
+    background: transparent;
+    color: var(--fb-text-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.3125rem 0.625rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+}
+
+.fb-trigger-add:hover {
+    color: var(--fb-brand-600);
+    border-color: var(--fb-brand);
+}
+
+.fb-trigger-add svg {
+    width: 0.75rem;
+    height: 0.75rem;
 }
 </style>

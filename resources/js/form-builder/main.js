@@ -26,6 +26,11 @@ function readBootPayload() {
 const boot = readBootPayload();
 
 loadFromBoot(boot);
+// Config-provided default UI language — only until the author explicitly picks
+// one in the designer (that stored choice wins on later visits).
+if (!window.localStorage?.getItem('formBuilderLocale') && (boot.uiLocale === 'ar' || boot.uiLocale === 'en')) {
+    setLocale(boot.uiLocale);
+}
 bootstrapDirection();
 
 const app = createApp(App, { boot });

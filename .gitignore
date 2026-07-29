@@ -1,6 +1,10 @@
 /vendor/
 /node_modules/
 /.phpunit.cache/
+/.phpstan.cache/
 composer.lock
 .idea/
 .DS_Store
+/workbench/storage
+/workbench/bootstrap/cache
+*.sqlite*

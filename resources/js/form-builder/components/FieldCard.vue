@@ -1,8 +1,10 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import draggable from 'vuedraggable';
 import {
     store,
     selectField,
+    findField,
     setChoices,
     duplicateField,
     removeField,
@@ -11,15 +13,25 @@ import {
     clearLabelFocus,
     clearFieldAdded,
     markDirty,
+    addTemplateQuestion,
+    updateTypeProp,
 } from '../store.js';
 import { t, i18n } from '../i18n.js';
 import { fadeInUp, collapseOut, stop } from '../motion.js';
-import { renameChoiceLabel, makeChoice, sanitizeStatementHtml } from '../ui-helpers.js';
+import { renameChoiceLabel, makeChoice, makeTextItem, sanitizeStatementHtml, operatorLabel, normalizeLogicAction } from '../ui-helpers.js';
 import { FIELD_TYPES, ADVANCED_TYPE } from '../model/fieldTypes.js';
 import { ratingPreviewItems } from '../ui-helpers.js';
+import AddQuestionMenu from './AddQuestionMenu.vue';
+import MatrixCardGrid from './MatrixCardGrid.vue';
+// Self-import: panel_dynamic cards render their template questions as nested
+// FieldCards, so authoring inside a repeating panel is the same experience as
+// authoring at the page level (Vite resolves the circular self-reference).
+import FieldCard from './FieldCard.vue';
 
 const props = defineProps({
     field: { type: Object, required: true },
+    /** True when this card is a panel_dynamic template question (nested render). */
+    nested: { type: Boolean, default: false },
 });
 
 /** Max choice rows rendered inline before the "+N" hint hands off to the drawer. */
@@ -120,11 +132,159 @@ watch(() => store.focusFieldName, focusLabelIfRequested);
 
 onBeforeUnmount(() => stop(cardEl.value));
 
-const hasLogic = computed(() => Boolean(props.field.logic));
 const hasQuiz = computed(() => Boolean(props.field.quiz));
 
-/** Whether this field's choices are editable inline on the card. */
-const isChoiceField = computed(() => ['single_choice', 'multi_choice', 'dropdown'].includes(props.field.type));
+/* ------------------------------------------- readable logic summary chip */
+
+/** Display text for a rule's value (choice labels resolved, booleans worded). */
+function ruleValueText(rule) {
+    const target = rule.field ? findField(rule.field) : null;
+    const resolveChoice = (value) => {
+        const choice = target?.field?.choices?.find((c) => c.value === value);
+        const lstr = choice?.label;
+
+        return ((contentLocale.value === 'en' ? lstr?.en : lstr?.ar) ?? lstr?.ar) || String(value);
+    };
+    if (Array.isArray(rule.value)) {
+        return rule.value.map(resolveChoice).join(' / ');
+    }
+    if (typeof rule.value === 'boolean') {
+        return rule.value
+            ? (contentLocale.value === 'en' ? 'Yes' : 'نعم')
+            : (contentLocale.value === 'en' ? 'No' : 'لا');
+    }
+    if (rule.value === undefined || rule.value === null || rule.value === '') {
+        return '';
+    }
+
+    return resolveChoice(rule.value);
+}
+
+/** "العمر أكبر من 18" — one rule as a sentence fragment. */
+function ruleSentence(rule) {
+    const target = rule.field ? findField(rule.field) : null;
+    const lstr = target?.field?.label;
+    const name = ((contentLocale.value === 'en' ? lstr?.en : lstr?.ar) ?? lstr?.ar) || rule.field;
+    const op = operatorLabel(rule.op, uiLocale.value);
+    const value = ['empty', 'notempty'].includes(rule.op) ? '' : ruleValueText(rule);
+
+    return [name, op, value].filter(Boolean).join(' ');
+}
+
+/**
+ * The card's logic chip: action word + first rule as a readable sentence +
+ * "+N" for the rest — logic is VISIBLE on the canvas, not a mystery gear.
+ */
+const logicChip = computed(() => {
+    const logic = props.field.logic;
+    if (!logic) {
+        return null;
+    }
+    if (typeof logic.advanced === 'string' && logic.advanced.trim() !== '') {
+        const action = logic.target === 'enable' ? 'disable' : 'show';
+
+        return { action, text: logic.advanced.trim(), extra: 0, mono: true };
+    }
+    const rules = Array.isArray(logic.rules) ? logic.rules.filter((rule) => rule && rule.field) : [];
+    if (rules.length === 0) {
+        return null;
+    }
+
+    return {
+        action: normalizeLogicAction(logic.action),
+        text: ruleSentence(rules[0]),
+        extra: rules.length - 1,
+        mono: false,
+    };
+});
+
+const LOGIC_CHIP_KEYS = { show: 'logicChipShow', hide: 'logicChipHide', disable: 'logicChipDisable' };
+
+/** Whether this field's choices are editable inline on the card. imagepicker
+ * stays read-only here — its choices carry image links that need the drawer. */
+const isChoiceField = computed(() => ['single_choice', 'multi_choice', 'dropdown', 'ranking', 'tagbox'].includes(props.field.type));
+
+/** imagepicker with no choices yet: point at the drawer instead of a dead void. */
+const isEmptyImagePicker = computed(() => props.field.type === 'imagepicker' && allChoices.value.length === 0);
+
+/* --------------------------------------------- matrix family (canvas grid) */
+
+const isMatrixFamily = computed(() => ['matrix', 'matrixdropdown', 'matrixdynamic'].includes(props.field.type));
+
+/* --------------------------------------------------------- slider preview */
+
+const isSlider = computed(() => props.field.type === 'slider');
+
+const sliderBounds = computed(() => {
+    if (!isSlider.value) {
+        return null;
+    }
+    const num = (v, fallback) => (Number.isFinite(Number(v)) ? Number(v) : fallback);
+
+    return { min: num(props.field.typeProps?.min, 0), max: num(props.field.typeProps?.max, 100) };
+});
+
+/* --------------------------------------- multipletext items (canvas rows) */
+
+const isMultipleText = computed(() => props.field.type === 'multipletext');
+
+const textItems = computed(() => {
+    const list = props.field.typeProps?.items;
+
+    return Array.isArray(list) ? list : [];
+});
+
+function itemTitleText(item) {
+    const lstr = item?.title ?? { ar: '', en: null };
+
+    return (contentLocale.value === 'en' ? lstr.en : lstr.ar) ?? '';
+}
+
+const itemInputs = ref([]);
+
+function setItemInputRef(el, index) {
+    if (el) {
+        itemInputs.value[index] = el;
+    }
+}
+
+function onItemTitleInput(index, value) {
+    const next = [...textItems.value];
+    const item = { ...next[index] };
+    const lstr = { ...(item.title ?? { ar: '', en: null }) };
+    if (contentLocale.value === 'en') {
+        lstr.en = value === '' ? null : value;
+    } else {
+        lstr.ar = value;
+    }
+    item.title = lstr;
+    next[index] = item;
+    updateTypeProp(props.field.name, 'items', next);
+}
+
+function removeItemAt(index) {
+    updateTypeProp(props.field.name, 'items', textItems.value.filter((_, i) => i !== index));
+}
+
+function addItem() {
+    const next = [...textItems.value, makeTextItem('', textItems.value.map((item) => item.name))];
+    updateTypeProp(props.field.name, 'items', next);
+    nextTick(() => itemInputs.value[next.length - 1]?.focus());
+}
+
+function onItemKeydown(index, event) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        if (index === textItems.value.length - 1) {
+            addItem();
+        } else {
+            itemInputs.value[index + 1]?.focus();
+        }
+    } else if (event.key === 'Escape') {
+        event.preventDefault();
+        event.target.blur();
+    }
+}
 
 const allChoices = computed(() => (Array.isArray(props.field.choices) ? props.field.choices : []));
 
@@ -232,17 +392,29 @@ const yesNoPreview = computed(() => {
     if (props.field.type !== 'yes_no') {
         return [];
     }
-    const pick = (lstr, fallback) => {
-        const text = (contentLocale.value === 'en' ? lstr?.en : lstr?.ar) ?? lstr?.ar ?? '';
-
-        return text !== '' ? text : fallback;
-    };
+    // Active slot ONLY — editing surfaces never fall back across locales
+    // (an Arabic نعم leaking into the EN view reads as a bug, and typing
+    // would silently write the other slot's translation).
+    const en = contentLocale.value === 'en';
+    const pick = (lstr) => (en ? lstr?.en : lstr?.ar) ?? '';
 
     return [
-        { key: 'true', text: pick(props.field.typeProps?.labelTrue, 'نعم') },
-        { key: 'false', text: pick(props.field.typeProps?.labelFalse, 'لا') },
+        { key: 'true', text: pick(props.field.typeProps?.labelTrue), placeholder: en ? 'Yes' : 'نعم' },
+        { key: 'false', text: pick(props.field.typeProps?.labelFalse), placeholder: en ? 'No' : 'لا' },
     ];
 });
+
+/** Edit the نعم/لا labels in place on the card (canvas-first, like choices). */
+function onYesNoInput(key, value) {
+    const propKey = key === 'true' ? 'labelTrue' : 'labelFalse';
+    const lstr = { ...(props.field.typeProps?.[propKey] ?? { ar: '', en: null }) };
+    if (contentLocale.value === 'en') {
+        lstr.en = value === '' ? null : value;
+    } else {
+        lstr.ar = value;
+    }
+    updateTypeProp(props.field.name, propKey, lstr);
+}
 
 /* ------------------------------------------------- rating preview (fix 3) */
 
@@ -285,7 +457,58 @@ const statementHasContent = computed(() => statementHtml.value.trim() !== '');
 const isImage = computed(() => props.field.type === 'image');
 const imageLink = computed(() => props.field.typeProps?.imageLink ?? null);
 
-function onSelect() {
+/* ------------------------------- container (panel / panel_dynamic) authoring */
+
+const isPanelDynamic = computed(() => props.field.type === 'panel_dynamic');
+const isPanelStatic = computed(() => props.field.type === 'panel');
+/** Both containers share the nested-card canvas; only the chrome differs. */
+const isContainer = computed(() => isPanelDynamic.value || isPanelStatic.value);
+
+/**
+ * The panel's template questions — the LIVE store array, so the nested
+ * draggable's in-place mutations persist (mirrors BuilderCanvas's binding).
+ * makeField/serialize always seed `templateElements: []` for panel_dynamic,
+ * so the fallback only guards hand-crafted states.
+ */
+const templateList = computed(() => {
+    const list = props.field.typeProps?.templateElements;
+
+    return Array.isArray(list) ? list : [];
+});
+
+const templateQuestionCount = computed(() => templateList.value.length);
+
+/** What the respondent's add-entry button will say (falls back like the runtime). */
+const panelAddLabel = computed(() => {
+    const lstr = props.field.typeProps?.panelAddText;
+    const text = (contentLocale.value === 'en' ? lstr?.en : lstr?.ar) ?? lstr?.ar ?? '';
+
+    return text !== '' ? text : t('panelAddTextPlaceholder');
+});
+
+const panelMaxCount = computed(() => {
+    const max = props.field.typeProps?.maxPanelCount;
+
+    return typeof max === 'number' && Number.isFinite(max) ? max : null;
+});
+
+/** Add a question inside this panel (selects it + auto-focuses its label). */
+function onAddTemplateQuestion(typeId) {
+    addTemplateQuestion(props.field.name, typeId);
+}
+
+/**
+ * Nested draggable change handler — vuedraggable already mutated the bound
+ * template array in place, so only the dirty flag needs to be raised.
+ */
+function onTemplateChange() {
+    markDirty();
+}
+
+function onSelect(event) {
+    // Nested cards live inside their parent's clickable body: stop the click
+    // here so the parent card doesn't immediately steal the selection back.
+    event?.stopPropagation?.();
     selectField(props.field.name);
 }
 
@@ -342,13 +565,13 @@ function cancelDelete() {
     <div
         ref="cardEl"
         class="fb-card"
-        :class="{ 'fb-card--selected': isSelected, 'fb-card--locked': isAdvanced }"
+        :class="{ 'fb-card--selected': isSelected, 'fb-card--locked': isAdvanced, 'fb-card--nested': nested }"
         :data-field-name="field.name"
         @click="onSelect"
     >
         <button
             type="button"
-            class="fb-drag-handle"
+            :class="nested ? 'fb-subdrag-handle' : 'fb-drag-handle'"
             :title="t('dragHandle')"
             :aria-label="t('dragHandle')"
             @click.stop
@@ -383,13 +606,7 @@ function cancelDelete() {
                 <span v-if="field.hidden" class="fb-hidden-pill">{{ t('hiddenToggle') }}</span>
 
                 <span class="fb-card-flags">
-                    <span v-if="hasLogic" class="fb-flag fb-flag--logic" :title="t('sectionLogic')" :aria-label="t('sectionLogic')">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                    </span>
-                    <span v-if="hasQuiz" class="fb-flag fb-flag--quiz" :title="t('sectionQuiz')" :aria-label="t('sectionQuiz')">
+                    <span v-if="hasQuiz" class="fb-flag fb-flag--quiz" :title="t('quizFlagTitle')" :aria-label="t('quizFlagTitle')">
                         Σ{{ Number(field.quiz.score ?? 1) }}
                     </span>
                 </span>
@@ -414,12 +631,30 @@ function cancelDelete() {
             </template>
 
             <template v-else>
+                <!-- Logic, readable at a glance (Tally-style): clicking opens
+                     the field's Logic section in the drawer. -->
+                <button
+                    v-if="logicChip"
+                    type="button"
+                    class="fb-card-logic fb-focus"
+                    :title="t('logicChipHint')"
+                    @click.stop="onSelect"
+                >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span class="fb-card-logic-action">{{ t(LOGIC_CHIP_KEYS[logicChip.action] ?? 'logicChipShow') }}</span>
+                    <span class="fb-card-logic-text" :class="{ 'fb-mono-inline': logicChip.mono }" :dir="logicChip.mono ? 'ltr' : undefined">{{ logicChip.text }}</span>
+                    <span v-if="logicChip.extra > 0" class="fb-card-logic-more">+{{ logicChip.extra }}</span>
+                </button>
+
                 <input
                     v-if="!isStatement"
                     ref="labelInput"
                     v-model="labelValue"
                     type="text"
-                    class="fb-card-label fb-focus"
+                            class="fb-card-label fb-focus"
                     :placeholder="t('fieldLabelPlaceholder')"
                     :aria-label="t('labelField')"
                     @click.stop
@@ -447,6 +682,74 @@ function cancelDelete() {
                     </div>
                     <p v-else class="fb-card-image-empty">{{ t('imageCardEmpty') }}</p>
                 </template>
+
+                <!-- containers (panel / panel_dynamic): the children ARE the card —
+                     they render as nested cards with the full inline experience
+                     (label editing, choices, drag-reorder, duplicate, delete),
+                     and clicking one opens its full settings drawer. Only the
+                     chrome differs: repeating panels show the repeat badge, the
+                     stacked-sheets shadow and the respondents-add pill; static
+                     groups are a flat outlined box. -->
+                <div v-if="isContainer" class="fb-panel" :class="{ 'fb-panel--static': isPanelStatic }">
+                    <div class="fb-panel-bar">
+                        <svg v-if="isPanelDynamic" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true" class="fb-panel-bar-icon">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M21.015 4.356v4.99m0 0l-3.181-3.182a8.25 8.25 0 00-13.803 3.7" />
+                        </svg>
+                        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true" class="fb-panel-bar-icon">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+                        </svg>
+                        <span class="fb-panel-bar-text">{{ isPanelDynamic ? t('panelRepeatsBadge') : t('groupBadge') }}</span>
+                        <span class="fb-panel-count-chip">{{ templateQuestionCount }} {{ t('panelQuestionsChip') }}</span>
+                    </div>
+
+                    <p v-if="templateQuestionCount === 0" class="fb-panel-empty">
+                        {{ t('panelTemplateEmpty') }}
+                    </p>
+
+                    <draggable
+                        v-else
+                        :list="templateList"
+                        item-key="name"
+                        handle=".fb-subdrag-handle"
+                        class="fb-panel-sublist"
+                        ghost-class="fb-ghost"
+                        chosen-class="fb-chosen"
+                        drag-class="fb-drag"
+                        :animation="150"
+                        @change="onTemplateChange"
+                    >
+                        <template #item="{ element }">
+                            <FieldCard :field="element" nested />
+                        </template>
+                    </draggable>
+
+                    <div class="fb-panel-foot" @click.stop>
+                        <AddQuestionMenu
+                            :exclude-types="['panel_dynamic', 'panel']"
+                            :hint="isPanelDynamic ? t('addQuestionHintPanel') : t('addQuestionHintGroup')"
+                            @select="onAddTemplateQuestion"
+                        />
+                        <!-- Not a builder control: explains that respondents add
+                             entries at fill time (tooltip shows their button text). -->
+                        <span v-if="isPanelDynamic" class="fb-panel-addpreview" :title="`${t('panelAddPreviewTitle')}: ${panelAddLabel}`" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.5v15m7.5-7.5h-15" />
+                            </svg>
+                            <span>{{ t('panelRespondentsAdd') }}</span>
+                            <span v-if="panelMaxCount" class="fb-panel-addpreview-max">×{{ panelMaxCount }}</span>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- slider: mock track reflecting the configured bounds -->
+                <div v-if="sliderBounds" class="fb-card-slider" aria-hidden="true">
+                    <span class="fb-card-slider-bound">{{ sliderBounds.min }}</span>
+                    <span class="fb-card-slider-track">
+                        <span class="fb-card-slider-fill"></span>
+                        <span class="fb-card-slider-thumb"></span>
+                    </span>
+                    <span class="fb-card-slider-bound">{{ sliderBounds.max }}</span>
+                </div>
 
                 <!-- rating: reflect the configured rateType + rateMax (fix 3) -->
                 <div v-if="ratingPreview" class="fb-card-rating" :aria-label="t('ratePreview')">
@@ -530,12 +833,67 @@ function cancelDelete() {
                     </li>
                 </ul>
 
+                <p v-if="isEmptyImagePicker" class="fb-card-image-empty">{{ t('imagePickerCardEmpty') }}</p>
+
                 <ul v-if="yesNoPreview.length" class="fb-card-choices">
-                    <li v-for="option in yesNoPreview" :key="option.key" class="fb-card-choice">
+                    <li v-for="option in yesNoPreview" :key="option.key" class="fb-card-choice fb-card-choice--editable">
                         <span class="fb-card-choice-mark" aria-hidden="true"></span>
-                        <span class="fb-card-choice-text">{{ option.text }}</span>
+                        <input
+                            :value="option.text"
+                            type="text"
+                            class="fb-card-choice-edit fb-focus"
+                            :placeholder="option.placeholder"
+                            :aria-label="t('labelField')"
+                            @click.stop
+                            @input="onYesNoInput(option.key, $event.target.value)"
+                        />
                     </li>
                 </ul>
+
+                <!-- matrix family: the grid IS the card — rows/columns edited
+                     in place; cell types & per-column choices in the drawer. -->
+                <MatrixCardGrid v-if="isMatrixFamily" :field="field" />
+
+                <!-- multipletext: its textbox items, edited in place -->
+                <ul v-if="isMultipleText" class="fb-card-items" @click.stop>
+                    <li v-for="(item, index) in textItems" :key="item._uid ?? index" class="fb-card-item">
+                        <span class="fb-card-item-mark" aria-hidden="true"></span>
+                        <input
+                            :ref="(el) => setItemInputRef(el, index)"
+                            :value="itemTitleText(item)"
+                            type="text"
+                            size="1"
+                            class="fb-card-item-edit fb-focus"
+                            :placeholder="t('textItemTitlePlaceholder')"
+                            :aria-label="t('textItemsLabel')"
+                            @input="onItemTitleInput(index, $event.target.value)"
+                            @keydown="onItemKeydown(index, $event)"
+                        />
+                        <button
+                            type="button"
+                            class="fb-card-choice-remove fb-focus"
+                            :title="t('removeTextItem')"
+                            :aria-label="t('removeTextItem')"
+                            @click.stop="removeItemAt(index)"
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </li>
+                </ul>
+
+                <button
+                    v-if="isMultipleText"
+                    type="button"
+                    class="fb-card-add-choice fb-focus"
+                    @click.stop="addItem"
+                >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    <span>{{ t('addTextItem') }}</span>
+                </button>
             </template>
         </div>
 
@@ -811,9 +1169,18 @@ function cancelDelete() {
     margin: 0.25rem 0;
 }
 
-.fb-card-statement-html :deep(ul) {
+.fb-card-statement-html :deep(ul),
+.fb-card-statement-html :deep(ol) {
     margin: 0.25rem 0;
     padding-inline-start: 1.25rem;
+}
+
+.fb-card-statement-html :deep(ul) {
+    list-style: disc;
+}
+
+.fb-card-statement-html :deep(ol) {
+    list-style: decimal;
 }
 
 .fb-card-statement-html :deep(p) {
@@ -849,6 +1216,215 @@ function cancelDelete() {
     width: 100%;
     max-height: 160px;
     object-fit: cover;
+}
+
+/* ------------------- panel_dynamic: nested template container ------------------- */
+
+/*
+ * The template container reads as a "stack of sheets" (offset shadow layers
+ * below) so the repetition is visible at a glance without any copy.
+ */
+.fb-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    background: var(--fb-canvas);
+    border: 1px solid var(--fb-border);
+    border-radius: 0.625rem;
+    padding: 0.625rem;
+    margin-bottom: 0.5rem;
+    box-shadow:
+        0 0.25rem 0 -0.125rem var(--fb-surface),
+        0 0.3125rem 0 -0.125rem var(--fb-border),
+        0 0.5625rem 0 -0.3125rem var(--fb-surface),
+        0 0.625rem 0 -0.3125rem var(--fb-border);
+}
+
+/* Static group: a flat outlined box — no stacked-sheets shadow (that reads
+   as repetition) and a neutral bar color. */
+.fb-panel--static {
+    box-shadow: none;
+    margin-bottom: 0;
+}
+
+.fb-panel--static .fb-panel-bar-icon,
+.fb-panel--static .fb-panel-bar-text {
+    color: var(--fb-text-muted);
+}
+
+.fb-panel-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+/* slider mock preview */
+.fb-card-slider {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0;
+}
+
+.fb-card-slider-bound {
+    flex: 0 0 auto;
+    font-size: 0.71875rem;
+    font-weight: 600;
+    color: var(--fb-text-muted);
+}
+
+.fb-card-slider-track {
+    flex: 1 1 auto;
+    position: relative;
+    height: 0.375rem;
+    border-radius: 999px;
+    background: var(--fb-canvas);
+    border: 1px solid var(--fb-border);
+}
+
+.fb-card-slider-fill {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: 40%;
+    border-radius: 999px;
+    background: var(--fb-brand-50);
+    border: 1px solid var(--fb-brand);
+}
+
+.fb-card-slider-thumb {
+    position: absolute;
+    top: 50%;
+    inset-inline-start: 40%;
+    transform: translateY(-50%);
+    width: 0.875rem;
+    height: 0.875rem;
+    border-radius: 999px;
+    background: var(--fb-surface);
+    border: 2px solid var(--fb-brand);
+}
+
+.fb-panel-bar-icon {
+    flex: 0 0 auto;
+    width: 0.875rem;
+    height: 0.875rem;
+    color: var(--fb-brand-600);
+}
+
+.fb-panel-bar-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 0.71875rem;
+    font-weight: 700;
+    color: var(--fb-brand-600);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fb-panel-count-chip {
+    flex: 0 0 auto;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--fb-text-muted);
+    background: var(--fb-surface);
+    border: 1px solid var(--fb-border);
+    padding: 0.125rem 0.4375rem;
+    border-radius: 0.4375rem;
+    white-space: nowrap;
+}
+
+.fb-panel-empty {
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--fb-text-muted);
+    background: var(--fb-surface);
+    border: 1px dashed var(--fb-border-strong);
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    text-align: center;
+}
+
+.fb-panel-sublist {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.fb-panel-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    cursor: default;
+}
+
+/* Faithful mini-preview of the respondent's add-entry button (decorative). */
+.fb-panel-addpreview {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.71875rem;
+    font-weight: 600;
+    color: var(--fb-text-muted);
+    border: 1px dashed var(--fb-border-strong);
+    border-radius: 999px;
+    padding: 0.25rem 0.625rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 45%;
+}
+
+.fb-panel-addpreview svg {
+    flex: 0 0 auto;
+    width: 0.6875rem;
+    height: 0.6875rem;
+}
+
+.fb-panel-addpreview-max {
+    color: var(--fb-brand-600);
+    font-weight: 700;
+}
+
+/* Nested (template) cards: compact chrome, same interaction model. */
+.fb-card--nested {
+    padding: 0.5rem 0.625rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+}
+
+.fb-card--nested .fb-card-label {
+    font-size: 0.875rem;
+}
+
+.fb-subdrag-handle {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.5rem;
+    border: none;
+    background: transparent;
+    color: #c4c7cd;
+    cursor: grab;
+    border-radius: 0.375rem;
+    padding: 0;
+}
+
+.fb-subdrag-handle:hover {
+    color: var(--fb-text-muted);
+    background: var(--fb-canvas);
+}
+
+.fb-subdrag-handle:active {
+    cursor: grabbing;
+}
+
+.fb-subdrag-handle svg {
+    width: 1rem;
+    height: 1rem;
 }
 
 .fb-card-image-empty {
@@ -970,6 +1546,58 @@ function cancelDelete() {
     color: #dc2626;
 }
 
+/* readable logic chip (replaces the old gear flag) */
+.fb-card-logic {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3125rem;
+    max-width: 100%;
+    align-self: flex-start;
+    border: 1px solid #e0e7ff;
+    background: #eef2ff;
+    color: #4338ca;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    padding: 0.1875rem 0.5rem;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: border-color 0.15s, background-color 0.15s;
+}
+
+.fb-card-logic:hover {
+    border-color: #a5b4fc;
+}
+
+.fb-card-logic svg {
+    flex: 0 0 auto;
+    width: 0.75rem;
+    height: 0.75rem;
+}
+
+.fb-card-logic-action {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+.fb-card-logic-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 500;
+    color: #3730a3;
+}
+
+.fb-mono-inline {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.65625rem;
+}
+
+.fb-card-logic-more {
+    flex: 0 0 auto;
+    font-weight: 700;
+}
+
 .fb-card-flags {
     display: inline-flex;
     align-items: center;
@@ -1059,6 +1687,59 @@ function cancelDelete() {
 
 .fb-card-choice--editable {
     gap: 0.375rem;
+}
+
+/* multipletext items — same rhythm as editable choices, text-line mark */
+.fb-card-items {
+    list-style: none;
+    margin: 0.125rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1875rem;
+    cursor: default;
+}
+
+.fb-card-item {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.8125rem;
+    color: var(--fb-text-muted);
+}
+
+.fb-card-item-mark {
+    flex: 0 0 auto;
+    width: 0.875rem;
+    height: 0;
+    border-bottom: 1.5px solid var(--fb-border-strong);
+}
+
+.fb-card-item-edit {
+    flex: 1 1 0;
+    min-width: 0;
+    border: 1px solid transparent;
+    background: transparent;
+    font-size: 0.8125rem;
+    color: var(--fb-text);
+    padding: 0.25rem 0.375rem;
+    border-radius: 0.375rem;
+    font-family: inherit;
+    transition: border-color 0.15s, background-color 0.15s;
+}
+
+.fb-card-item-edit:hover {
+    border-color: var(--fb-border);
+}
+
+.fb-card-item-edit:focus {
+    border-color: var(--fb-border-strong);
+    background: var(--fb-surface);
+}
+
+.fb-card-item-edit::placeholder {
+    color: #b6bac2;
+    font-weight: 400;
 }
 
 .fb-card-choice-edit {

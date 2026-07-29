@@ -7,6 +7,18 @@ import { variableOptions } from '../ui-helpers.js';
 const props = defineProps({
     /** Runtime-context keys to offer. Defaults to the boot list on the store. */
     keys: { type: Array, default: null },
+    /**
+     * Question-reference options (`{key, label}`, see `fieldReferenceOptions`)
+     * to offer above the variables group — used by expression-formula inputs
+     * (expression questions, calculated values) so authors can reference other
+     * questions by name, consistent with the `visibleIf` field picker.
+     */
+    fields: { type: Array, default: () => [] },
+    /**
+     * Calculated-value-reference options (`{key, label}`, see
+     * `calculatedValueOptions`) offered as their own group.
+     */
+    calculatedValues: { type: Array, default: () => [] },
 });
 
 const emit = defineEmits(['insert']);
@@ -17,10 +29,26 @@ const rootEl = ref(null);
 const uiLocale = computed(() => i18n.locale);
 const contentLocale = computed(() => store.state?.contentLocale ?? 'ar');
 
-const options = computed(() => {
+const variableOpts = computed(() => {
     const keys = props.keys ?? store.runtimeContextKeys ?? [];
 
     return variableOptions(keys, contentLocale.value);
+});
+
+/** Grouped option lists, skipping empty groups; falls back to a single implicit variables group when only `keys` is used (backward compatible). */
+const groups = computed(() => {
+    const list = [];
+    if (props.fields.length > 0) {
+        list.push({ key: 'fields', title: t('logicFieldsGroup'), items: props.fields });
+    }
+    if (props.calculatedValues.length > 0) {
+        list.push({ key: 'calc', title: t('calculatedValuesGroup'), items: props.calculatedValues });
+    }
+    if (variableOpts.value.length > 0) {
+        list.push({ key: 'vars', title: t('variablesTitle'), items: variableOpts.value });
+    }
+
+    return list;
 });
 
 function toggle() {
@@ -76,16 +104,19 @@ onBeforeUnmount(teardown);
         </button>
 
         <div v-if="open" class="fb-varmenu-pop" :dir="uiLocale === 'ar' ? 'rtl' : 'ltr'">
-            <p class="fb-varmenu-title">{{ t('variablesTitle') }}</p>
-            <p v-if="options.length === 0" class="fb-varmenu-empty">{{ t('noVariables') }}</p>
-            <ul v-else class="fb-varmenu-list">
-                <li v-for="opt in options" :key="opt.key">
-                    <button type="button" class="fb-varmenu-item fb-focus" @click.stop="pick(opt.key)">
-                        <span class="fb-varmenu-item-label">{{ opt.label }}</span>
-                        <code class="fb-varmenu-item-key" dir="ltr">{{ '{' + opt.key + '}' }}</code>
-                    </button>
-                </li>
-            </ul>
+            <p v-if="groups.length === 0" class="fb-varmenu-title">{{ t('variablesTitle') }}</p>
+            <p v-if="groups.length === 0" class="fb-varmenu-empty">{{ t('noVariables') }}</p>
+            <div v-for="group in groups" :key="group.key" class="fb-varmenu-group">
+                <p class="fb-varmenu-title">{{ group.title }}</p>
+                <ul class="fb-varmenu-list">
+                    <li v-for="opt in group.items" :key="opt.key">
+                        <button type="button" class="fb-varmenu-item fb-focus" @click.stop="pick(opt.key)">
+                            <span class="fb-varmenu-item-label">{{ opt.label }}</span>
+                            <code class="fb-varmenu-item-key" dir="ltr">{{ '{' + opt.key + '}' }}</code>
+                        </button>
+                    </li>
+                </ul>
+            </div>
         </div>
     </span>
 </template>
@@ -136,6 +167,14 @@ onBeforeUnmount(teardown);
     border-radius: 0.625rem;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
     padding: 0.375rem;
+}
+
+.fb-varmenu-group {
+    margin-bottom: 0.5rem;
+}
+
+.fb-varmenu-group:last-child {
+    margin-bottom: 0;
 }
 
 .fb-varmenu-title {

@@ -123,6 +123,7 @@ class SchemavaServiceProvider extends PackageServiceProvider
     {
         $dist = __DIR__.'/../resources/dist';
         $filament = __DIR__.'/../resources/filament';
+        $renderer = __DIR__.'/../resources/renderer';
 
         FilamentAsset::register([
             Css::make('schemava-builder', "{$dist}/schemava-builder.css")->loadedOnRequest(),
@@ -133,6 +134,17 @@ class SchemavaServiceProvider extends PackageServiceProvider
             // Lives in resources/filament (a shipped dir) rather than resources/js,
             // which is export-ignored from the distributed package.
             Js::make('schemava-result-viewer', "{$filament}/survey-result-viewer.js"),
+            // Self-hosted SurveyJS renderer (survey-core + survey-js-ui, MIT) at
+            // the version pinned in config('schemava.renderer_version'). Served
+            // by the app instead of a CDN: corporate TLS-inspection proxies
+            // (e.g. Zscaler) silently break third-party <script> tags, which
+            // blanked the designer Preview tab and public forms on such networks.
+            // Lives in resources/renderer (NOT resources/dist — vite empties
+            // that dir on every build).
+            Css::make('surveyjs-core', "{$renderer}/surveyjs/survey-core.min.css")->loadedOnRequest(),
+            Js::make('surveyjs-core', "{$renderer}/surveyjs/survey.core.min.js")->loadedOnRequest(),
+            Js::make('surveyjs-i18n', "{$renderer}/surveyjs/survey.i18n.min.js")->loadedOnRequest(),
+            Js::make('surveyjs-ui', "{$renderer}/surveyjs/survey-js-ui.min.js")->loadedOnRequest(),
         ], package: 'asimnet/schemava');
     }
 
@@ -197,14 +209,15 @@ class SchemavaServiceProvider extends PackageServiceProvider
 
     /**
      * Register the public, unauthenticated form routes (fill + submit) from
-     * config. Gated by the same `routes.enabled` flag host apps use when they
-     * take over route registration themselves.
+     * config. OPT-IN (`routes.public.enabled`, off by default — the routes are
+     * guest-open), and gated by the same `routes.enabled` flag host apps use
+     * when they take over route registration themselves.
      */
     protected function registerPublicRoutes(): void
     {
         $public = config('schemava.routes.public', []);
 
-        if (! config('schemava.routes.enabled', true) || ($public['enabled'] ?? true) === false) {
+        if (! config('schemava.routes.enabled', true) || ($public['enabled'] ?? false) !== true) {
             return;
         }
 
@@ -221,14 +234,15 @@ class SchemavaServiceProvider extends PackageServiceProvider
 
     /**
      * Register the JSON API routes (list / fetch / submit) for mobile and
-     * external clients. Authentication is the host app's decision via
-     * `routes.api.middleware`; disable entirely with `routes.api.enabled`.
+     * external clients. OPT-IN (`routes.api.enabled`, off by default — the
+     * routes are guest-open); authentication is the host app's decision via
+     * `routes.api.middleware`.
      */
     protected function registerApiRoutes(): void
     {
         $api = config('schemava.routes.api', []);
 
-        if (! config('schemava.routes.enabled', true) || ($api['enabled'] ?? true) === false) {
+        if (! config('schemava.routes.enabled', true) || ($api['enabled'] ?? false) !== true) {
             return;
         }
 

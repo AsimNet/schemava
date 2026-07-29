@@ -73,6 +73,31 @@ export const FIELD_TYPES = {
         quizzable: true,
         typeProps: {},
     },
+    ranking: {
+        surveyType: 'ranking',
+        group: 'choices',
+        label: { ar: 'ترتيب', en: 'Ranking' },
+        icon: 'M3 7.5L7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5',
+        hasChoices: true,
+        typeProps: { selectToRankEnabled: false },
+    },
+    tagbox: {
+        surveyType: 'tagbox',
+        group: 'choices',
+        label: { ar: 'اختيار متعدد (بحث)', en: 'Tag box' },
+        icon: 'M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z',
+        hasChoices: true,
+        hasPlaceholder: true,
+        typeProps: { showOtherItem: false },
+    },
+    imagepicker: {
+        surveyType: 'imagepicker',
+        group: 'choices',
+        label: { ar: 'اختيار بالصور', en: 'Image picker' },
+        icon: 'M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z',
+        hasChoices: true,
+        typeProps: { multiSelect: false, showLabel: true },
+    },
     yes_no: {
         surveyType: 'boolean',
         group: 'choices',
@@ -87,6 +112,13 @@ export const FIELD_TYPES = {
         label: { ar: 'تقييم', en: 'Rating' },
         icon: 'M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z',
         typeProps: { rateMax: 5, rateType: 'stars' },
+    },
+    slider: {
+        surveyType: 'slider',
+        group: 'choices',
+        label: { ar: 'شريط تمرير', en: 'Slider' },
+        icon: 'M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75',
+        typeProps: { min: 0, max: 100, step: 1 },
     },
     statement: {
         surveyType: 'html',
@@ -123,6 +155,64 @@ export const FIELD_TYPES = {
         icon: 'M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88',
         typeProps: {},
     },
+    matrix: {
+        surveyType: 'matrix',
+        group: 'choices',
+        label: { ar: 'مصفوفة (اختيار واحد لكل صف)', en: 'Matrix (single choice)' },
+        icon: 'M3.75 5.25h16.5v13.5H3.75V5.25zM3.75 10.5h16.5M3.75 15.75h16.5M9.75 5.25v13.5M15 5.25v13.5',
+        typeProps: { rows: [], columns: [] },
+    },
+    matrixdropdown: {
+        surveyType: 'matrixdropdown',
+        group: 'choices',
+        label: { ar: 'مصفوفة (أعمدة متعددة)', en: 'Matrix (multi-column)' },
+        icon: 'M3.75 5.25h16.5v13.5H3.75V5.25zM3.75 10.5h16.5M3.75 15.75h16.5M9.75 5.25v13.5M15 5.25v13.5',
+        typeProps: { rows: [], columns: [] },
+    },
+    matrixdynamic: {
+        surveyType: 'matrixdynamic',
+        group: 'choices',
+        label: { ar: 'مصفوفة (صفوف متكررة)', en: 'Matrix (dynamic rows)' },
+        icon: 'M3.75 5.25h16.5v13.5H3.75V5.25zM3.75 10.5h16.5M3.75 15.75h16.5M9.75 5.25v13.5M15 5.25v13.5',
+        typeProps: { rowCount: 2, columns: [] },
+    },
+    multipletext: {
+        surveyType: 'multipletext',
+        group: 'essentials',
+        label: { ar: 'حقول نصية متعددة', en: 'Multiple textboxes' },
+        icon: 'M3.75 5.25h16.5M3.75 9.75h7.5m-7.5 4.5h16.5M3.75 18.75h7.5',
+        hasItems: true,
+        typeProps: { colCount: 1, items: [] },
+    },
+    expression: {
+        surveyType: 'expression',
+        group: 'advanced',
+        label: { ar: 'قيمة محسوبة', en: 'Calculated value' },
+        icon: 'M8.25 6h7.5v2.25h-7.5V6zM12 2.25c-1.892 0-3.758.11-5.593.322C5.307 2.7 4.5 3.65 4.5 4.757V19.5a2.25 2.25 0 002.25 2.25h10.5a2.25 2.25 0 002.25-2.25V4.757c0-1.108-.806-2.057-1.907-2.185A48.507 48.507 0 0012 2.25zM9.75 15.75h.008v.008H9.75v-.008zm0-2.25h.008v.008H9.75V13.5zm0-2.25h.008v.008H9.75v-.008zM12 15.75h.008v.008H12v-.008zm0-2.25h.008v.008H12V13.5zm0-2.25h.008v.008H12v-.008zm2.25 4.5h.008v.008h-.008v-.008zm0-2.25h.008v.008h-.008V13.5z',
+        typeProps: { expression: '', displayStyle: 'none' },
+    },
+    panel: {
+        surveyType: 'panel',
+        group: 'advanced',
+        label: { ar: 'مجموعة أسئلة', en: 'Question group' },
+        icon: 'M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z',
+        // Children live in typeProps.templateElements — the SAME internal slot
+        // panel_dynamic uses — so every nested-aware store/canvas path applies
+        // to both containers; the serializer maps it to SurveyJS `elements`.
+        typeProps: { templateElements: [] },
+    },
+    panel_dynamic: {
+        surveyType: 'paneldynamic',
+        group: 'advanced',
+        label: { ar: 'لوحة متكررة', en: 'Repeating panel' },
+        icon: 'M6 6.878V6a2.25 2.25 0 012.25-2.25h7.5A2.25 2.25 0 0118 6v.878m-12 0c.235-.083.487-.128.75-.128h10.5c.263 0 .515.045.75.128m-12 0A2.25 2.25 0 004.5 9v.878m13.5-3A2.25 2.25 0 0119.5 9v.878m0 0a2.246 2.246 0 00-.75-.128H5.25c-.263 0-.515.045-.75.128m15 0A2.25 2.25 0 0121 12v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6c0-.98.626-1.813 1.5-2.122',
+        typeProps: {
+            templateElements: [],
+            panelCount: 1,
+            minPanelCount: 0,
+            maxPanelCount: null,
+        },
+    },
 };
 
 /** Pseudo-type for unrecognized SurveyJS elements (matrix, paneldynamic, …). */
@@ -150,6 +240,7 @@ export const COMMON_ELEMENT_PROPS = [
     'correctAnswer',
     'score',
     'choices',
+    'items',
 ];
 
 /**
@@ -167,6 +258,9 @@ export const TYPE_PROP_SPECS = {
     single_choice: { props: ['showOtherItem'] },
     multi_choice: { props: ['showOtherItem', 'showSelectAllItem'] },
     dropdown: { props: [] },
+    ranking: { props: ['selectToRankEnabled'] },
+    tagbox: { props: ['showOtherItem'] },
+    imagepicker: { props: ['multiSelect', 'showLabel'] },
     yes_no: { localized: ['labelTrue', 'labelFalse'] },
     rating: { props: ['rateMax', 'rateType'] },
     file: {
@@ -179,6 +273,22 @@ export const TYPE_PROP_SPECS = {
     image: { props: ['imageLink'] },
     statement: { localized: ['html'] },
     hidden_value: {},
+    // items need custom (LStr-title) parsing/emitting — see serialize.js.
+    multipletext: { props: ['colCount'], custom: ['items'] },
+    // rows/columns need custom (non-passthrough) parsing/emitting — see
+    // elementToField/fieldToElement in serialize.js — so they are declared here
+    // via `custom` purely to keep them out of `field.raw` (see managedPropsFor).
+    matrix: { custom: ['rows', 'columns'] },
+    matrixdropdown: { custom: ['rows', 'columns'] },
+    matrixdynamic: { props: ['rowCount'], custom: ['columns'] },
+    expression: { props: ['expression', 'displayStyle'] },
+    slider: { props: ['min', 'max', 'step'] },
+    // children parse/emit as SurveyJS `elements` — see serialize.js.
+    panel: { custom: ['elements'] },
+    panel_dynamic: {
+        props: ['panelCount', 'minPanelCount', 'maxPanelCount', 'templateElements'],
+        localized: ['panelAddText', 'panelRemoveText'],
+    },
 };
 
 /**
@@ -196,6 +306,7 @@ export function managedPropsFor(builderType) {
         ...(spec.props ?? []),
         ...(spec.localized ?? []),
         ...Object.keys(spec.forced ?? {}),
+        ...(spec.custom ?? []),
     ];
 }
 

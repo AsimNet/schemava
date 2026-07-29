@@ -72,6 +72,13 @@ abstract class TestCase extends Orchestra
             'prefix' => '',
         ]);
         $app['config']->set('app.key', 'base64:'.base64_encode(random_bytes(32)));
+
+        // The submit routes run through `throttle:schemava-submit`, so the rate
+        // limiter needs a working cache store. Laravel's default is `database`,
+        // whose `cache` table the in-memory test schema does not create — use the
+        // array store instead: it lives for the app instance, so repeated calls
+        // within one test still accumulate hits and can trip the limit.
+        $app['config']->set('cache.default', 'array');
     }
 
     /**

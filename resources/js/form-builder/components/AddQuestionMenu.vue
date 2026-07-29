@@ -7,6 +7,10 @@ import { popIn } from '../motion.js';
 const props = defineProps({
     /** Compact variant for the empty-state (centered, dashed). */
     variant: { type: String, default: 'default' },
+    /** Builder type ids to hide from the catalog (e.g. to prevent nesting). */
+    excludeTypes: { type: Array, default: () => [] },
+    /** Context line shown atop the popover (defaults to the page-level hint). */
+    hint: { type: String, default: null },
 });
 
 const emit = defineEmits(['select']);
@@ -21,7 +25,7 @@ const groups = computed(() =>
     FIELD_GROUPS.map((group) => ({
         ...group,
         items: Object.entries(FIELD_TYPES)
-            .filter(([, def]) => def.group === group.id)
+            .filter(([id, def]) => def.group === group.id && !props.excludeTypes.includes(id))
             .map(([id, def]) => ({ id, ...def })),
     })).filter((group) => group.items.length > 0),
 );
@@ -92,7 +96,7 @@ onBeforeUnmount(() => {
         </button>
 
         <div v-if="open" ref="pop" class="fb-addq-pop" role="menu" :dir="i18n.locale === 'ar' ? 'rtl' : 'ltr'">
-            <p class="fb-addq-hint">{{ t('addQuestionHint') }}</p>
+            <p class="fb-addq-hint">{{ hint ?? t('addQuestionHint') }}</p>
             <div v-for="group in groups" :key="group.id" class="fb-addq-group">
                 <h4 class="fb-addq-group-title">{{ group.label[locale] ?? group.label.ar }}</h4>
                 <div class="fb-addq-items">

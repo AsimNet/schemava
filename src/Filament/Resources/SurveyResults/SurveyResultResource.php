@@ -18,7 +18,6 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
 
 /**
  * Top-level, read-only browser for submissions across every form. Shipped by
@@ -55,24 +54,30 @@ class SurveyResultResource extends Resource
         return __('schemava::surveyjs.all_responses.plural_model_label');
     }
 
+    // Plugin lookups use getOrNull() with a config/deny fallback: Filament calls
+    // these statics while registering panels that may not carry the plugin, and
+    // a throwing lookup there takes the whole app down (#4).
+
     public static function getNavigationGroup(): ?string
     {
-        return SchemavaPlugin::get()->getNavigationGroup();
+        return SchemavaPlugin::getOrNull()?->getNavigationGroup()
+            ?? config('schemava.navigation.group');
     }
 
     public static function getNavigationSort(): ?int
     {
-        return SchemavaPlugin::get()->getNavigationSort() + 1;
+        return (SchemavaPlugin::getOrNull()?->getNavigationSort()
+            ?? (int) config('schemava.navigation.sort', 100)) + 1;
     }
 
     public static function canAccess(): bool
     {
-        return SchemavaPlugin::get()->isAuthorized();
+        return SchemavaPlugin::getOrNull()?->isAuthorized() ?? false;
     }
 
     public static function shouldRegisterNavigation(): bool
     {
-        return SchemavaPlugin::get()->isAuthorized();
+        return SchemavaPlugin::getOrNull()?->isAuthorized() ?? false;
     }
 
     // Read-only: responses are collected via the public form, not created here.
@@ -88,7 +93,7 @@ class SurveyResultResource extends Resource
             ->columns([
                 TextColumn::make('respondent')
                     ->label(__('schemava::surveyjs.responses.respondent'))
-                    ->state(fn (Model $record): string => static::resolveRespondent($record))
+                    ->state(fn (SurveyResult $record): string => static::resolveRespondent($record))
                     ->searchable(query: function ($query, string $search) {
                         return $query->whereHas('user', function ($userQuery) use ($search): void {
                             $userQuery->where('name', 'like', "%{$search}%")
@@ -123,7 +128,7 @@ class SurveyResultResource extends Resource
                     ->modalHeading(__('schemava::surveyjs.responses.modal_title'))
                     ->modalWidth(Width::FiveExtraLarge)
                     ->modalSubmitAction(false)
-                    ->modalContent(fn (Model $record): View => view('schemava::survey-result', [
+                    ->modalContent(fn (SurveyResult $record): View => view('schemava::survey-result', [
                         'surveyJson' => $record->surveySchema?->survey_json ?? [],
                         'data' => $record->data ?? [],
                         'locale' => app()->getLocale(),
@@ -144,7 +149,7 @@ class SurveyResultResource extends Resource
      * Human label for the submitter, falling back to a localized "Guest" when the
      * submission has no associated user.
      */
-    protected static function resolveRespondent(Model $record): string
+    protected static function resolveRespondent(SurveyResult $record): string
     {
         $user = $record->user;
 

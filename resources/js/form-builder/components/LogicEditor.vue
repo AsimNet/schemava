@@ -372,22 +372,18 @@ const canEditVisually = computed(() => priors.value.length > 0 || (store.runtime
                     <span class="fb-logic-when">{{ t('logicWhenPrefix') }}</span>
                 </div>
 
-                <div class="fb-segment-inline fb-segment-inline--match" role="group" :aria-label="t('logicMatchAll')">
-                    <button
-                        type="button"
-                        class="fb-seg-btn"
-                        :class="{ 'fb-seg-btn--active': match === 'all' }"
-                        @click="match = 'all'"
-                    >{{ t('logicMatchAll') }}</button>
-                    <button
-                        type="button"
-                        class="fb-seg-btn"
-                        :class="{ 'fb-seg-btn--active': match === 'any' }"
-                        @click="match = 'any'"
-                    >{{ t('logicMatchAny') }}</button>
-                </div>
-
-                <div v-for="(rule, index) in rules" :key="index" class="fb-rule">
+                <template v-for="(rule, index) in rules" :key="index">
+                <!-- Tally-style connector: rules read as one sentence; the
+                     و/أو pill between rows toggles all/any for the block. -->
+                <button
+                    v-if="index > 0"
+                    type="button"
+                    class="fb-rule-connector fb-focus"
+                    :title="t('logicConnectorHint')"
+                    :aria-label="t('logicConnectorHint')"
+                    @click="match = match === 'all' ? 'any' : 'all'"
+                >{{ match === 'all' ? t('logicAnd') : t('logicOr') }}</button>
+                <div class="fb-rule">
                     <select
                         class="fb-input fb-focus fb-rule-field"
                         :value="rule.field"
@@ -505,6 +501,7 @@ const canEditVisually = computed(() => priors.value.length > 0 || (store.runtime
                         </svg>
                     </button>
                 </div>
+                </template>
 
                 <p v-if="rules.length === 0" class="fb-hint">{{ t('logicNoRules') }}</p>
 
@@ -574,6 +571,25 @@ const canEditVisually = computed(() => priors.value.length > 0 || (store.runtime
 .fb-seg-btn--active {
     background: var(--fb-brand);
     color: #fff;
+}
+
+.fb-rule-connector {
+    align-self: flex-start;
+    border: 1px solid var(--fb-border-strong);
+    background: var(--fb-surface);
+    color: var(--fb-brand-600);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    padding: 0.125rem 0.625rem;
+    border-radius: 999px;
+    cursor: pointer;
+    margin-block: -0.125rem;
+    transition: border-color 0.15s, background-color 0.15s;
+}
+
+.fb-rule-connector:hover {
+    border-color: var(--fb-brand);
+    background: var(--fb-brand-50);
 }
 
 .fb-rule {

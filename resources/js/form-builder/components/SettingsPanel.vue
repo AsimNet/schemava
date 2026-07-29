@@ -3,11 +3,14 @@ import { computed, nextTick, reactive, ref, watch } from 'vue';
 import {
     store,
     selectField,
+    findField,
     renameField,
     updateField,
     updateTypeProp,
     setPrefill,
     pushToast,
+    priorFields,
+    allFieldEntries,
 } from '../store.js';
 import { t } from '../i18n.js';
 import { fadeInUp, staggerIn } from '../motion.js';
@@ -18,9 +21,12 @@ import {
     bytesToMb,
     mbToBytes,
     ratingPreviewItems,
+    fieldReferenceOptions,
+    calculatedValueOptions,
 } from '../ui-helpers.js';
 import VariableMenu from './VariableMenu.vue';
 import ChoicesEditor from './ChoicesEditor.vue';
+import MatrixEditor from './MatrixEditor.vue';
 import LogicEditor from './LogicEditor.vue';
 import QuizEditor from './QuizEditor.vue';
 import RichTextEditor from './RichTextEditor.vue';
@@ -68,8 +74,39 @@ const contentLocale = computed(() => store.state?.contentLocale ?? 'ar');
 const def = computed(() => (props.field ? FIELD_TYPES[props.field.type] ?? null : null));
 const isAdvanced = computed(() => props.field?.type === ADVANCED_TYPE);
 const isStatement = computed(() => props.field?.type === 'statement');
+const isExpression = computed(() => props.field?.type === 'expression');
 const hasPlaceholder = computed(() => Boolean(def.value?.hasPlaceholder));
 const hasChoices = computed(() => Boolean(def.value?.hasChoices));
+const MATRIX_TYPES = ['matrix', 'matrixdropdown', 'matrixdynamic'];
+const isMatrixFamily = computed(() => MATRIX_TYPES.includes(props.field?.type));
+
+/* ------------------------------------ panel_dynamic template sub-questions */
+
+/**
+ * The owning panel_dynamic when the selected field is a template question.
+ * Template questions get the full drawer except Logic and Quiz, which are
+ * page-scope concepts (rules target top-level questions; scores sum at the
+ * survey level) and would serialize to broken references from inside a panel.
+ */
+const parentPanel = computed(() => (props.field ? findField(props.field.name)?.parent ?? null : null));
+const isNested = computed(() => parentPanel.value !== null);
+
+/** Breadcrumb copy: repeating panel vs static question group. */
+const insideLabel = computed(() => (parentPanel.value?.type === 'panel' ? t('insideGroup') : t('insidePanel')));
+
+const parentPanelTitle = computed(() => {
+    const lstr = parentPanel.value?.label;
+    const text = (contentLocale.value === 'en' ? lstr?.en : lstr?.ar) ?? lstr?.ar ?? '';
+
+    return text !== '' ? text : (parentPanel.value?.name ?? '');
+});
+
+/** Jump the drawer to the owning panel's own settings. */
+function goToParentPanel() {
+    if (parentPanel.value) {
+        selectField(parentPanel.value.name);
+    }
+}
 
 /** Types that support a static/piped prefill value in Basics. */
 const PREFILLABLE = ['short_text', 'long_text', 'number', 'date', 'dropdown', 'single_choice'];
@@ -82,6 +119,11 @@ const supportsQuiz = computed(() => Boolean(def.value?.quizzable) || props.field
 const TYPES_WITH_OPTIONS = [
     'short_text', 'number', 'long_text', 'single_choice', 'multi_choice',
     'dropdown', 'yes_no', 'rating', 'file', 'image', 'statement', 'hidden_value',
+    'panel_dynamic',
+    'expression',
+    'matrix', 'matrixdropdown', 'matrixdynamic',
+    'multipletext',
+    'slider',
 ];
 const hasOptions = computed(() => !isAdvanced.value && (TYPES_WITH_OPTIONS.includes(props.field?.type) || hasChoices.value));
 
@@ -179,7 +221,7 @@ const readOnlyValue = computed({
  * fields, and advanced passthrough fields are never editable here.
  */
 const supportsReadOnly = computed(
-    () => !isAdvanced.value && !isStatement.value && props.field?.type !== 'image',
+    () => !isAdvanced.value && !isStatement.value && !isExpression.value && props.field?.type !== 'image',
 );
 
 /** Per-field required-error override (LStr), serialized as requiredErrorText (fix 7). */
@@ -203,7 +245,7 @@ const requiredErrorValue = computed({
 
 /** The required-error override only makes sense for fields that can be required. */
 const supportsRequiredError = computed(
-    () => !isAdvanced.value && !isStatement.value && props.field?.type !== 'image' && props.field?.type !== 'hidden_value',
+    () => !isAdvanced.value && !isStatement.value && !isExpression.value && props.field?.type !== 'image' && props.field?.type !== 'hidden_value',
 );
 
 /* --------------------------------------------- variable-menu caret handling */
@@ -331,6 +373,12 @@ const maxSizeMb = computed({
 });
 
 /* rating preview (shares ratingPreviewItems with the canvas card — fix 3) */
+const DISPLAY_STYLES = ['none', 'decimal', 'percent', 'currency'];
+
+/** Prior fields (document order, mirrors visibleIf) offered as formula references. */
+const expressionFieldOptions = computed(() => fieldReferenceOptions(priorFields(props.field?.name ?? ''), contentLocale.value));
+const expressionCalcOptions = computed(() => calculatedValueOptions(store.state?.calculatedValues ?? []));
+
 const RATE_TYPES = ['stars', 'labels', 'smileys'];
 const ratePreview = computed(() => ratingPreviewItems(props.field?.typeProps));
 
@@ -441,6 +489,21 @@ function close() {
         </div>
 
         <div v-else ref="drawerBody" class="fb-drawer-body">
+            <!-- Template sub-question breadcrumb: where am I, and a way back up. -->
+            <button
+                v-if="isNested"
+                type="button"
+                class="fb-nested-crumb fb-focus"
+                :title="t('backToPanel')"
+                @click="goToParentPanel"
+            >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M21.015 4.356v4.99m0 0l-3.181-3.182a8.25 8.25 0 00-13.803 3.7" />
+                </svg>
+                <span class="fb-nested-crumb-label">{{ insideLabel }}</span>
+                <span class="fb-nested-crumb-name">{{ parentPanelTitle }}</span>
+            </button>
+
             <!-- ===================== Basics ===================== -->
             <section class="fb-section">
                 <h3 class="fb-section-title">{{ t('sectionBasics') }}</h3>
@@ -522,7 +585,7 @@ function close() {
                         />
                     </div>
 
-                    <label v-if="!isStatement" class="fb-toggle">
+                    <label v-if="!isStatement && !isExpression" class="fb-toggle">
                         <input v-model="requiredValue" type="checkbox" class="fb-checkbox" />
                         <span>{{ t('requiredToggle') }}</span>
                     </label>
@@ -699,6 +762,40 @@ function close() {
                         />
                     </div>
 
+                    <!-- expression: formula + display style -->
+                    <template v-if="field.type === 'expression'">
+                        <div class="fb-field">
+                            <div class="fb-field-head">
+                                <span class="fb-field-label">{{ t('expressionFormula') }}</span>
+                                <VariableMenu
+                                    :fields="expressionFieldOptions"
+                                    :calculated-values="expressionCalcOptions"
+                                    @insert="(k) => insertVariable('expression', k, typeProp('expression', ''), (v) => setProp('expression', v))"
+                                />
+                            </div>
+                            <input
+                                :ref="(el) => registerRef('expression', el)"
+                                :value="typeProp('expression', '')"
+                                type="text"
+                                class="fb-input fb-mono fb-focus"
+                                dir="ltr"
+                                spellcheck="false"
+                                :placeholder="t('expressionFormulaPlaceholder')"
+                                @input="setProp('expression', $event.target.value)"
+                                @keyup="rememberCaret('expression', $event)"
+                                @click="rememberCaret('expression', $event)"
+                                @blur="rememberCaret('expression', $event)"
+                            />
+                            <span class="fb-hint">{{ t('expressionFormulaHint') }}</span>
+                        </div>
+                        <label class="fb-field">
+                            <span class="fb-field-label">{{ t('expressionDisplayStyle') }}</span>
+                            <select class="fb-input fb-focus" :value="typeProp('displayStyle', 'none')" @change="setProp('displayStyle', $event.target.value)">
+                                <option v-for="ds in DISPLAY_STYLES" :key="ds" :value="ds">{{ t('expressionDisplayStyle' + ds.charAt(0).toUpperCase() + ds.slice(1)) }}</option>
+                            </select>
+                        </label>
+                    </template>
+
                     <!-- hidden_value: defaultValueExpression -->
                     <div v-if="field.type === 'hidden_value'" class="fb-field">
                         <div class="fb-field-head">
@@ -719,11 +816,72 @@ function close() {
                         />
                         <span class="fb-hint">{{ t('hiddenValueExpressionHint') }}</span>
                     </div>
+
+                    <!-- slider: numeric bounds + step -->
+                    <template v-if="field.type === 'slider'">
+                        <div class="fb-row">
+                            <label class="fb-field">
+                                <span class="fb-field-label">{{ t('sliderMin') }}</span>
+                                <input type="number" class="fb-input fb-focus" :value="typeProp('min', 0)" @input="setNumberProp('min', $event.target.value)" />
+                            </label>
+                            <label class="fb-field">
+                                <span class="fb-field-label">{{ t('sliderMax') }}</span>
+                                <input type="number" class="fb-input fb-focus" :value="typeProp('max', 100)" @input="setNumberProp('max', $event.target.value)" />
+                            </label>
+                        </div>
+                        <label class="fb-field">
+                            <span class="fb-field-label">{{ t('sliderStep') }}</span>
+                            <input type="number" min="0" class="fb-input fb-focus" :value="typeProp('step', 1)" @input="setNumberProp('step', $event.target.value)" />
+                        </label>
+                    </template>
+
+                    <!-- multipletext: column layout; items are edited on the canvas card -->
+                    <template v-if="field.type === 'multipletext'">
+                        <label class="fb-field">
+                            <span class="fb-field-label">{{ t('textItemsColCount') }}</span>
+                            <input type="number" min="1" max="5" class="fb-input fb-focus" :value="typeProp('colCount', 1)" @input="setNumberProp('colCount', $event.target.value)" />
+                            <span class="fb-hint">{{ t('textItemsColCountHint') }}</span>
+                        </label>
+                        <p class="fb-hint">{{ t('textItemsEditOnCanvas') }}</p>
+                    </template>
+
+                    <!-- panel_dynamic: panel count bounds + add/remove texts + template -->
+                    <template v-if="field.type === 'panel_dynamic'">
+                        <div class="fb-row">
+                            <label class="fb-field">
+                                <span class="fb-field-label">{{ t('panelMinCount') }}</span>
+                                <input type="number" min="0" class="fb-input fb-focus" :value="numberProp('minPanelCount')" @input="setNumberProp('minPanelCount', $event.target.value)" />
+                            </label>
+                            <label class="fb-field">
+                                <span class="fb-field-label">{{ t('panelMaxCount') }}</span>
+                                <input type="number" min="1" class="fb-input fb-focus" :value="numberProp('maxPanelCount')" @input="setNumberProp('maxPanelCount', $event.target.value)" />
+                            </label>
+                        </div>
+                        <label class="fb-field">
+                            <span class="fb-field-label">{{ t('panelInitialCount') }}</span>
+                            <input type="number" min="0" class="fb-input fb-focus" :value="typeProp('panelCount', 1)" @input="setNumberProp('panelCount', $event.target.value)" />
+                            <span class="fb-hint">{{ t('panelInitialCountHint') }}</span>
+                        </label>
+                        <label class="fb-field">
+                            <span class="fb-field-label">{{ t('panelAddText') }}</span>
+                            <input type="text" class="fb-input fb-focus" :placeholder="t('panelAddTextPlaceholder')" :value="localizedProp('panelAddText')" @input="setLocalizedProp('panelAddText', $event.target.value)" />
+                        </label>
+                        <label class="fb-field">
+                            <span class="fb-field-label">{{ t('panelRemoveText') }}</span>
+                            <input type="text" class="fb-input fb-focus" :placeholder="t('panelRemoveTextPlaceholder')" :value="localizedProp('panelRemoveText')" @input="setLocalizedProp('panelRemoveText', $event.target.value)" />
+                        </label>
+                        <p class="fb-hint">{{ t('panelEditOnCanvas') }}</p>
+                    </template>
+
+                    <!-- matrix family: rows/columns editor -->
+                    <MatrixEditor v-if="isMatrixFamily" :field="field" />
                 </div>
             </section>
 
             <!-- ===================== Logic ===================== -->
-            <section v-if="!isAdvanced" class="fb-section">
+            <!-- Hidden for template sub-questions: rules target top-level fields
+                 and would serialize to dangling references from inside a panel. -->
+            <section v-if="!isAdvanced && !isNested" class="fb-section">
                 <button
                     type="button"
                     class="fb-disclosure fb-focus"
@@ -741,7 +899,7 @@ function close() {
             </section>
 
             <!-- ===================== Quiz ===================== -->
-            <section v-if="supportsQuiz" class="fb-section">
+            <section v-if="supportsQuiz && !isNested" class="fb-section">
                 <button
                     type="button"
                     class="fb-disclosure fb-focus"
@@ -884,6 +1042,48 @@ function close() {
     display: flex;
     flex-direction: column;
     gap: 1rem;
+}
+
+/* Breadcrumb back to the owning repeating panel (template sub-questions). */
+.fb-nested-crumb {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    border: 1px solid var(--fb-border);
+    background: var(--fb-brand-50);
+    color: var(--fb-brand-600);
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.4375rem 0.625rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    text-align: start;
+    transition: border-color 0.15s;
+}
+
+.fb-nested-crumb:hover {
+    border-color: var(--fb-brand);
+}
+
+.fb-nested-crumb svg {
+    flex: 0 0 auto;
+    width: 0.875rem;
+    height: 0.875rem;
+}
+
+.fb-nested-crumb-label {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+.fb-nested-crumb-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--fb-text);
+    font-weight: 500;
 }
 
 .fb-section {

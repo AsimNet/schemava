@@ -32,6 +32,55 @@ class SurveyScoreCalculator
     }
 
     /**
+     * Strip the grading key from a survey definition before serving it to
+     * RESPONDENTS: `correctAnswer` and `score` are authoring-side secrets — a
+     * respondent reading the raw JSON (DevTools, API) must not see the answer
+     * key. Recurses through pages, panels and paneldynamic templates. Scoring
+     * itself is unaffected: it always recomputes server-side against the
+     * stored schema, never against what the client saw.
+     *
+     * @param  array<string, mixed>  $surveyJson
+     * @return array<string, mixed>
+     */
+    public function withoutAnswerKeys(array $surveyJson): array
+    {
+        if (isset($surveyJson['pages']) && is_array($surveyJson['pages'])) {
+            foreach ($surveyJson['pages'] as $i => $page) {
+                if (is_array($page) && isset($page['elements']) && is_array($page['elements'])) {
+                    $surveyJson['pages'][$i]['elements'] = $this->stripKeysFromElements($page['elements']);
+                }
+            }
+        }
+
+        return $surveyJson;
+    }
+
+    /**
+     * @param  array<int, mixed>  $elements
+     * @return array<int, mixed>
+     */
+    private function stripKeysFromElements(array $elements): array
+    {
+        foreach ($elements as $i => $element) {
+            if (! is_array($element)) {
+                continue;
+            }
+
+            unset($element['correctAnswer'], $element['score']);
+
+            foreach (['elements', 'templateElements'] as $childKey) {
+                if (isset($element[$childKey]) && is_array($element[$childKey])) {
+                    $element[$childKey] = $this->stripKeysFromElements($element[$childKey]);
+                }
+            }
+
+            $elements[$i] = $element;
+        }
+
+        return $elements;
+    }
+
+    /**
      * @param  array<string, mixed>  $submittedData
      * @return array<string, mixed>
      */
@@ -101,7 +150,7 @@ class SurveyScoreCalculator
                 continue;
             }
 
-            $this->extractFromElements($elements, $questions);
+            array_push($questions, ...$this->extractFromElements($elements));
         }
 
         return $questions;
@@ -109,10 +158,12 @@ class SurveyScoreCalculator
 
     /**
      * @param  array<int, mixed>  $elements
-     * @param  array<int, array<string, mixed>>  $questions
+     * @return array<int, array<string, mixed>>
      */
-    private function extractFromElements(array $elements, array &$questions): void
+    private function extractFromElements(array $elements): array
     {
+        $questions = [];
+
         foreach ($elements as $element) {
             if (! is_array($element)) {
                 continue;
@@ -123,7 +174,7 @@ class SurveyScoreCalculator
             if (in_array($type, ['panel', 'paneldynamic', 'flowpanel'], true)) {
                 $nestedElements = $element['elements'] ?? [];
                 if (is_array($nestedElements)) {
-                    $this->extractFromElements($nestedElements, $questions);
+                    array_push($questions, ...$this->extractFromElements($nestedElements));
                 }
 
                 continue;
@@ -133,6 +184,8 @@ class SurveyScoreCalculator
                 $questions[] = $element;
             }
         }
+
+        return $questions;
     }
 
     /**

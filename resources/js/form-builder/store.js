@@ -16,7 +16,17 @@ import { reactive } from 'vue';
 import { fromSurveyJson, toSurveyJson, nextFieldName } from './model/serialize.js';
 import { FIELD_TYPES, ADVANCED_TYPE } from './model/fieldTypes.js';
 import { emptyLStr, isEmptyLStr } from './model/localized.js';
-import { makeChoice } from './ui-helpers.js';
+import {
+    makeChoice,
+    makeMatrixColumn,
+    DEFAULT_MATRIX_ROW_LABELS,
+    DEFAULT_MATRIX_ROW_LABELS_EN,
+    DEFAULT_MATRIX_COLUMN_LABELS,
+    DEFAULT_MATRIX_COLUMN_LABELS_EN,
+    makeTextItem,
+    DEFAULT_TEXT_ITEM_LABELS,
+    DEFAULT_TEXT_ITEM_LABELS_EN,
+} from './ui-helpers.js';
 import { t } from './i18n.js';
 
 /**
@@ -33,7 +43,15 @@ export const DEFAULT_CHOICE_LABELS = ['الخيار 1', 'الخيار 2', 'ال�
 export const DEFAULT_CHOICE_LABELS_EN = ['Option 1', 'Option 2', 'Option 3'];
 
 /** Builder types that should be seeded with {@link DEFAULT_CHOICE_LABELS}. */
-const SEEDED_CHOICE_TYPES = ['single_choice', 'multi_choice', 'dropdown'];
+const SEEDED_CHOICE_TYPES = ['single_choice', 'multi_choice', 'dropdown', 'ranking', 'tagbox'];
+
+/**
+ * Builder types that CONTAIN other questions (in typeProps.templateElements):
+ * panel_dynamic repeats its children per entry; panel is a static group.
+ * Containers cannot nest inside each other in this editor (imported nested
+ * structures still render and round-trip losslessly).
+ */
+export const CONTAINER_TYPES = ['panel_dynamic', 'panel'];
 
 export const store = reactive({
     state: null,
@@ -154,18 +172,28 @@ export function setActiveTab(tab) {
     store.activeTab = next;
 }
 
-/** Collect every field name currently in use across all pages. */
+/**
+ * Collect every field name in use, including panel_dynamic template questions
+ * (nested inside `field.typeProps.templateElements`), so names stay unique
+ * across the whole survey rather than just within a page or a panel.
+ */
 function collectFieldNames() {
     const names = new Set();
     if (!store.state) {
         return names;
     }
-    for (const page of store.state.pages) {
-        for (const field of page.fields) {
+    const visit = (fields) => {
+        for (const field of fields) {
             if (field.name) {
                 names.add(field.name);
             }
+            if (CONTAINER_TYPES.includes(field.type) && Array.isArray(field.typeProps?.templateElements)) {
+                visit(field.typeProps.templateElements);
+            }
         }
+    };
+    for (const page of store.state.pages) {
+        visit(page.fields);
     }
 
     return names;
@@ -241,11 +269,36 @@ function makeField(typeId) {
     const type = def ? typeId : ADVANCED_TYPE;
     const baseTypeProps = def ? clone(def.typeProps ?? {}) : {};
 
-    // yes_no ships with explicit Arabic true/false labels so the mobile renderer
-    // shows نعم/لا regardless of locale fallbacks (serialized verbatim).
+    // yes_no ships with explicit true/false labels (serialized verbatim) so the
+    // renderer never falls back to engine defaults. Seeded into the ACTIVE
+    // content locale's slot — like every other seed — so an English-authored
+    // form gets Yes/No, not Arabic text leaking into the EN view.
     if (type === 'yes_no') {
-        baseTypeProps.labelTrue = { ar: 'نعم', en: null };
-        baseTypeProps.labelFalse = { ar: 'لا', en: null };
+        if (store.state?.contentLocale === 'en') {
+            baseTypeProps.labelTrue = { ar: '', en: 'Yes' };
+            baseTypeProps.labelFalse = { ar: '', en: 'No' };
+        } else {
+            baseTypeProps.labelTrue = { ar: 'نعم', en: null };
+            baseTypeProps.labelFalse = { ar: 'لا', en: null };
+        }
+    }
+
+    // Matrix family: seed rows/columns (or rowCount for matrixdynamic) so a
+    // freshly dropped question already shows a concrete grid instead of an
+    // empty table — mirrors the SEEDED_CHOICE_TYPES rationale above.
+    if (type === 'matrix' || type === 'matrixdropdown') {
+        baseTypeProps.rows = defaultMatrixRows();
+    }
+    if (type === 'matrix') {
+        baseTypeProps.columns = defaultMatrixSimpleColumns();
+    } else if (type === 'matrixdropdown' || type === 'matrixdynamic') {
+        baseTypeProps.columns = [makeMatrixColumn(defaultMatrixColumnLabel(), [], store.state?.contentLocale === 'en' ? 'en' : 'ar')];
+    }
+
+    // multipletext: seed two items so the question works (and previews) the
+    // moment it is dropped — an item-less multipletext renders nothing.
+    if (type === 'multipletext') {
+        baseTypeProps.items = defaultTextItems();
     }
 
     const field = {
@@ -281,11 +334,47 @@ function defaultChoices(type) {
         return [];
     }
 
-    const labels = store.state?.contentLocale === 'en'
-        ? DEFAULT_CHOICE_LABELS_EN
-        : DEFAULT_CHOICE_LABELS;
+    const locale = store.state?.contentLocale === 'en' ? 'en' : 'ar';
+    const labels = locale === 'en' ? DEFAULT_CHOICE_LABELS_EN : DEFAULT_CHOICE_LABELS;
 
-    return labels.map((label) => makeChoice(label));
+    return labels.map((label) => makeChoice(label, locale));
+}
+
+/** Default rows for a freshly created matrix/matrixdropdown field. */
+function defaultMatrixRows() {
+    const locale = store.state?.contentLocale === 'en' ? 'en' : 'ar';
+    const labels = locale === 'en' ? DEFAULT_MATRIX_ROW_LABELS_EN : DEFAULT_MATRIX_ROW_LABELS;
+
+    return labels.map((label) => makeChoice(label, locale));
+}
+
+/** Default items for a freshly created multipletext field. */
+function defaultTextItems() {
+    const locale = store.state?.contentLocale === 'en' ? 'en' : 'ar';
+    const labels = locale === 'en' ? DEFAULT_TEXT_ITEM_LABELS_EN : DEFAULT_TEXT_ITEM_LABELS;
+    const items = [];
+    for (const label of labels) {
+        items.push(makeTextItem(label, items.map((item) => item.name), locale));
+    }
+
+    return items;
+}
+
+/** Default plain-choice columns for a freshly created `matrix` field. */
+function defaultMatrixSimpleColumns() {
+    const locale = store.state?.contentLocale === 'en' ? 'en' : 'ar';
+    const labels = locale === 'en' ? DEFAULT_MATRIX_COLUMN_LABELS_EN : DEFAULT_MATRIX_COLUMN_LABELS;
+
+    return labels.map((label) => makeChoice(label, locale));
+}
+
+/** Default single-column title for a freshly created matrixdropdown/matrixdynamic field. */
+function defaultMatrixColumnLabel() {
+    const labels = store.state?.contentLocale === 'en'
+        ? DEFAULT_MATRIX_COLUMN_LABELS_EN
+        : DEFAULT_MATRIX_COLUMN_LABELS;
+
+    return labels[0];
 }
 
 export function loadFromBoot(bootPayload) {
@@ -501,6 +590,129 @@ export function setSurveyText(key, lstr) {
     markDirty();
 }
 
+/* ---------------------------------------------------- calculated values */
+
+/**
+ * Fresh unique name for a new calculated value (`calc_1`, `calc_2`, ...),
+ * checked against both field names ({@link collectFieldNames}) and existing
+ * calculated value names.
+ *
+ * @returns {string}
+ */
+function nextCalculatedValueName() {
+    const names = collectFieldNames();
+    for (const entry of store.state?.calculatedValues ?? []) {
+        if (entry.name) {
+            names.add(entry.name);
+        }
+    }
+    let n = 1;
+    let name = `calc_${n}`;
+    while (names.has(name)) {
+        n += 1;
+        name = `calc_${n}`;
+    }
+
+    return name;
+}
+
+/**
+ * Append a new survey-level calculated value with a fresh unique name and an
+ * empty formula. Returns the new entry, or null when there is no state.
+ *
+ * @returns {{name: string, expression: string, includeIntoResult: boolean, raw: object}|null}
+ */
+export function addCalculatedValue() {
+    if (!store.state) {
+        return null;
+    }
+    if (!Array.isArray(store.state.calculatedValues)) {
+        store.state.calculatedValues = [];
+    }
+    const entry = { name: nextCalculatedValueName(), expression: '', includeIntoResult: false, raw: {} };
+    store.state.calculatedValues.push(entry);
+    markDirty();
+
+    return entry;
+}
+
+/** Patch arbitrary props (e.g. `expression`, `includeIntoResult`) on the calculated value at `index`. */
+export function updateCalculatedValue(index, patch) {
+    const entry = store.state?.calculatedValues?.[index];
+    if (!entry) {
+        return;
+    }
+    Object.assign(entry, patch);
+    markDirty();
+}
+
+/** Remove the calculated value at `index`. */
+export function removeCalculatedValue(index) {
+    const list = store.state?.calculatedValues;
+    if (!Array.isArray(list) || !list[index]) {
+        return;
+    }
+    list.splice(index, 1);
+    markDirty();
+}
+
+/**
+ * Rename the calculated value at `index`. Returns an error key on
+ * invalid/duplicate names (checked against field names + other calculated
+ * value names, mirroring {@link renameField}'s validation), or null on success.
+ */
+export function renameCalculatedValue(index, nextValue) {
+    const list = store.state?.calculatedValues;
+    const entry = list?.[index];
+    if (!entry) {
+        return null;
+    }
+    const trimmed = (nextValue ?? '').trim();
+    if (trimmed === '') {
+        return 'fieldNameRequired';
+    }
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(trimmed)) {
+        return 'fieldNameInvalid';
+    }
+    const names = collectFieldNames();
+    list.forEach((other, i) => {
+        if (i !== index && other.name) {
+            names.add(other.name);
+        }
+    });
+    if (names.has(trimmed)) {
+        return 'fieldNameDuplicate';
+    }
+    entry.name = trimmed;
+    markDirty();
+
+    return null;
+}
+
+/**
+ * Every named field in the survey, in document order — used to offer
+ * question-reference options when authoring an expression formula
+ * (calculated values are survey-level, so unlike {@link priorFields} every
+ * field is a valid reference regardless of position).
+ *
+ * @returns {Array<{name: string, type: string, label: {ar: string, en: string|null}}>}
+ */
+export function allFieldEntries() {
+    if (!store.state) {
+        return [];
+    }
+    const out = [];
+    for (const page of store.state.pages) {
+        for (const field of page.fields) {
+            if (field.name) {
+                out.push({ name: field.name, type: field.type, label: field.label });
+            }
+        }
+    }
+
+    return out;
+}
+
 export function markDirty() {
     store.dirty = true;
 }
@@ -509,7 +721,17 @@ export function markClean() {
     store.dirty = false;
 }
 
-/** Locate a field plus its page index/field index by name. */
+/**
+ * Locate a field plus its page index/field index by name. Searches top-level
+ * page fields AND panel_dynamic template questions, so template sub-questions
+ * are first-class citizens: selectable, editable through the same store
+ * functions, and resolvable by every name-keyed consumer.
+ *
+ * Top-level hits return `{ field, pageIndex, fieldIndex, parent: null }`.
+ * Template hits return the SAME shape plus `parent` — the owning panel_dynamic
+ * field — with `fieldIndex` being the index inside the panel's template list
+ * (and `pageIndex` the parent's page).
+ */
 export function findField(name) {
     if (!store.state) {
         return null;
@@ -517,8 +739,17 @@ export function findField(name) {
     for (let p = 0; p < store.state.pages.length; p += 1) {
         const fields = store.state.pages[p].fields;
         for (let f = 0; f < fields.length; f += 1) {
-            if (fields[f].name === name) {
-                return { field: fields[f], pageIndex: p, fieldIndex: f };
+            const field = fields[f];
+            if (field.name === name) {
+                return { field, pageIndex: p, fieldIndex: f, parent: null };
+            }
+            if (CONTAINER_TYPES.includes(field.type) && Array.isArray(field.typeProps?.templateElements)) {
+                const list = field.typeProps.templateElements;
+                for (let s = 0; s < list.length; s += 1) {
+                    if (list[s].name === name) {
+                        return { field: list[s], pageIndex: p, fieldIndex: s, parent: field };
+                    }
+                }
             }
         }
     }
@@ -556,6 +787,14 @@ export function addField(typeId, pageIndex = 0, index = null) {
     page.fields.splice(at, 0, field);
     store.selectedFieldName = field.name;
     store.justAddedFieldName = field.name;
+
+    // A freshly dropped repeating panel starts with one template question so
+    // the card is alive immediately (an empty panel is a dead preview and, at
+    // runtime, an entry with nothing to fill). Seeded here — after the panel
+    // is inserted — so nextName() sees the panel's own name (no collision).
+    if (CONTAINER_TYPES.includes(field.type)) {
+        addTemplateField(field.name, 'short_text');
+    }
     markDirty();
 
     return field;
@@ -588,12 +827,25 @@ export function addQuestionToPage(typeId, pageIndex = 0) {
     return field;
 }
 
-/** Add a field after the currently-selected one, or at the end of its page. */
+/**
+ * Add a field after the currently-selected one, or at the end of its page.
+ * When the selection is a panel_dynamic template question, the new question
+ * joins the same panel right after it (repeating panels can't nest, so a
+ * panel_dynamic pick falls back to just after the parent panel instead).
+ */
 export function addFieldSmart(typeId) {
     if (!store.state) {
         return null;
     }
     const found = store.selectedFieldName ? findField(store.selectedFieldName) : null;
+    if (found?.parent) {
+        if (!CONTAINER_TYPES.includes(typeId)) {
+            return addTemplateQuestion(found.parent.name, typeId, found.fieldIndex + 1);
+        }
+        const parentSpot = findField(found.parent.name);
+
+        return addField(typeId, parentSpot.pageIndex, parentSpot.fieldIndex + 1);
+    }
     if (found) {
         return addField(typeId, found.pageIndex, found.fieldIndex + 1);
     }
@@ -601,14 +853,32 @@ export function addFieldSmart(typeId) {
     return addField(typeId, 0, null);
 }
 
+/**
+ * Give a cloned field (and any panel_dynamic template questions inside it)
+ * fresh unique names, so duplicating never introduces name collisions.
+ */
+function renameClonedTree(copy) {
+    copy.name = nextName();
+    if (CONTAINER_TYPES.includes(copy.type) && Array.isArray(copy.typeProps?.templateElements)) {
+        for (const sub of copy.typeProps.templateElements) {
+            // Depth-first so nested names are claimed before the next sibling asks.
+            renameClonedTree(sub);
+        }
+    }
+
+    return copy;
+}
+
 export function duplicateField(name) {
     const found = findField(name);
     if (!found) {
         return null;
     }
-    const copy = clone(found.field);
-    copy.name = nextName();
-    store.state.pages[found.pageIndex].fields.splice(found.fieldIndex + 1, 0, copy);
+    const copy = renameClonedTree(clone(found.field));
+    const siblings = found.parent
+        ? found.parent.typeProps.templateElements
+        : store.state.pages[found.pageIndex].fields;
+    siblings.splice(found.fieldIndex + 1, 0, copy);
     store.selectedFieldName = copy.name;
     store.justAddedFieldName = copy.name;
     markDirty();
@@ -621,7 +891,10 @@ export function removeField(name) {
     if (!found) {
         return;
     }
-    store.state.pages[found.pageIndex].fields.splice(found.fieldIndex, 1);
+    const siblings = found.parent
+        ? found.parent.typeProps.templateElements
+        : store.state.pages[found.pageIndex].fields;
+    siblings.splice(found.fieldIndex, 1);
     if (store.selectedFieldName === name) {
         store.selectedFieldName = null;
     }
@@ -658,6 +931,127 @@ export function setChoices(name, choices) {
         return;
     }
     found.field.choices = Array.isArray(choices) ? choices : [];
+    markDirty();
+}
+
+/**
+ * Locate a panel_dynamic's template question by the parent panel field's name
+ * plus the template question's own name.
+ *
+ * @param {string} panelName
+ * @param {string} subName
+ * @returns {{panelField: object, list: object[], index: number, field: object}|null}
+ */
+function findTemplateField(panelName, subName) {
+    const found = findField(panelName);
+    if (!found || !CONTAINER_TYPES.includes(found.field.type)) {
+        return null;
+    }
+    const list = found.field.typeProps.templateElements ?? [];
+    const index = list.findIndex((f) => f.name === subName);
+
+    return index === -1 ? null : { panelField: found.field, list, index, field: list[index] };
+}
+
+/**
+ * Append a new template question of `typeId` to a panel_dynamic field's panel
+ * template. Returns the new (sub-)field, or null for an unknown/wrong-type field.
+ *
+ * @param {string} panelName
+ * @param {string} typeId
+ * @returns {object|null}
+ */
+export function addTemplateField(panelName, typeId) {
+    const found = findField(panelName);
+    if (!found || !CONTAINER_TYPES.includes(found.field.type)) {
+        return null;
+    }
+    const field = makeField(typeId);
+    if (!Array.isArray(found.field.typeProps.templateElements)) {
+        found.field.typeProps.templateElements = [];
+    }
+    found.field.typeProps.templateElements.push(field);
+    markDirty();
+
+    return field;
+}
+
+/**
+ * Canvas-flavoured {@link addTemplateField}: inserts at `index` (appends when
+ * omitted), selects the new question, plays the enter animation, and requests
+ * label auto-focus — the exact affordance top-level "add question" has, so
+ * authoring inside a repeating panel feels identical to authoring outside it.
+ *
+ * @param {string} panelName
+ * @param {string} typeId
+ * @param {number|null} index
+ * @returns {object|null}
+ */
+export function addTemplateQuestion(panelName, typeId, index = null) {
+    const found = findField(panelName);
+    if (!found || !CONTAINER_TYPES.includes(found.field.type)) {
+        return null;
+    }
+    const field = makeField(typeId);
+    if (!Array.isArray(found.field.typeProps.templateElements)) {
+        found.field.typeProps.templateElements = [];
+    }
+    const list = found.field.typeProps.templateElements;
+    const at = index === null || index === undefined ? list.length : index;
+    list.splice(at, 0, field);
+    store.selectedFieldName = field.name;
+    store.justAddedFieldName = field.name;
+    if (!NO_INLINE_LABEL_TYPES.includes(field.type)) {
+        requestLabelFocus(field.name);
+    }
+    markDirty();
+
+    return field;
+}
+
+/** Remove a template question from a panel_dynamic field's panel template. */
+export function removeTemplateField(panelName, subName) {
+    const found = findTemplateField(panelName, subName);
+    if (!found) {
+        return;
+    }
+    found.list.splice(found.index, 1);
+    markDirty();
+}
+
+/** Patch arbitrary props on a panel_dynamic's template question. */
+export function updateTemplateField(panelName, subName, patch) {
+    const found = findTemplateField(panelName, subName);
+    if (!found) {
+        return;
+    }
+    Object.assign(found.field, patch);
+    markDirty();
+}
+
+/** Replace a template question's choices wholesale (see {@link setChoices}). */
+export function setTemplateFieldChoices(panelName, subName, choices) {
+    const found = findTemplateField(panelName, subName);
+    if (!found) {
+        return;
+    }
+    found.field.choices = Array.isArray(choices) ? choices : [];
+    markDirty();
+}
+
+/**
+ * Replace a panel_dynamic field's whole template question list (used after a
+ * drag-and-drop reorder of the panel template).
+ *
+ * @param {string} panelName
+ * @param {object[]} nextList
+ */
+export function reorderTemplateFields(panelName, nextList) {
+    const found = findField(panelName);
+    if (!found || !CONTAINER_TYPES.includes(found.field.type)) {
+        return;
+    }
+    found.field.typeProps.templateElements = Array.isArray(nextList) ? nextList : [];
     markDirty();
 }
 
@@ -770,7 +1164,10 @@ export function removeFieldCascade(name) {
         }
     }
 
-    store.state.pages[found.pageIndex].fields.splice(found.fieldIndex, 1);
+    const siblings = found.parent
+        ? found.parent.typeProps.templateElements
+        : store.state.pages[found.pageIndex].fields;
+    siblings.splice(found.fieldIndex, 1);
     if (store.selectedFieldName === name) {
         store.selectedFieldName = null;
     }
@@ -963,6 +1360,83 @@ export function setPageTitle(pageIndex, lstr) {
         return;
     }
     page.title = isEmptyLStr(lstr) ? null : lstr;
+    markDirty();
+}
+
+/**
+ * Replace a page's show/hide logic block ({action:'show'|'hide', match, rules}
+ * | {advanced} | null). Serialized as the page's SurveyJS visibleIf.
+ */
+/** Append a survey-level trigger ('skip' jump or 'complete' finish). */
+export function addTrigger(type = 'skip') {
+    if (!store.state) {
+        return null;
+    }
+    if (!Array.isArray(store.state.triggers)) {
+        store.state.triggers = [];
+    }
+    const trigger = { type: type === 'complete' ? 'complete' : 'skip', expression: '', gotoName: '', raw: {} };
+    store.state.triggers.push(trigger);
+    markDirty();
+
+    return trigger;
+}
+
+export function updateTrigger(index, patch) {
+    const trigger = store.state?.triggers?.[index];
+    if (!trigger) {
+        return;
+    }
+    Object.assign(trigger, patch);
+    markDirty();
+}
+
+export function removeTrigger(index) {
+    if (!Array.isArray(store.state?.triggers)) {
+        return;
+    }
+    store.state.triggers.splice(index, 1);
+    markDirty();
+}
+
+export function setPageLogic(pageIndex, logic) {
+    const page = store.state?.pages[pageIndex];
+    if (!page) {
+        return;
+    }
+    page.logic = logic ?? null;
+    markDirty();
+}
+
+/**
+ * Fields usable as targets for a page's visibility rules: every named field on
+ * EARLIER pages (a page can't depend on answers it hasn't collected yet).
+ *
+ * @param {number} pageIndex
+ * @returns {Array<{name: string, type: string, label: {ar: string, en: string|null}}>}
+ */
+export function priorFieldsForPage(pageIndex) {
+    if (!store.state) {
+        return [];
+    }
+    const out = [];
+    for (let p = 0; p < Math.min(pageIndex, store.state.pages.length); p += 1) {
+        for (const field of store.state.pages[p].fields) {
+            if (field.name) {
+                out.push({ name: field.name, type: field.type, label: field.label });
+            }
+        }
+    }
+
+    return out;
+}
+
+export function setPageDescription(pageIndex, lstr) {
+    const page = store.state?.pages[pageIndex];
+    if (!page) {
+        return;
+    }
+    page.description = isEmptyLStr(lstr) ? null : lstr;
     markDirty();
 }
 

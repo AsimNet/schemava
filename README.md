@@ -1,5 +1,7 @@
 # Schemava
 
+> **Author guide (Arabic):** [دليل منشئ النماذج المرئي](docs/ar/form-designer.md) — canvas authoring, containers, conditional logic, quizzes, and preview.
+
 > A visual, multilingual form builder built specifically for **FilamentPHP panels** — exports **SurveyJS-compatible JSON**.
 
 Schemava adds a drag-and-drop form **designer** to your FilamentPHP panel. You build forms visually, store the
@@ -22,7 +24,7 @@ JSON and previews/renders with the MIT-licensed open-source `survey-core` engine
 
 ## Requirements
 
-- PHP 8.3+
+- PHP 8.2+ (matching Filament's own floor; the package uses no 8.3-only features)
 - Laravel 11 or 12
 - FilamentPHP 5
 
@@ -40,13 +42,27 @@ composer config bearer.repo.schemava.dev YOUR-LICENSE-TOKEN
 composer require asimnet/schemava
 ```
 
-Run the migrations (this creates the `schemava_schemas` and `schemava_results` tables) and publish the builder
+Publish and run the migrations (this creates the `schemava_schemas` and `schemava_results` tables — the
+migrations are publish-only so you can review or adapt them, e.g. custom table names), then publish the builder
 assets:
 
 ```bash
+php artisan vendor:publish --tag=schemava-migrations
 php artisan migrate
 php artisan filament:assets
 ```
+
+Or let the installer do all of that (config + migrations) for you:
+
+```bash
+php artisan schemava:install
+php artisan migrate
+php artisan filament:assets
+```
+
+> **Nothing is exposed to the internet by installing the package.** The public fill-and-submit form and the
+> JSON API are **disabled by default** — see [Collecting responses](#collecting-responses-public-form--json-api)
+> to opt in deliberately.
 
 > **CI / Docker:** never commit your token. Provide it at build time via the `COMPOSER_AUTH` environment
 > variable instead:
@@ -99,7 +115,11 @@ SchemavaPlugin::make()
 
     // Gate who can see AND open the builder. Return a bool, or a closure returning one.
     // Defaults to visible for every panel user.
-    ->authorize(fn (): bool => auth()->user()->can('manage-forms'));
+    ->authorize(fn (): bool => auth()->user()->can('manage-forms'))
+
+    // Where the designer's "back" control returns to. Without it, the control
+    // falls back to the bundled resource's view page, or to browser history.
+    ->backUrl(fn (SurveySchema $schema): string => FormResource::getUrl('index'));
 ```
 
 | Method | Default | What it does |
@@ -108,6 +128,7 @@ SchemavaPlugin::make()
 | `navigationGroup(?string)` | `null` | Navigation group for the resource. |
 | `navigationSort(int)` | `100` | Navigation sort order. |
 | `authorize(Closure\|bool)` | `true` | Gates the resource's `canAccess()` and nav visibility. |
+| `backUrl(string\|Closure\|null)` | `null` | The designer's "back" destination. When unset, it falls back to `routes.designer.back_url` (config), then the bundled resource's view page; with no URL at all the control uses browser history (and hides in a fresh tab). |
 
 ## Configuration
 
@@ -125,8 +146,10 @@ Everything in `config/schemava.php`:
 | `storage.images_path`, `storage.files_path` | Path prefixes within that disk. |
 | `renderer_version` | The `survey-core` version the builder validates and previews against (default `2.3.16`). |
 | `routes.enabled` | Whether the package registers the designer routes. Set `false` if you register your own. |
-| `routes.designer` | Prefix + middleware for the designer routes. |
-| `routes.public` | Prefix + middleware + name for the optional public form route. |
+| `routes.designer` | Prefix + middleware for the designer routes, and `back_url` — the designer's "back" destination (see **Plugin options**). |
+| `routes.public` | The optional public form route (**disabled by default**) — enabled flag, prefix, middleware, name. |
+| `routes.api` | The optional JSON API (**disabled by default**) — enabled flag, prefix, middleware. |
+| `ai.enabled` | The designer's AI assistant (**disabled by default**); needs `laravel/ai` + provider credentials. |
 | `contracts.*` | The five host-overridable implementations — see **Extending Schemava**. |
 | `navigation.group`, `navigation.sort` | Defaults for the resource nav (the plugin's `navigationGroup()` / `navigationSort()` take precedence). |
 | `policy` | An optional policy class to register for the schema model. Leave `null` to rely on your own gates. |
@@ -152,11 +175,16 @@ caps and **Extending Schemava** below to swap in your own validator.
 
 ## Collecting responses (public form + JSON API)
 
-Beyond rendering it yourself, Schemava ships two turnkey ways to collect responses. Both reuse the same access
-rules (`SurveyAccessResolver`) and persistence (`SurveySubmissionHandler`).
+Beyond rendering it yourself, Schemava ships two turnkey ways to collect responses. Both are **disabled by
+default** — they are unauthenticated, internet-facing endpoints, so exposing them is an explicit opt-in. Both
+reuse the same access rules (`SurveyAccessResolver`) and persistence (`SurveySubmissionHandler`).
 
 **Public web form** — a standalone fill-and-submit page at `GET {prefix}/{hash}` (default `/surveys/{hash}`),
 rendered with `survey-js-ui` and pinned to your `renderer_version`.
+
+While the public form is disabled, every share affordance hides itself automatically — the designer's
+copy-link action, the resource's "Public form URL" entry, and the view page's "Open public form" action —
+because the default `SurveyUrlResolver` returns no public URL rather than a link that would 404.
 
 **JSON API** for mobile / external clients (default prefix `/api/surveys`):
 
@@ -168,22 +196,24 @@ rendered with `survey-js-ui` and pinned to your `renderer_version`.
 
 ### Who may submit is your decision
 
-Nothing is exposed by accident — you control it in `config/schemava.php`:
+Nothing is exposed by accident — both channels ship **off**, and you enable them in `config/schemava.php`
+(publish it first with `php artisan vendor:publish --tag=schemava-config`) or via `.env`:
 
 ```php
 'routes' => [
     'public' => [
-        'enabled' => true,        // false → expose no public form
+        'enabled' => env('SCHEMAVA_PUBLIC_FORM_ENABLED', false), // true → expose the public form
         'middleware' => ['web'],  // add 'auth' to require a logged-in user
     ],
     'api' => [
-        'enabled' => true,        // false → expose no API
+        'enabled' => env('SCHEMAVA_API_ENABLED', false), // true → expose the JSON API
         'middleware' => ['api'],  // add 'auth:sanctum' / 'auth:api' to require a token
     ],
 ],
 ```
 
-- The **defaults allow guests** so a public form works out of the box; add auth middleware to require a login/token.
+- **When enabled, the default middleware allows guests** — that is what a public form is for. Add auth
+  middleware to require a login/token instead.
 - For per-form, role, age, or open/close-window rules, bind your own `SurveyAccessResolver` — it gates the form
   **and** the API identically.
 - Authenticated submissions are attributed to the current user; guest submissions are stored with no user.
@@ -217,8 +247,8 @@ default, so you override only what you need — bind your class in `config('sche
 ### AI assistant (optional)
 
 The AI assistant lets editors describe a form in plain language and have it drafted (or rewrite a selected
-field). It is **off by default** (`NullAiAssistant`). To enable it, install the AI SDK and bind your own
-assistant implementing `AsimNet\Schemava\Contracts\AiAssistant`:
+field). It is **off by default** (`ai.enabled => false`). To enable it, install the AI SDK, configure a
+provider key, and set `SCHEMAVA_AI_ENABLED=true`:
 
 ```bash
 composer require laravel/ai
@@ -238,6 +268,7 @@ one and point your resource at Schemava's model:
 ```php
 use AsimNet\Schemava\Models\SurveySchema; // or your configured subclass
 use Filament\Actions\Action;
+use Filament\Facades\Filament;
 use Filament\Support\Icons\Heroicon;
 
 class FormResource extends Resource
@@ -246,10 +277,16 @@ class FormResource extends Resource
 
     // ...your form() and table()...
 
-    // Add a row/header action that opens the visual builder:
+    // Add a row/header action that opens the visual builder. The optional
+    // `panel` parameter tells the (panel-agnostic) designer which panel it was
+    // opened from, so plugin options like backUrl() resolve against that panel —
+    // it only matters when more than one panel registers the plugin.
     Action::make('design')
         ->icon(Heroicon::PencilSquare)
-        ->url(fn (SurveySchema $record): string => route('survey-designer.show', $record));
+        ->url(fn (SurveySchema $record): string => route('survey-designer.show', [
+            'surveySchema' => $record,
+            'panel' => Filament::getCurrentPanel()?->getId(),
+        ]));
 }
 ```
 
@@ -283,8 +320,10 @@ Keep the route **names** (`survey-designer.*`) — the controller and the bundle
 
 The designer controller authorizes the `update` ability on the schema model **only when a policy is registered
 for it**. With no policy, the routes are protected by their middleware (`auth`) alone — fine for a single-admin
-panel. To enforce finer rules, register a policy (Laravel auto-discovery, your `AuthServiceProvider`, or
-`config('schemava.policy')`). The bundled resource's own visibility is controlled separately by the plugin's
+panel, but **not enough when your app has non-admin authenticated users** (customers, applicants, members):
+any of them could open `survey-designer/{id}` and rewrite a form. In that case register a policy (Laravel
+auto-discovery, your `AuthServiceProvider`, or `config('schemava.policy')`) or add a role/permission middleware
+to `routes.designer.middleware`. The bundled resource's own visibility is controlled separately by the plugin's
 `authorize()` option.
 
 ## Updating

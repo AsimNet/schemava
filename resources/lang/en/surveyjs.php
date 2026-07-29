@@ -4,6 +4,7 @@ return [
 
     'ai' => [
         'not_configured' => 'The AI assistant is not configured.',
+        'request_failed' => 'Could not reach the AI provider. Try again.',
     ],
 
     'designer' => [

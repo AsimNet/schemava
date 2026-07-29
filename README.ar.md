@@ -1,5 +1,7 @@
 # Schemava
 
+> **دليل الاستخدام:** [دليل منشئ النماذج المرئي](docs/ar/form-designer.md) — البناء على اللوحة، الحاويات، المنطق الشرطي، التقييم، والمعاينة.
+
 > English: [README.md](README.md)
 
 إضافة (Plugin) لـ Filament 5 لبناء النماذج والاستبانات وعرضها وجمع ردودها، بصيغة **متوافقة مع SurveyJS** —
@@ -20,7 +22,7 @@
 
 ## المتطلّبات
 
-- PHP 8.3+
+- PHP 8.2+
 - Filament 5.x
 - Laravel 11 / 12
 
@@ -28,8 +30,16 @@
 
 ```bash
 composer require asimnet/schemava
-php artisan schemava:install
+php artisan schemava:install   # ينشر ملف الإعداد وملفات الترحيل (migrations)
+php artisan migrate            # ينشئ جدولي schemava_schemas و schemava_results
+php artisan filament:assets
 ```
+
+> ملاحظة: ملفات الترحيل تُنشر ولا تُشغَّل تلقائيًا — لا بد من نشرها (عبر `schemava:install` أو
+> `php artisan vendor:publish --tag=schemava-migrations`) ثم تنفيذ `php artisan migrate`.
+
+> **لا يُعرَض أي شيء للإنترنت بمجرد التثبيت:** نموذج التعبئة العام وواجهة JSON API **معطّلان افتراضيًا**،
+> وتفعيلهما اختيار صريح من `config/schemava.php` (المفتاحان `routes.public.enabled` و `routes.api.enabled`).
 
 تسجيل الإضافة على اللوحة:
 

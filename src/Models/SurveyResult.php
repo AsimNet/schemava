@@ -7,11 +7,23 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Support\Carbon;
 
 /**
  * A single submission against a {@see SurveySchema}. The owning user model is
  * resolved from the application's auth config so the package stays agnostic of
  * the host's user class.
+ *
+ * @property int $id
+ * @property int|string|null $user_id
+ * @property array<string, mixed>|null $data
+ * @property string|null $status
+ * @property Carbon|null $submitted_at
+ * @property int|string|null $surveyable_id
+ * @property string|null $surveyable_type
+ * @property-read Model|null $user
+ * @property-read SurveySchema|null $surveySchema
+ * @property-read Model|null $surveyable
  */
 class SurveyResult extends Model
 {
