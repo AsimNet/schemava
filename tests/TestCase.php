@@ -72,6 +72,13 @@ abstract class TestCase extends Orchestra
             'prefix' => '',
         ]);
         $app['config']->set('app.key', 'base64:'.base64_encode(random_bytes(32)));
+
+        // The submit routes run through `throttle:schemava-submit`, so the rate
+        // limiter needs a working cache store. Laravel's default is `database`,
+        // whose `cache` table the in-memory test schema does not create — use the
+        // array store instead: it lives for the app instance, so repeated calls
+        // within one test still accumulate hits and can trip the limit.
+        $app['config']->set('cache.default', 'array');
     }
 
     /**
@@ -93,6 +100,7 @@ abstract class TestCase extends Orchestra
                 $table->text('description')->nullable();
                 $table->json('survey_json')->nullable();
                 $table->boolean('is_active')->default(true);
+                $table->unsignedInteger('submission_limit_per_user')->nullable();
                 $table->string('hash')->nullable();
                 $table->string('schemava_version')->nullable();
                 $table->nullableMorphs('surveyable');
@@ -105,6 +113,7 @@ abstract class TestCase extends Orchestra
                 $table->id();
                 $table->foreignId($foreignKey);
                 $table->unsignedBigInteger('user_id')->nullable();
+                $table->string('submitter_fingerprint', 64)->nullable();
                 $table->json('data')->nullable();
                 $table->string('status')->nullable();
                 $table->timestamp('submitted_at')->nullable();

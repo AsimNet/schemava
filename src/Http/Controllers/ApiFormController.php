@@ -7,6 +7,7 @@ use AsimNet\Schemava\Contracts\SurveyAnswerValidator;
 use AsimNet\Schemava\Contracts\SurveySubmissionHandler;
 use AsimNet\Schemava\Models\SurveySchema;
 use AsimNet\Schemava\Services\SurveyScoreCalculator;
+use AsimNet\Schemava\Support\GuestSubject;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,13 +38,14 @@ class ApiFormController
         return response()->json(['data' => $forms]);
     }
 
-    public function show(string $hash): JsonResponse
+    public function show(Request $request, string $hash): JsonResponse
     {
         $schema = $this->resolve($hash);
         $subject = auth()->user();
+        $trackedSubject = $subject ?? GuestSubject::fromRequest($request);
 
         $access = app(SurveyAccessResolver::class);
-        $count = app(SurveySubmissionHandler::class)->submissionCount($schema, $subject);
+        $count = app(SurveySubmissionHandler::class)->submissionCount($schema, $trackedSubject);
         $canSubmit = $access->canSubmit($schema, $subject, $count);
 
         return response()->json(['data' => [
@@ -64,9 +66,10 @@ class ApiFormController
     {
         $schema = $this->resolve($hash);
         $subject = auth()->user();
+        $trackedSubject = $subject ?? GuestSubject::fromRequest($request);
 
         $access = app(SurveyAccessResolver::class);
-        $count = app(SurveySubmissionHandler::class)->submissionCount($schema, $subject);
+        $count = app(SurveySubmissionHandler::class)->submissionCount($schema, $trackedSubject);
 
         if (! $access->canSubmit($schema, $subject, $count)) {
             return response()->json([
@@ -86,7 +89,7 @@ class ApiFormController
             ], 422);
         }
 
-        $result = app(SurveySubmissionHandler::class)->store($schema, $subject, $validated['data']);
+        $result = app(SurveySubmissionHandler::class)->store($schema, $trackedSubject, $validated['data']);
 
         $payload = ['status' => 'submitted'];
 
