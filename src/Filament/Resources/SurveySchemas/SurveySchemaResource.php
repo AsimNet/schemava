@@ -55,24 +55,30 @@ class SurveySchemaResource extends Resource
         return config('schemava.models.schema', SurveySchema::class);
     }
 
+    // Every plugin lookup below uses getOrNull() with a config/deny fallback:
+    // Filament calls these statics while registering panels that may not carry
+    // the plugin, and a throwing lookup there takes the whole app down (#4).
+
     public static function getNavigationGroup(): ?string
     {
-        return SchemavaPlugin::get()->getNavigationGroup();
+        return SchemavaPlugin::getOrNull()?->getNavigationGroup()
+            ?? config('schemava.navigation.group');
     }
 
     public static function getNavigationSort(): ?int
     {
-        return SchemavaPlugin::get()->getNavigationSort();
+        return SchemavaPlugin::getOrNull()?->getNavigationSort()
+            ?? (int) config('schemava.navigation.sort', 100);
     }
 
     public static function canAccess(): bool
     {
-        return SchemavaPlugin::get()->isAuthorized();
+        return SchemavaPlugin::getOrNull()?->isAuthorized() ?? false;
     }
 
     public static function shouldRegisterNavigation(): bool
     {
-        return SchemavaPlugin::get()->isAuthorized();
+        return SchemavaPlugin::getOrNull()?->isAuthorized() ?? false;
     }
 
     public static function form(Schema $schema): Schema
@@ -185,7 +191,7 @@ class SurveySchemaResource extends Resource
      */
     public static function getRelations(): array
     {
-        if (! SchemavaPlugin::get()->hasResponsesRelationManager()) {
+        if (! (SchemavaPlugin::getOrNull()?->hasResponsesRelationManager() ?? true)) {
             return [];
         }
 
