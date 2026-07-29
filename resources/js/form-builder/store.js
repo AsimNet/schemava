@@ -12,7 +12,7 @@
  * State and selection/dirty bookkeeping.
  */
 
-import { reactive } from 'vue';
+import { reactive, toRaw } from 'vue';
 import { fromSurveyJson, toSurveyJson, nextFieldName } from './model/serialize.js';
 import { FIELD_TYPES, ADVANCED_TYPE } from './model/fieldTypes.js';
 import { emptyLStr, isEmptyLStr } from './model/localized.js';
@@ -936,33 +936,78 @@ export function setChoices(name, choices) {
 }
 
 /**
- * Set or clear an imagepicker choice's image, addressing BOTH ends by identity:
- * the field by name, the choice by its stable `_uid`.
+ * Locate a field in the survey tree by object identity and return the tree's own
+ * (reactive) reference to it, or null if it is no longer attached.
+ *
+ * Identity, not name: `renameField` mutates `name` in place, so a name is not
+ * stable across an in-flight async operation, whereas the object survives a
+ * rename. `duplicateField` structuredClones, so a copy is a distinct object even
+ * though it carries the same choice `_uid`s — which is why uid alone cannot
+ * identify the owner either.
+ *
+ * Both sides are compared through `toRaw` because callers may hold either the
+ * raw object or a reactive proxy of it (`addField` returns the raw one it
+ * spliced in, while reads through `store.state` come back proxied). Returning
+ * the tree's reference — not the caller's — means writes go through the proxy
+ * and stay reactive.
+ *
+ * @param {object} field
+ * @returns {object|null}
+ */
+function attachedField(field) {
+    if (!store.state || !field) {
+        return null;
+    }
+
+    const target = toRaw(field);
+
+    for (const page of store.state.pages) {
+        for (const candidate of page.fields) {
+            if (toRaw(candidate) === target) {
+                return candidate;
+            }
+            if (CONTAINER_TYPES.includes(candidate.type) && Array.isArray(candidate.typeProps?.templateElements)) {
+                for (const sub of candidate.typeProps.templateElements) {
+                    if (toRaw(sub) === target) {
+                        return sub;
+                    }
+                }
+            }
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Set or clear an imagepicker choice's image, addressing BOTH ends by a stable
+ * identity: the field by object reference, the choice by its `_uid`.
  *
  * Image uploads are async, and the author stays free to reorder choices, delete
- * one, or select an entirely different field before the response lands. Resolving
- * through the store by captured identity means a late result still reaches the
- * choice that started it — the server has already stored the image, so silently
- * dropping it because the selection moved would lose it — while a result whose
- * field or choice was genuinely removed is discarded.
+ * one, rename the field, or select something else entirely before the response
+ * lands. The server has already stored the image by then, so a late result must
+ * still reach the choice that started it rather than be written to whatever is
+ * selected now or dropped on the floor. Only a genuine removal — of the field or
+ * of the choice — discards it.
  *
- * @param {string} name Field the upload was started from.
+ * @param {object} field Field object the upload was started from.
  * @param {string} uid `_uid` of the choice the upload was started from.
  * @param {string|null} imageLink Link to set, or null to remove the image.
  * @returns {boolean} True when the link was written.
  */
-export function setChoiceImageLink(name, uid, imageLink) {
-    const found = findField(name);
-    if (!found) {
+export function setChoiceImageLink(field, uid, imageLink) {
+    const target = attachedField(field);
+    if (!target) {
         return false;
     }
 
-    const next = withChoiceImageLink(found.field.choices ?? [], uid, imageLink);
+    const next = withChoiceImageLink(target.choices ?? [], uid, imageLink);
     if (next === null) {
         return false;
     }
 
-    setChoices(name, next);
+    target.choices = next;
+    markDirty();
 
     return true;
 }
