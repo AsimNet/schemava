@@ -1071,6 +1071,21 @@ describe('store — imagepicker choice images resolve by identity', () => {
         expect(copy.choices[0].raw.imageLink).toBeUndefined();
     });
 
+    // The precondition behind ChoicesEditor scoping its in-flight upload state to
+    // (owner field, uid) rather than uid alone: duplicating shares the uids AND
+    // switches the drawer to the copy, so a uid-only pending flag would strand the
+    // duplicate's upload button behind the original's request.
+    it('duplicating shares choice uids and selects the copy', () => {
+        const picker = addField('imagepicker');
+        seed(picker.name, ['a1', 'a2']);
+        const copy = duplicateField(picker.name);
+
+        expect(copy).not.toBe(picker);
+        expect(copy.name).not.toBe(picker.name);
+        expect(copy.choices.map((c) => c._uid)).toEqual(['a1', 'a2']);
+        expect(store.selectedFieldName).toBe(copy.name);
+    });
+
     it('follows the choice after a reorder rather than writing by position', () => {
         const picker = addField('imagepicker');
         seed(picker.name, ['a1', 'a2', 'a3']);
