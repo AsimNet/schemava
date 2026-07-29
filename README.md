@@ -182,6 +182,10 @@ reuse the same access rules (`SurveyAccessResolver`) and persistence (`SurveySub
 **Public web form** — a standalone fill-and-submit page at `GET {prefix}/{hash}` (default `/surveys/{hash}`),
 rendered with `survey-js-ui` and pinned to your `renderer_version`.
 
+While the public form is disabled, every share affordance hides itself automatically — the designer's
+copy-link action, the resource's "Public form URL" entry, and the view page's "Open public form" action —
+because the default `SurveyUrlResolver` returns no public URL rather than a link that would 404.
+
 **JSON API** for mobile / external clients (default prefix `/api/surveys`):
 
 | Method & path | Purpose |
@@ -264,6 +268,7 @@ one and point your resource at Schemava's model:
 ```php
 use AsimNet\Schemava\Models\SurveySchema; // or your configured subclass
 use Filament\Actions\Action;
+use Filament\Facades\Filament;
 use Filament\Support\Icons\Heroicon;
 
 class FormResource extends Resource
@@ -272,10 +277,16 @@ class FormResource extends Resource
 
     // ...your form() and table()...
 
-    // Add a row/header action that opens the visual builder:
+    // Add a row/header action that opens the visual builder. The optional
+    // `panel` parameter tells the (panel-agnostic) designer which panel it was
+    // opened from, so plugin options like backUrl() resolve against that panel —
+    // it only matters when more than one panel registers the plugin.
     Action::make('design')
         ->icon(Heroicon::PencilSquare)
-        ->url(fn (SurveySchema $record): string => route('survey-designer.show', $record));
+        ->url(fn (SurveySchema $record): string => route('survey-designer.show', [
+            'surveySchema' => $record,
+            'panel' => Filament::getCurrentPanel()?->getId(),
+        ]));
 }
 ```
 
