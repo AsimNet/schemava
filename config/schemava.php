@@ -7,7 +7,6 @@ use AsimNet\Schemava\Support\DefaultSurveyAnswerValidator;
 use AsimNet\Schemava\Support\DefaultSurveySubmissionHandler;
 use AsimNet\Schemava\Support\DefaultSurveyUrlResolver;
 use AsimNet\Schemava\Support\LaravelAiAssistant;
-use AsimNet\Schemava\Support\NullAiAssistant;
 use AsimNet\Schemava\Support\OpenSurveyAccessResolver;
 
 return [
@@ -97,14 +96,14 @@ return [
     | you only pick which provider/model Schemava uses. The assistant appears
     | ONLY when 'enabled' is on AND laravel/ai is installed AND the chosen
     | provider has credentials; otherwise the button is hidden and the
-    | endpoint refuses queries. Hard-off: 'enabled' => false (or bind
-    | NullAiAssistant). OpenRouter: use the SDK's openai provider with
-    | OPENAI_URL=https://openrouter.ai/api/v1.
+    | endpoint refuses queries. OFF BY DEFAULT — opt in with
+    | SCHEMAVA_AI_ENABLED=true (or 'enabled' => true here). OpenRouter: use
+    | the SDK's openai provider with OPENAI_URL=https://openrouter.ai/api/v1.
     |
     */
 
     'ai' => [
-        'enabled' => env('SCHEMAVA_AI_ENABLED', true),
+        'enabled' => env('SCHEMAVA_AI_ENABLED', false),
         // null = the laravel/ai default provider (config('ai.default')).
         'provider' => env('SCHEMAVA_AI_PROVIDER'),
         // null = the provider's default model.
@@ -168,24 +167,33 @@ return [
         'designer' => [
             'prefix' => 'survey-designer',
             'middleware' => ['web', 'auth'],
+
+            // Where the designer's "back" control returns to. Null resolves,
+            // in order: SchemavaPlugin::backUrl(), then the bundled Forms
+            // resource's view page when it is registered. For per-schema URLs
+            // use the plugin option or bind your own SurveyUrlResolver.
+            'back_url' => null,
         ],
 
-        // Public, browser-rendered fill-and-submit form. WHO MAY SUBMIT IS YOUR
-        // CALL: the default middleware allows guests — add 'auth' to require a
-        // logged-in user, and/or bind a SurveyAccessResolver for finer rules.
-        // Set 'enabled' => false to not expose a public form at all.
+        // Public, browser-rendered fill-and-submit form. DISABLED BY DEFAULT:
+        // enabling it exposes an unauthenticated, internet-facing endpoint, so
+        // that is an explicit opt-in. When you enable it, WHO MAY SUBMIT IS
+        // YOUR CALL: the default middleware allows guests — add 'auth' to
+        // require a logged-in user, and/or bind a SurveyAccessResolver for
+        // finer rules.
         'public' => [
-            'enabled' => true,
+            'enabled' => env('SCHEMAVA_PUBLIC_FORM_ENABLED', false),
             'name' => 'schemava.public.show',
             'prefix' => 'surveys',
             'middleware' => ['web'],
         ],
 
         // JSON API for mobile / external clients (list forms, fetch one, submit).
-        // Same principle: the default middleware is open — add e.g. 'auth:sanctum'
-        // or 'auth:api' to require a token. Set 'enabled' => false to turn it off.
+        // DISABLED BY DEFAULT for the same reason — enabling it publishes a
+        // guest-open listing of every active form. When you enable it, add e.g.
+        // 'auth:sanctum' or 'auth:api' to the middleware to require a token.
         'api' => [
-            'enabled' => true,
+            'enabled' => env('SCHEMAVA_API_ENABLED', false),
             'prefix' => 'api/surveys',
             'middleware' => ['api'],
         ],
