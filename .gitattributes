@@ -1,8 +1,8 @@
-# Keep the customer's `composer require` archive lean: development, build,
+# Keep the `composer require` archive lean: development, build,
 # test, and editor/AI files are export-ignored, so the published package
 # contains only runtime code (src, config, database, compiled assets in
 # resources/dist, views, lang) plus composer.json, LICENSE and README.
-# git archive / the GitHub tarballs Packistry serves honor these rules.
+# git archive / the GitHub tarballs Composer downloads honor these rules.
 /.github            export-ignore
 /.gitattributes     export-ignore
 /.gitignore         export-ignore

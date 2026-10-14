@@ -30,17 +30,17 @@ JSON and previews/renders with the MIT-licensed open-source `survey-core` engine
 
 ## Installation
 
-Schemava is a licensed package distributed from a private Composer repository (it is **not** on public
-Packagist). After purchase you receive the repository URL and a license **token** — both are also shown on your
-**My License** page.
-
-Point Composer at the repository, authenticate with your token, then require the package:
+Schemava is free and open source. Install it straight from GitHub by adding the repository to Composer, then
+require the package:
 
 ```bash
-composer config repositories.schemava composer https://repo.schemava.dev
-composer config bearer.repo.schemava.dev YOUR-LICENSE-TOKEN
+composer config repositories.schemava vcs https://github.com/AsimNet/schemava
 composer require asimnet/schemava
 ```
+
+> **GitHub rate limits:** Composer reads tags through the GitHub API. If installs get throttled (common in CI),
+> add a GitHub token: `composer config --global github-oauth.github.com YOUR-GITHUB-TOKEN` (no scopes needed for a
+> public repository), or provide it via `COMPOSER_AUTH='{"github-oauth":{"github.com":"YOUR-GITHUB-TOKEN"}}'`.
 
 Publish and run the migrations (this creates the `schemava_schemas` and `schemava_results` tables — the
 migrations are publish-only so you can review or adapt them, e.g. custom table names), then publish the builder
@@ -63,11 +63,6 @@ php artisan filament:assets
 > **Nothing is exposed to the internet by installing the package.** The public fill-and-submit form and the
 > JSON API are **disabled by default** — see [Collecting responses](#collecting-responses-public-form--json-api)
 > to opt in deliberately.
-
-> **CI / Docker:** never commit your token. Provide it at build time via the `COMPOSER_AUTH` environment
-> variable instead:
-> `COMPOSER_AUTH='{"bearer":{"repo.schemava.dev":"YOUR-LICENSE-TOKEN"}}'`
-> (or mount an `auth.json` as a build secret).
 
 ## Quick start
 
@@ -328,22 +323,19 @@ to `routes.designer.middleware`. The bundled resource's own visibility is contro
 
 ## Updating
 
-Your purchase includes one year of updates:
-
 ```bash
 composer update asimnet/schemava
 php artisan filament:assets
 ```
 
 Because you require `"asimnet/schemava": "^1.0"`, Composer's `prefer-stable` keeps pre-releases off your servers
-unless you explicitly opt in. After your update window ends the plugin keeps working — renewing only unlocks
-newer releases.
+unless you explicitly opt in.
 
 ## Troubleshooting
 
-- **`composer` returns `403` / "could not authenticate":** your token is missing or wrong. Re-run the
-  `composer config bearer.repo.schemava.dev …` command with the token from your **My License** page. A refunded
-  purchase revokes the token.
+- **`composer` still tries `repo.schemava.dev` / returns `403` or `404`:** that private repository is retired.
+  Point the repository at GitHub, drop the old token, then update:
+  `composer config repositories.schemava vcs https://github.com/AsimNet/schemava && composer config --unset bearer.repo.schemava.dev && composer update asimnet/schemava`
 - **The builder doesn't load / assets are missing:** run `php artisan filament:assets` after install/update and
   make sure it runs as part of your deploy; then hard-refresh.
 - **Image/file uploads fail:** check `storage.disk` is writable and, if public, run `php artisan storage:link`.
@@ -357,11 +349,9 @@ See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## License
 
-Schemava is **commercial, proprietary software** — not open source. It is sold via
-[schemava.dev](https://schemava.dev). A purchase grants a non-exclusive, perpetual license to use it in
-applications you own or build; you may not resell or redistribute the package itself. See [LICENSE.md](LICENSE.md)
-for the full terms, and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the MIT-licensed components it
-interoperates with (such as the `survey-core` renderer).
+Schemava is open-source software licensed under the [MIT license](LICENSE.md). See
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the MIT-licensed components it interoperates with (such as
+the `survey-core` renderer).
 
 ## Trademark notice
 
