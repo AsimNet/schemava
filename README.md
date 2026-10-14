@@ -2,7 +2,7 @@
 
 > **Author guide (Arabic):** [دليل منشئ النماذج المرئي](docs/ar/form-designer.md) — canvas authoring, containers, conditional logic, quizzes, and preview.
 
-> A visual, multilingual form builder built specifically for **FilamentPHP panels** — exports **SurveyJS-compatible JSON**.
+> A free, open-source (MIT), visual, multilingual form builder built specifically for **FilamentPHP panels** — exports **SurveyJS-compatible JSON**.
 
 Schemava adds a drag-and-drop form **designer** to your FilamentPHP panel. You build forms visually, store the
 schemas in your own Laravel database as plain SurveyJS-compatible JSON, and render them anywhere a `survey-core`
@@ -360,11 +360,11 @@ SurveyJS, or Devsoft Baltic OÜ. FilamentPHP and SurveyJS are trademarks of thei
 
 ## Releasing (maintainers)
 
-Publishing is automatic: pushing a tag triggers the registry's webhook, which syncs that version. Releases
-follow [semver](https://semver.org) — the suffix decides the channel.
+Publishing is automatic: Composer reads releases straight from this repository's tags, so pushing a tag is all
+it takes. Releases follow [semver](https://semver.org) — the suffix decides the channel.
 
 ```bash
-# Stable release — customers on "^1.0" receive it on their next `composer update`.
+# Stable release — users on "^1.0" receive it on their next `composer update`.
 git tag v1.1.2 && git push origin main v1.1.2
 
 # Beta / pre-release — only consumers who opt in with @beta receive it.
