@@ -1,47 +1,21 @@
-# Schemava End-User License Agreement
+# The MIT License (MIT)
 
-Copyright (c) Asim M Al Twijry, Buraydah, Saudi Arabia. All rights reserved.
+Copyright (c) Asim M Al Twijry
 
-Schemava is commercial, proprietary software. It is **not** open source. Your use of
-it is governed by this agreement. By installing or using Schemava you agree to these
-terms.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-## License grant
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
 
-When you purchase Schemava, you receive a **non-exclusive, non-transferable, perpetual**
-license to install and use the software in applications that you own or develop —
-including for your clients — across an **unlimited** number of such projects.
-
-## What you may not do
-
-You may **not**:
-
-- resell, redistribute, sublicense, rent, lease, or lend the software;
-- publish the software or its source code as a standalone product, package, or template,
-  whether for free or for a fee;
-- remove or alter any copyright, license, or other proprietary notices.
-
-Using Schemava as a component inside the applications you build is fine. Distributing
-Schemava itself — as code, a package, or a competing product — is not.
-
-## Updates
-
-Your purchase includes **one (1) year of updates** from the date of purchase. After that
-year, the software continues to work indefinitely; renewing only unlocks access to newer
-releases. Renewal is optional.
-
-## Warranty and liability
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-PURPOSE, AND NONINFRINGEMENT. To the maximum extent permitted by law, the author's total
-liability under this agreement is limited to the amount you paid for the license.
-
-## Governing law
-
-This agreement is governed by the laws of the Kingdom of Saudi Arabia.
-
----
-
-Seller: Asim M Al Twijry, Buraydah, Saudi Arabia
-Support: support@schemava.dev
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
