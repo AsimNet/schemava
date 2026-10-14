@@ -29,11 +29,19 @@
 ## التثبيت
 
 ```bash
+composer config repositories.schemava vcs https://github.com/AsimNet/schemava
 composer require asimnet/schemava
 php artisan schemava:install   # ينشر ملف الإعداد وملفات الترحيل (migrations)
 php artisan migrate            # ينشئ جدولي schemava_schemas و schemava_results
 php artisan filament:assets
 ```
+
+> **للمستخدمين السابقين:** المستودع الخاص `repo.schemava.dev` متوقّف، والحزمة الآن مجانية وتُثبَّت من GitHub مباشرة.
+> وجّه المستودع إلى GitHub واحذف التوكن القديم ثم حدّث:
+> `composer config repositories.schemava vcs https://github.com/AsimNet/schemava && composer config --unset bearer.repo.schemava.dev && composer update asimnet/schemava`
+
+> **حدود GitHub API:** إن تعثّر التثبيت (خصوصًا في CI)، أضف توكن GitHub (بلا صلاحيات لمستودع عام):
+> `composer config --global github-oauth.github.com YOUR-GITHUB-TOKEN`
 
 > ملاحظة: ملفات الترحيل تُنشر ولا تُشغَّل تلقائيًا — لا بد من نشرها (عبر `schemava:install` أو
 > `php artisan vendor:publish --tag=schemava-migrations`) ثم تنفيذ `php artisan migrate`.
