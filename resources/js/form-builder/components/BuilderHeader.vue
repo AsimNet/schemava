@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { store, markClean, pushToast, setContentLocale, quizFieldCount, totalQuizPoints } from '../store.js';
-import { t } from '../i18n.js';
+import { t, i18n, setLocale } from '../i18n.js';
 import { toSurveyJson } from '../model/serialize.js';
 import { isEmptyLStr } from '../model/localized.js';
 import { copyTextToClipboard } from '../ui-helpers.js';
@@ -18,11 +18,13 @@ const emit = defineEmits(['update:active-tab', 'open-json', 'open-settings', 'op
 /** Heroicons-outline path `d` strings for the consolidated "More" menu items. */
 const ICON_JSON = 'M14.25 9.75L16.5 12l-2.25 2.25m-4.5 0L7.5 12l2.25-2.25M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z';
 const ICON_LOGIC_MAP = 'M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5A4.5 4.5 0 0021 12V3';
+const ICON_LANGUAGE = 'M10.5 21l5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 016-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 01-3.827-5.802';
 
 /** Secondary actions consolidated into the "⋯ More" dropdown (fix 3). */
 const moreItems = computed(() => [
     { id: 'logic-map', label: t('logicMapOpen'), icon: ICON_LOGIC_MAP },
     { id: 'json', label: t('jsonOpen'), icon: ICON_JSON },
+    { id: 'ui-locale', label: t('uiLanguageSwitch'), icon: ICON_LANGUAGE },
 ]);
 
 function onMoreSelect(id) {
@@ -30,6 +32,9 @@ function onMoreSelect(id) {
         emit('open-json');
     } else if (id === 'logic-map') {
         emit('open-logic-map');
+    } else if (id === 'ui-locale') {
+        // Explicit author choice — persisted, wins over the config default.
+        setLocale(i18n.locale === 'ar' ? 'en' : 'ar');
     }
 }
 
@@ -48,12 +53,27 @@ const backUrl = computed(() => {
     return typeof url === 'string' ? url.trim() : '';
 });
 
-// Without a URL, fall back to history navigation — but only when this tab has
-// somewhere to go back to; a dead control is worse than none (issue #8).
-const canGoBack = window.history.length > 1;
+/** Where "back" goes when there is no explicit URL and no history to return through. */
+const backFallbackUrl = computed(() => {
+    const url = props.boot?.routes?.backFallbackUrl;
+
+    return typeof url === 'string' ? url.trim() : '';
+});
+
+// Without an explicit URL, go back through the browser history so the author
+// returns to whichever page opened the designer. A tab without history (opened
+// in a new tab) uses the fallback URL; with neither, the control hides — a dead
+// control is worse than none (issue #8).
+const hasHistory = typeof window !== 'undefined' && window.history.length > 1;
+const canGoBack = hasHistory || backFallbackUrl.value !== '';
 
 function goBack() {
-    window.history.back();
+    if (hasHistory) {
+        window.history.back();
+
+        return;
+    }
+    window.location.assign(backFallbackUrl.value);
 }
 
 /** Copy the public survey link to the clipboard and toast on success/failure. */

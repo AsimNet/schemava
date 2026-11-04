@@ -123,7 +123,7 @@ SchemavaPlugin::make()
 | `navigationGroup(?string)` | `null` | Navigation group for the resource. |
 | `navigationSort(int)` | `100` | Navigation sort order. |
 | `authorize(Closure\|bool)` | `true` | Gates the resource's `canAccess()` and nav visibility. |
-| `backUrl(string\|Closure\|null)` | `null` | The designer's "back" destination. When unset, it falls back to `routes.designer.back_url` (config), then the bundled resource's view page; with no URL at all the control uses browser history (and hides in a fresh tab). |
+| `backUrl(string\|Closure\|null)` | `null` | The designer's "back" destination. `routes.designer.back_url` (config) wins over it. When neither is set, the control goes back through browser history (to whichever page opened the designer); in a tab with no history it goes to the bundled resource's view page, and hides when there is none. |
 
 ## Configuration
 
@@ -142,6 +142,7 @@ Everything in `config/schemava.php`:
 | `renderer_version` | The `survey-core` version the builder validates and previews against (default `2.3.16`). |
 | `routes.enabled` | Whether the package registers the designer routes. Set `false` if you register your own. |
 | `routes.designer` | Prefix + middleware for the designer routes, and `back_url` — the designer's "back" destination (see **Plugin options**). |
+| `designer_ui_locale` | Default designer interface language: `'ar'` (default), `'en'`, or `null` to follow the app locale. Independent of the browser language; authors can switch it from the designer's "⋯" menu (remembered per browser). |
 | `routes.public` | The optional public form route (**disabled by default**) — enabled flag, prefix, middleware, name. |
 | `routes.api` | The optional JSON API (**disabled by default**) — enabled flag, prefix, middleware. |
 | `ai.enabled` | The designer's AI assistant (**disabled by default**); needs `laravel/ai` + provider credentials. |

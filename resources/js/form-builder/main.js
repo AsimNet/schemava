@@ -27,9 +27,10 @@ const boot = readBootPayload();
 
 loadFromBoot(boot);
 // Config-provided default UI language — only until the author explicitly picks
-// one in the designer (that stored choice wins on later visits).
+// one from the designer's menu (that stored choice wins on later visits). Not
+// persisted, so changing the config default takes effect for everyone else.
 if (!window.localStorage?.getItem('formBuilderLocale') && (boot.uiLocale === 'ar' || boot.uiLocale === 'en')) {
-    setLocale(boot.uiLocale);
+    setLocale(boot.uiLocale, { persist: false });
 }
 bootstrapDirection();
 

@@ -5,6 +5,7 @@ namespace AsimNet\Schemava\Tests\Feature;
 use AsimNet\Schemava\Contracts\SurveyUrlResolver;
 use AsimNet\Schemava\Models\SurveySchema;
 use AsimNet\Schemava\SchemavaPlugin;
+use AsimNet\Schemava\Support\DefaultSurveyUrlResolver;
 use AsimNet\Schemava\Tests\TestCase;
 use PHPUnit\Framework\Attributes\Test;
 
@@ -57,5 +58,27 @@ class DesignerBackUrlTest extends TestCase
         $url = app(SurveyUrlResolver::class)->adminUrl($schema);
 
         $this->assertSame('https://example.test/forms/'.$schema->getKey(), $url);
+    }
+
+    #[Test]
+    public function without_an_explicit_url_the_designer_uses_history_with_the_resource_as_fallback(): void
+    {
+        $schema = $this->schema();
+        $resolver = app(SurveyUrlResolver::class);
+
+        $this->assertInstanceOf(DefaultSurveyUrlResolver::class, $resolver);
+        $this->assertNull($resolver->configuredBackUrl($schema));
+        $this->assertStringContainsString('/admin/survey-schemas/'.$schema->getKey(), (string) $resolver->fallbackBackUrl($schema));
+    }
+
+    #[Test]
+    public function an_explicit_url_is_reported_as_configured(): void
+    {
+        config()->set('schemava.routes.designer.back_url', 'https://example.test/forms');
+
+        $this->assertSame(
+            'https://example.test/forms',
+            app(SurveyUrlResolver::class)->configuredBackUrl($this->schema()),
+        );
     }
 }
