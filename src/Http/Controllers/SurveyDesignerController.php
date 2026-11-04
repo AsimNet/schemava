@@ -17,6 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use ReflectionMethod;
 use Throwable;
 
 /**
@@ -82,10 +83,10 @@ class SurveyDesignerController
      */
     protected function backRoutes(SurveyUrlResolver $urls, SurveySchema $schema): array
     {
-        if ($urls instanceof DefaultSurveyUrlResolver) {
+        if (($default = $this->defaultBackResolver($urls)) !== null) {
             return [
-                'backUrl' => $urls->configuredBackUrl($schema),
-                'backFallbackUrl' => $urls->fallbackBackUrl($schema),
+                'backUrl' => $default->configuredBackUrl($schema),
+                'backFallbackUrl' => $default->fallbackBackUrl($schema),
             ];
         }
 
@@ -94,6 +95,22 @@ class SurveyDesignerController
             'backUrl' => $urls->adminUrl($schema),
             'backFallbackUrl' => null,
         ];
+    }
+
+    /**
+     * The resolver, only when it is the default one (or a subclass that does
+     * NOT override adminUrl()). A subclass overriding the contract's adminUrl()
+     * made an explicit choice that must keep winning over history navigation.
+     */
+    protected function defaultBackResolver(SurveyUrlResolver $urls): ?DefaultSurveyUrlResolver
+    {
+        if (! $urls instanceof DefaultSurveyUrlResolver) {
+            return null;
+        }
+
+        $declaring = (new ReflectionMethod($urls, 'adminUrl'))->getDeclaringClass()->getName();
+
+        return $declaring === DefaultSurveyUrlResolver::class ? $urls : null;
     }
 
     /**

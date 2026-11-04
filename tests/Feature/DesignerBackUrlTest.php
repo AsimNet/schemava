@@ -7,6 +7,7 @@ use AsimNet\Schemava\Models\SurveySchema;
 use AsimNet\Schemava\SchemavaPlugin;
 use AsimNet\Schemava\Support\DefaultSurveyUrlResolver;
 use AsimNet\Schemava\Tests\TestCase;
+use Illuminate\Auth\Middleware\Authenticate;
 use PHPUnit\Framework\Attributes\Test;
 
 /**
@@ -80,5 +81,49 @@ class DesignerBackUrlTest extends TestCase
             'https://example.test/forms',
             app(SurveyUrlResolver::class)->configuredBackUrl($this->schema()),
         );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function bootRoutes(SurveySchema $schema): array
+    {
+        $this->withoutMiddleware(Authenticate::class);
+
+        $payload = $this->get(route('survey-designer.show', ['surveySchema' => $schema->getKey()]))
+            ->assertOk()
+            ->viewData('bootPayload');
+
+        return $payload['routes'];
+    }
+
+    #[Test]
+    public function the_designer_sends_no_explicit_back_url_by_default_so_history_is_used(): void
+    {
+        $schema = $this->schema();
+
+        $routes = $this->bootRoutes($schema);
+
+        $this->assertNull($routes['backUrl']);
+        $this->assertStringContainsString('/admin/survey-schemas/'.$schema->getKey(), (string) $routes['backFallbackUrl']);
+    }
+
+    #[Test]
+    public function a_subclass_overriding_admin_url_keeps_its_explicit_destination(): void
+    {
+        $this->app->bind(SurveyUrlResolver::class, fn () => new class extends DefaultSurveyUrlResolver
+        {
+            public function adminUrl(SurveySchema $schema): ?string
+            {
+                return 'https://host.example/forms/'.$schema->getKey();
+            }
+        });
+
+        $schema = $this->schema();
+
+        $routes = $this->bootRoutes($schema);
+
+        $this->assertSame('https://host.example/forms/'.$schema->getKey(), $routes['backUrl']);
+        $this->assertNull($routes['backFallbackUrl']);
     }
 }
