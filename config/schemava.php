@@ -77,9 +77,11 @@ return [
     | Designer interface language
     |--------------------------------------------------------------------------
     |
-    | Default UI language ('ar' | 'en') for the visual form designer. Applies
-    | until the author picks a language from the designer's own menu (that
-    | choice is remembered per browser and then wins over this default).
+    | Default UI language ('ar' | 'en') for the visual form designer, or null
+    | to follow the application locale (app()->getLocale()). It does NOT
+    | depend on the browser's language. Applies until the author picks a
+    | language from the designer's "⋯" menu (that choice is remembered per
+    | browser and then wins over this default).
     |
     */
 
@@ -168,10 +170,12 @@ return [
             'prefix' => 'survey-designer',
             'middleware' => ['web', 'auth'],
 
-            // Where the designer's "back" control returns to. Null resolves,
-            // in order: SchemavaPlugin::backUrl(), then the bundled Forms
-            // resource's view page when it is registered. For per-schema URLs
-            // use the plugin option or bind your own SurveyUrlResolver.
+            // Where the designer's "back" control returns to. Null falls back to
+            // SchemavaPlugin::backUrl(); when neither is set, "back" uses the
+            // browser history (returns to the page that opened the designer),
+            // and only goes to the bundled Forms resource's view page when the
+            // tab has no history (e.g. opened in a new tab). For per-schema
+            // URLs use the plugin option or bind your own SurveyUrlResolver.
             'back_url' => null,
         ],
 

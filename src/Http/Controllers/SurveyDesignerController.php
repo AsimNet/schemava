@@ -8,6 +8,7 @@ use AsimNet\Schemava\Contracts\SurveyUrlResolver;
 use AsimNet\Schemava\Http\Requests\SurveyDesignerAiQueryRequest;
 use AsimNet\Schemava\Models\SurveySchema;
 use AsimNet\Schemava\SchemavaPlugin;
+use AsimNet\Schemava\Support\DefaultSurveyUrlResolver;
 use Filament\Facades\Filament;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -16,6 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use ReflectionMethod;
 use Throwable;
 
 /**
@@ -53,13 +55,13 @@ class SurveyDesignerController
                 'save' => route('survey-designer.save', ['surveySchema' => $surveySchema->id]),
                 'uploadImage' => route('survey-designer.upload-image'),
                 'aiQuery' => route('survey-designer.ai-query', ['surveySchema' => $surveySchema->id]),
-                'backUrl' => $urls->adminUrl($surveySchema),
+                ...$this->backRoutes($urls, $surveySchema),
             ],
             'csrf' => csrf_token(),
             'runtimeContextKeys' => $runtime->keys(),
             'variableMeta' => $runtime->variableMeta(),
             'locale' => $locale,
-            'uiLocale' => config('schemava.designer_ui_locale', 'ar'),
+            'uiLocale' => $this->designerUiLocale($locale),
             'aiEnabled' => config('schemava.ai.enabled', false) && app(AiAssistant::class)->isConfigured(),
         ];
 
@@ -69,6 +71,62 @@ class SurveyDesignerController
             'locale' => $locale,
             'rendererVersion' => config('schemava.renderer_version'),
         ]);
+    }
+
+    /**
+     * The designer's back control. A host-set URL (config / plugin / custom
+     * resolver) is used as-is; otherwise the designer goes back through the
+     * browser history and only uses `backFallbackUrl` when the tab has no
+     * history (e.g. opened in a new tab).
+     *
+     * @return array{backUrl: ?string, backFallbackUrl: ?string}
+     */
+    protected function backRoutes(SurveyUrlResolver $urls, SurveySchema $schema): array
+    {
+        if (($default = $this->defaultBackResolver($urls)) !== null) {
+            return [
+                'backUrl' => $default->configuredBackUrl($schema),
+                'backFallbackUrl' => $default->fallbackBackUrl($schema),
+            ];
+        }
+
+        // A custom resolver's adminUrl() is an explicit choice by the host.
+        return [
+            'backUrl' => $urls->adminUrl($schema),
+            'backFallbackUrl' => null,
+        ];
+    }
+
+    /**
+     * The resolver, only when it is the default one (or a subclass that does
+     * NOT override adminUrl()). A subclass overriding the contract's adminUrl()
+     * made an explicit choice that must keep winning over history navigation.
+     */
+    protected function defaultBackResolver(SurveyUrlResolver $urls): ?DefaultSurveyUrlResolver
+    {
+        if (! $urls instanceof DefaultSurveyUrlResolver) {
+            return null;
+        }
+
+        $declaring = (new ReflectionMethod($urls, 'adminUrl'))->getDeclaringClass()->getName();
+
+        return $declaring === DefaultSurveyUrlResolver::class ? $urls : null;
+    }
+
+    /**
+     * Default designer UI language ('ar' | 'en'). `designer_ui_locale` set to
+     * null (or 'app') follows the application locale instead of a fixed value.
+     * The author's own pick from the designer menu still wins over this.
+     */
+    protected function designerUiLocale(string $appLocale): string
+    {
+        $configured = config('schemava.designer_ui_locale', 'ar');
+
+        if ($configured === null || $configured === 'app') {
+            $configured = strtolower(substr($appLocale, 0, 2));
+        }
+
+        return in_array($configured, ['ar', 'en'], true) ? $configured : 'ar';
     }
 
     /**

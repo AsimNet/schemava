@@ -28,6 +28,7 @@ const MESSAGES = {
         saved: 'تم الحفظ',
         saveFailed: 'فشل الحفظ',
         uiLanguage: 'لغة الواجهة',
+        uiLanguageSwitch: 'تبديل لغة الواجهة إلى English',
         contentLanguage: 'لغة المحتوى',
         arabic: 'العربية',
         english: 'الإنجليزية',
@@ -411,6 +412,7 @@ const MESSAGES = {
         saved: 'Saved',
         saveFailed: 'Save failed',
         uiLanguage: 'Interface language',
+        uiLanguageSwitch: 'Switch interface to العربية',
         contentLanguage: 'Content language',
         arabic: 'Arabic',
         english: 'English',
@@ -811,10 +813,15 @@ export function t(key) {
     return dict[key] ?? MESSAGES.ar[key] ?? key;
 }
 
-export function setLocale(locale) {
+/**
+ * Switch the UI language. `persist` stores it as the author's explicit choice
+ * (wins over the host's config default on later visits); a config-applied
+ * default must NOT persist, or a later config change would never take effect.
+ */
+export function setLocale(locale, { persist = true } = {}) {
     const next = locale === 'en' ? 'en' : 'ar';
     i18n.locale = next;
-    if (typeof window !== 'undefined') {
+    if (persist && typeof window !== 'undefined') {
         window.localStorage?.setItem(STORAGE_KEY, next);
     }
     applyDocumentDirection(next);

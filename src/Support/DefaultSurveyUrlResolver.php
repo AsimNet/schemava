@@ -45,6 +45,17 @@ class DefaultSurveyUrlResolver implements SurveyUrlResolver
      */
     public function adminUrl(SurveySchema $schema): ?string
     {
+        return $this->configuredBackUrl($schema) ?? $this->fallbackBackUrl($schema);
+    }
+
+    /**
+     * The back destination the host set EXPLICITLY (config `back_url`, then the
+     * plugin's `backUrl()`), or null when it set none. With no explicit value
+     * the designer goes back through browser history, so the author returns to
+     * whichever page actually opened it (list, view, edit, …).
+     */
+    public function configuredBackUrl(SurveySchema $schema): ?string
+    {
         $configured = config('schemava.routes.designer.back_url');
 
         if (is_string($configured) && $configured !== '') {
@@ -57,6 +68,15 @@ class DefaultSurveyUrlResolver implements SurveyUrlResolver
             return $url;
         }
 
+        return null;
+    }
+
+    /**
+     * Where "back" goes when there is no explicit URL AND no browser history to
+     * return through (e.g. the designer opened in a fresh tab).
+     */
+    public function fallbackBackUrl(SurveySchema $schema): ?string
+    {
         return $this->bundledResourceUrl($schema);
     }
 
