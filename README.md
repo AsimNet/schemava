@@ -328,6 +328,9 @@ unless you explicitly opt in.
 
 ## Troubleshooting
 
+- **`composer` still fails or installs an old version after switching to Packagist:** remove any custom
+  repository you added for Schemava earlier, then update:
+  `composer config --unset repositories.schemava && composer update asimnet/schemava`
 - **The builder doesn't load / assets are missing:** run `php artisan filament:assets` after install/update and
   make sure it runs as part of your deploy; then hard-refresh.
 - **Image/file uploads fail:** check `storage.disk` is writable and, if public, run `php artisan storage:link`.

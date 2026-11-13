@@ -35,6 +35,9 @@ php artisan migrate            # ينشئ جدولي schemava_schemas و schemav
 php artisan filament:assets
 ```
 
+> **إن سبق أن أضفت مستودعًا مخصّصًا لـ Schemava:** احذفه حتى يُثبِّت Composer من Packagist، ثم حدّث:
+> `composer config --unset repositories.schemava && composer update asimnet/schemava`
+
 > ملاحظة: ملفات الترحيل تُنشر ولا تُشغَّل تلقائيًا — لا بد من نشرها (عبر `schemava:install` أو
 > `php artisan vendor:publish --tag=schemava-migrations`) ثم تنفيذ `php artisan migrate`.
 
