@@ -30,17 +30,11 @@ JSON and previews/renders with the MIT-licensed open-source `survey-core` engine
 
 ## Installation
 
-Schemava is free and open source. Install it straight from GitHub by adding the repository to Composer, then
-require the package:
+Schemava is free and open source, and available on [Packagist](https://packagist.org/packages/asimnet/schemava):
 
 ```bash
-composer config repositories.schemava vcs https://github.com/AsimNet/schemava
 composer require asimnet/schemava
 ```
-
-> **GitHub rate limits:** Composer reads tags through the GitHub API. If installs get throttled (common in CI),
-> add a GitHub token: `composer config --global github-oauth.github.com YOUR-GITHUB-TOKEN` (no scopes needed for a
-> public repository), or provide it via `COMPOSER_AUTH='{"github-oauth":{"github.com":"YOUR-GITHUB-TOKEN"}}'`.
 
 Publish and run the migrations (this creates the `schemava_schemas` and `schemava_results` tables — the
 migrations are publish-only so you can review or adapt them, e.g. custom table names), then publish the builder
@@ -334,9 +328,6 @@ unless you explicitly opt in.
 
 ## Troubleshooting
 
-- **`composer` still tries `repo.schemava.dev` / returns `403` or `404`:** that private repository is retired.
-  Point the repository at GitHub, drop the old token, then update:
-  `composer config repositories.schemava vcs https://github.com/AsimNet/schemava && composer config --unset bearer.repo.schemava.dev && composer update asimnet/schemava`
 - **The builder doesn't load / assets are missing:** run `php artisan filament:assets` after install/update and
   make sure it runs as part of your deploy; then hard-refresh.
 - **Image/file uploads fail:** check `storage.disk` is writable and, if public, run `php artisan storage:link`.
